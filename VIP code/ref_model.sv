@@ -14,9 +14,11 @@ class dll_ref_model #(
 
     dl_state_t   current_state;        // DL state machine
     bit          FI1, FI2;
+    bit          scaled_fc_active;
     fc_credits_t local_fc ;           // credits advertised by this VIP
     fc_credits_t remote_fc;           // credits received from peer
-
+    dl_feature_cap_reg_t feature_cap_reg;
+    dl_feature_status_reg_t  feature_status_reg;
 
     function new();
         this.generator_polynomial = 'h100B;
@@ -82,16 +84,39 @@ class dll_ref_model #(
                     update_fi_flags(_dllp);
                 end
             end
+            DL_FEATURE : begin 
+                if (this.current_state == DL_FEATURE ) begin
+                    if (feature_status_reg.remote_feature_valid == 1'b0) begin
+                    record_Feature_Supported_field(_dllp);
+                    feature_status_reg.remote_feature_valid = 1'b1;
+                    end else activate_dl_feature;
+                end
+            end
+           UPDATEFC_P, UPDATEFC_NP, UPDATEFC_CPL : begin 
+            if (this.current_state == DL_ACTIVE)
+            record_fc_values(_dllp);
+           end
         default: 
        endcase
         
     endfunction
 
+    function void record_Feature_Supported_field;
+    input bit [DLLP_WIDTH-1:0] _dllp;
+    feature_status_reg.remote_feature_supported = _dllp[31:9]; //not sure
+    endfunction
+
+    // Activate Data Link feature negotiated through the DL_FEATURE DLLP
+    // Enable Scaled Flow Control (bit 0) only if it is supported by both the local port and the remote port
+     function void activate_dl_feature;
+    scaled_fc_active = feature_status_reg.remote_feature_supported[0] & feature_cap_reg.local_feature_supported[0];
+    endfunction
+
     function void record_fc_values;
         input bit [DLLP_WIDTH-1:0] _dllp;
 
-        remote_fc.hdr  = rx_item[];
-        remote_fc.data = rx_item[];
+        remote_fc.hdr_credits  = _dllp[];
+        remote_fc.data_credits = _dllp[];
 
         `uvm_info("DLL_RM",$sformatf("[record_fc_values] HDR_FC=%0d  DATA_FC=%0d", remote_fc.hdr, remote_fc.data), UVM_MEDIUM)
     endfunction : record_fc_values
