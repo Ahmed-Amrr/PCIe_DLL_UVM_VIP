@@ -14,11 +14,11 @@ class vip_rx_agent extends uvm_agent;
   // Provide implementations of virtual methods such as get_type_name and create
   `uvm_component_utils(vip_rx_agent)
   vip_rx_monitor rx_mon;
-  vip_config vip_cfg;
+  //vip_config vip_cfg;
 
-  virtual vip_if vip_vif;
+  //virtual vip_if vip_vif;
 
-  uvm_analysis_port #(vip_seq_item) rx_agent_ap;  //analysis port declaration
+  uvm_analysis_port #(/*vip_seq_item*/) rx_agent_ap;  //analysis port declaration
 
 /*-------------------------------------------------------------------------------
 -- Functions
@@ -33,8 +33,8 @@ class vip_rx_agent extends uvm_agent;
     super.build_phase(phase);
 
     // Get interface 
-    if(!uvm_config_db #(vip_config)::get(this,"","CFG",vip_cfg))
-      `uvm_fatal("build_phase","unable to get configuration object")
+    /*if(!uvm_config_db #(vip_config)::get(this,"","CFG",vip_cfg))
+      `uvm_fatal("build_phase","unable to get configuration object")*/
 
     rx_mon = vip_rx_monitor::type_id::create("rx_mon", this);
   
@@ -43,7 +43,7 @@ class vip_rx_agent extends uvm_agent;
 
 
   function void connect_phase(uvm_phase phase);
-    rx_mon.vip_vif=vip_cfg.vip_vif;
+    //rx_mon.vip_vif=vip_cfg.vip_vif;
     rx_mon.rx_mon_ap.connect(rx_agent_ap);
   endfunction : connect_phase
 
