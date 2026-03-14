@@ -18,6 +18,9 @@ class vip_driver extends uvm_driver #(/*seq_item*/);
 
     virtual task run_phase(uvm_phase phase);
         super.run_phase(phase);
+        forever begin
+            // Read the signals from Seq_Item and write it to the lpif
+        end        
     endtask
 endclass //vip_driver extends uvm_driver
 
