@@ -1,4 +1,4 @@
-interface lpif_us_if (
+interface lpif_if (
     input bit lclk   // Link clock used to synchronize all signals
 );
 
