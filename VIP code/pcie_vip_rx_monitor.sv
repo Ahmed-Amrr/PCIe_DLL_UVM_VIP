@@ -12,7 +12,7 @@ class pcie_vip_rx_monitor extends uvm_monitor;
 -- Interface, port, fields
 -------------------------------------------------------------------------------*/
 
-    virtual lpif_if lpif_vif
+    virtual lpif_if lpif_vif;
     // seq_item   dll_item & tlp ???
 	uvm_analysis_port #(/*seq_item*/) rx_mon_ap;
 
