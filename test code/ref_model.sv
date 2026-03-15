@@ -21,6 +21,11 @@ class dll_ref_model #(
     dl_feature_cap_reg_t feature_cap_reg;
     dl_feature_status_reg_t  feature_status_reg;
 
+    bit [1:0] local_hdr_scale;    // scaling factor for header credits
+    bit [1:0] local_data_scale;   // scaling factor for data credits
+    int       initfc1_tx_count;   // tracks P/NP/Cpl TX order in INIT1
+    int       initfc2_tx_count;   // tracks P/NP/Cpl TX order in INIT2
+
     function new();
         this.generator_polynomial = 'h100B;
         this.initial_seed         = 'hFFFF;  
@@ -29,6 +34,10 @@ class dll_ref_model #(
         this.remote_fc            = '0;
         this.FI1                  = 0;
         this.FI2                  = 0;
+        this.local_hdr_scale  = 2'b01; 
+        this.local_data_scale = 2'b01; 
+        this.initfc1_tx_count = 0;
+        this.initfc2_tx_count = 0;
     endfunction : new
     
     // Function : verify_rx_crc
@@ -214,6 +223,457 @@ class dll_ref_model #(
         mapped_crc[15:8]  = {<<{crc[15:8]}};
         _crc = mapped_crc;
     endfunction : crc_calc
+
+    //Main Function
+function  void update_sm_on_rx;
+    input dllp_type_t            _dllp_type;
+    input bit [DLLP_WIDTH-1:0]   _dllp     ;
+    input bit                    pl_lnk_up ;
+    input bit                    dl_reset;
+    //Flags
+    input  bit                   FI1, FI2  ;
+    input  bit                   surprise_down_Error_Reporting_capable; 
+    input  bit                   link_not_disabled; 
+
+    //OUTPUT
+    output dl_state_t            next_state;
+    output bit                   state_changed;
+    output bit                   surprise_down_event;
+
+    // default
+        next_state    = current_state;
+        state_changed = 1'b0;
+        surprise_down_event  = 1'b0;
+    
+    // Reset handling (hot/warm/cold reset)
+
+    if (dl_reset) begin
+        next_state = DL_INACTIVE;
+
+        if (current_state != DL_INACTIVE) begin
+            state_changed = 1'b1;
+
+            if (feature_cap_reg.feature_exchange_enable) begin
+                    feature_status_reg.remote_feature_supported = '0;
+                    feature_status_reg.remote_feature_valid     = 1'b0;
+                    `uvm_info("DLL_RM", "[update_sm_on_rx] reset: feature regs cleared", UVM_MEDIUM) 
+            end
+
+        end
+        else
+            state_changed = 1'b0;
+
+
+        return;
+    end
+
+        // every state has "exit to DL_Inactive if PhysicalLinkUp=0"
+    if (!pl_lnk_up) begin
+        if (current_state != DL_INACTIVE) begin
+
+            // detect DL_ACTIVE → DL_INACTIVE transition
+            if (current_state == DL_ACTIVE && surprise_down_Error_Reporting_capable) begin
+                surprise_down_event = 1'b1;
+            end
+
+            next_state    = DL_INACTIVE;
+            state_changed = 1'b1;
+            if (feature_cap_reg.feature_exchange_enable) begin
+                    feature_status_reg.remote_feature_supported = '0;
+                    feature_status_reg.remote_feature_valid     = 1'b0;
+                    `uvm_info("DLL_RM", "[update_sm_on_rx] reset: feature regs cleared", UVM_MEDIUM) 
+            end
+
+        end
+        return; // no further processing
+    end
+
+    case (current_state)
+
+        
+            DL_INACTIVE: begin
+                // Exit to DL_Feature if: port supports feature exchange,
+                //   feature exchange enable bit is Set, link not disabled,
+                //   and PhysicalLinkUp=1 (already confirmed above)
+                // Exit to DL_Init if: port does NOT support feature exchange
+                //   OR feature exchange enable bit is Clear,
+                //   link not disabled, PhysicalLinkUp=1
+
+                if (link_not_disabled) begin
+
+                    if (feature_cap_reg.local_feature_supported[0] && feature_cap_reg.feature_exchange_enable) begin
+                        next_state = DL_FEATURE;
+                       // clear on entry to DL_FEATURE
+                        feature_status_reg.remote_feature_supported = '0;
+                        feature_status_reg.remote_feature_valid     = 1'b0;
+                    end 
+                    else begin
+                        next_state = DL_INIT1;
+                    end
+
+                    state_changed = 1'b1;
+
+                end 
+                else begin
+                    next_state    = current_state;
+                    state_changed = 1'b0;
+                end
+            end
+
+            DL_FEATURE: begin
+                // → DL_Init if: feature exchange completes successfully
+                //              OR remote does not support feature exchange
+                //              AND PhysicalLinkUp still 1
+                // → DL_Inactive if: PhysicalLinkUp=0 (handled above already)
+                //
+                // Feature exchange completes  when:
+                //   - received InitFC1 DLLP 
+                //   - OR at least one DL_Feature DLLP received with Feature_Ack=1
+
+                if (_dllp_type == INITFC1_P ||_dllp_type == INITFC1_NP ||_dllp_type == INITFC1_CPL) begin
+                    next_state    = DL_INIT1;
+                    state_changed = 1'b1;
+                end else if (_dllp_type == DL_FEATURE && _dllp[15]) begin
+                    // feature ack seen → exchange complete
+                    next_state    = DL_INIT1;
+                    state_changed = 1'b1;
+                end else if (!feature_status_reg.remote_feature_supported[0]) begin         
+                    next_state    = DL_INIT1;
+                    state_changed = 1'b1;
+                end  else begin
+                    next_state    = DL_FEATURE;
+                    state_changed = 1'b0;
+                end
+                
+            end
+
+            DL_INIT1: begin
+                // → DL_DL_INIT2 if: FI1 set,
+                //                 PhysicalLinkUp still 1
+                // → DL_Inactive if: PhysicalLinkUp=0 (handled above)
+                if (FI1) begin
+                    next_state    = DL_INIT2;
+                    state_changed = 1'b1;
+                end else begin
+                    next_state    = current_state;
+                    state_changed = 1'b0;
+                end
+            end
+
+            DL_INIT2: begin
+                // → DL_Active if: FC initialization completes (FI2 set),
+                //                 PhysicalLinkUp still 1
+                // → DL_Inactive if: PhysicalLinkUp=0 (handled above)
+                if (FI2) begin
+                    next_state    = DL_ACTIVE;
+                    state_changed = 1'b1;
+                end else begin
+                    next_state    = current_state;
+                    state_changed = 1'b0;
+                end
+            end
+
+            DL_ACTIVE: begin
+                    next_state    = current_state;
+                    state_changed = 1'b0;
+            end
+    endcase
+
+endfunction
+
+// after update_sm_on_rx returns next_state
+function void get_dl_status;
+    input  dl_state_t _state;
+    output bit        DL_Down;
+    output bit        DL_Up;
+
+    //defaults 
+    DL_Down = 1'b0;
+    DL_Up   = 1'b0;
+
+    case (_state)
+        DL_INACTIVE,
+        DL_FEATURE,
+        DL_INIT1  : DL_Down = 1'b1;  // spec: DL_Down reported
+
+        DL_INIT2,
+        DL_ACTIVE : DL_Up   = 1'b1;  // spec: DL_Up reported
+
+        default   : DL_Down = 1'b1;  // unknown state → safe default = DL_Down
+    endcase
+
+endfunction : get_dl_status
+
+
+function void predict_expected_tx_response;
+
+    input  dl_state_t current_state;
+    output dllp_type_t expected_type;
+    output bit [DLLP_WIDTH-1:0] expected_dllp;
+
+    expected_dllp = '0;
+    expected_type = NOP;
+
+    case (current_state)
+
+        
+        // DL_FEATURE : transmit DL_FEATURE DLLP
+        
+        DL_FEATURE: begin
+
+            expected_type = DL_FEATURE;
+
+            // Feature Supported field //LE ////////////////----------->>>>>>>>fixxxxxxx mapppping
+           { expected_dllp[14:8],expected_dllp[31:16]} = feature_cap_reg.local_feature_supported;
+
+            // Feature Ack bit
+            expected_dllp[15] = feature_status_reg.remote_feature_valid;
+
+            `uvm_info("DLL_RM",
+            $sformatf("[predict_expected_tx_response] TX DL_FEATURE: supported=0x%0h ack=%0b",
+                feature_cap_reg.local_feature_supported,
+                feature_status_reg.remote_feature_valid),
+            UVM_MEDIUM)
+
+        end
+    
+        
+        // DL_INIT1 : send InitFC1 sequence
+   
+        DL_INIT1: begin
+
+            case (initfc1_tx_count)
+
+                0: begin
+                    expected_type = INITFC1_P;
+                    expected_dllp = build_initfc_pkt(FC_POSTED, 0);
+                    initfc1_tx_count++;
+                end
+
+                1: begin
+                    expected_type = INITFC1_NP;
+                    expected_dllp = build_initfc_pkt(FC_NON_POSTED, 0);
+                    initfc1_tx_count++;
+                end
+
+                2: begin
+                    expected_type = INITFC1_CPL;
+                    expected_dllp = build_initfc_pkt(FC_COMPLETION, 0);
+                    initfc1_tx_count++;
+                end
+
+                default: begin
+                    // spec: repeat P→NP→Cpl frequently until FI1 is set
+                    // reset counter → next call starts from P again
+                    initfc1_tx_count = 0;
+                    expected_type    = INITFC1_P;
+                    expected_dllp    = build_initfc_pkt(FC_POSTED, 0);
+                    initfc1_tx_count++;
+               end
+
+            endcase
+
+        end
+
+        // DL_INIT2 : send InitFC2 sequence
+       
+        DL_INIT2: begin
+
+            case (initfc2_tx_count)
+
+                0: begin
+                    expected_type = INITFC2_P;
+                    expected_dllp = build_initfc_pkt(FC_POSTED, 1);
+                    initfc2_tx_count++;  //---->>>>>> put its initialization in the new function
+                end
+
+                1: begin
+                    expected_type = INITFC2_NP;
+                    expected_dllp = build_initfc_pkt(FC_NON_POSTED, 1);
+                    initfc2_tx_count++;
+                end
+
+                2: begin
+                    expected_type = INITFC2_CPL;
+                    expected_dllp = build_initfc_pkt(FC_COMPLETION, 1);
+                    initfc2_tx_count++;
+                end
+
+                default: begin
+                    // same — repeat P→NP→Cpl until FI2 is set
+                    initfc2_tx_count = 0;
+                    expected_type    = INITFC2_P;
+                    expected_dllp    = build_initfc_pkt(FC_POSTED, 1);
+                    initfc2_tx_count++;
+                end
+
+            endcase
+
+        end
+
+         default: begin
+            expected_type = NOP;
+            expected_dllp = '0;
+        end
+
+    endcase
+endfunction : predict_expected_tx_response
+
+function bit [DLLP_WIDTH-1:0] build_initfc_pkt
+(
+    input fc_type_t  fc_type,
+    input bit        is_init2   // 0 = InitFC1 , 1 = InitFC2
+ 
+);
+    
+    bit [DLLP_WIDTH-1:0] pkt;
+    pkt = '0;
+
+  
+    // DLLP TYPE
+ 
+    if (!is_init2) begin
+        // InitFC1
+        case (fc_type)
+            FC_POSTED     : pkt[7:0] = 8'b0100_0000; // INITFC1_P
+            FC_NON_POSTED : pkt[7:0] = 8'b0101_0000; // INITFC1_NP
+            FC_COMPLETION : pkt[7:0] = 8'b0110_0000; // INITFC1_CPL
+            default       : _pkt[7:0] = 8'b0000_0000;
+        endcase
+    end
+    else begin
+        // InitFC2
+        case (fc_type)
+            FC_POSTED     : pkt[7:0] = 8'b1100_0000; // INITFC2_P
+            FC_NON_POSTED : pkt[7:0] = 8'b1101_0000; // INITFC2_NP
+            FC_COMPLETION : pkt[7:0] = 8'b1110_0000; // INITFC2_CPL
+            default       : pkt[7:0] = 8'b0000_0000;
+        endcase
+    end
+
+//---------------->>>>fix mapping
+// SCALE FIELDS
+
+// in class member variable
+//_hdr_scale;    // configured at start of sim
+//_data_scale;   // configured at start of sim
+
+//function new();
+    
+    //this._hdr_scale  = 2'b01; // default x1 scaling
+    //this._data_scale = 2'b01;
+//endfunction
+
+   
+    if (scaled_fc_active) begin
+        pkt[9:8] = local_hdr_scale; // HdrScale [1:0]
+        pkt[19:18] = local_data_scale; // DataScale[1:0]
+    end
+    else begin
+        pkt[9:8]   = 2'b00;
+        pkt[19:18] = 2'b00;
+    end
+
+
+    
+    // CREDITS
+    
+    pkt[17:10] = local_fc.hdr_credits[fc_type];
+    pkt[31:20] = local_fc.data_credits[fc_type];
+
+    return pkt;
+
+endfunction
+
+
+function void check_response_correctness;
+    input dllp_type_t           _actual_tx_type ;
+    input bit [DLLP_WIDTH-1:0]  _actual_tx_dllp ;
+    input bit                   _response_required;
+
+    dllp_type_t          exp_type;
+    bit [DLLP_WIDTH-1:0] exp_dllp;
+
+    // only check if response is required
+    if (!_response_required) return;
+
+  
+    // get prediction from model based on current state
+    
+    predict_expected_tx_response(
+        .current_state (current_state),
+        .expected_type (exp_type),
+        .expected_dllp (exp_dllp)
+    );
+
+    
+    
+    // do not check these — do not advance counter
+   
+    if (_actual_tx_type inside {ACK, NAK, NOP}) begin
+        `uvm_info("DLL_RM", $sformatf(
+            "[check_response] state=%s skipping %s — not an FC DLLP",
+            current_state.name(), _actual_tx_type.name()), UVM_HIGH)
+        return;
+    end
+
+    
+    // CHECK 1: DLLP type correct?
+    // predicted_tx_response (from rx model) == actual_tx_response (from TX monitor)
+   
+    if (_actual_tx_type !== exp_type) begin
+        `uvm_error("DLL_RM", $sformatf(
+            "[check_response] TYPE MISMATCH: state=%s expected=%s actual=%s",
+            current_state.name(),
+            exp_type.name(),
+            _actual_tx_type.name()))
+    end else begin
+        `uvm_info("DLL_RM", $sformatf(
+            "[check_response] TYPE OK: state=%s type=%s",
+            current_state.name(),
+            _actual_tx_type.name()), UVM_MEDIUM)
+    end
+
+    
+    // CHECK 2: DLLP content correct?
+    // field by field based on current state
+    
+    case (current_state)
+
+        DL_FEATURE: begin
+            if (_actual_tx_dllp[31:0] !== exp_dllp[31:0]) begin
+                `uvm_error("DLL_RM", $sformatf(
+                    "[check_response] DL_FEATURE MISMATCH: expected=0x%08h actual=0x%08h",
+                    exp_dllp[31:0], _actual_tx_dllp[31:0]))
+            end else
+                `uvm_info("DLL_RM", $sformatf(
+                    "[check_response] DL_FEATURE OK: 0x%08h",
+                    _actual_tx_dllp[31:0]), UVM_MEDIUM)
+        end
+
+        DL_INIT1, DL_INIT2: begin
+            if (_actual_tx_dllp[31:0] !== exp_dllp[31:0]) begin
+                `uvm_error("DLL_RM", $sformatf(
+                    "[check_response] %s MISMATCH: expected=0x%08h actual=0x%08h",
+                    current_state.name(),
+                    exp_dllp[31:0], _actual_tx_dllp[31:0]))
+            end else
+                `uvm_info("DLL_RM", $sformatf(
+                    "[check_response] %s OK: 0x%08h",
+                    current_state.name(), _actual_tx_dllp[31:0]), UVM_MEDIUM)
+        end
+
+       
+
+        default: begin
+            `uvm_info("DLL_RM", $sformatf(
+                "[check_response] state=%s no check defined",
+                current_state.name()), UVM_MEDIUM)
+        end
+
+    endcase
+
+endfunction : check_response_correctness
 
 endclass : dll_ref_model
 
