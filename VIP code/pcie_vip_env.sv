@@ -18,6 +18,8 @@ class pcie_vip_env extends  uvm_env;
 	pcie_vip_scoreboard scoreboard;
 	pcie_vip_coverage coverage;
 
+	pcie_vip_config cfg;
+
 /*-------------------------------------------------------------------------------
 -- Functions
 -------------------------------------------------------------------------------*/
@@ -28,6 +30,11 @@ class pcie_vip_env extends  uvm_env;
 
 	function void build_phase(uvm_phase phase);
 		super.build_phase(phase);
+
+		// Get interface 
+	    if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG",cfg))
+	      `uvm_fatal("build_phase","unable to get configuration object")
+
 		tx_agent = pcie_vip_tx_agent::type_id::create("tx_agent", this);
 		rx_agent = pcie_vip_rx_agent::type_id::create("rx_agent", this);
 		scoreboard = pcie_vip_scoreboard::type_id::create("scoreboard", this);
@@ -41,6 +48,11 @@ class pcie_vip_env extends  uvm_env;
 		rx_agent.rx_agent_ap.connect(/*coverage.cov_export*/);	//////////
 		rx_agent.rx_agent_ap.connect(/*scoreboard.sb_imp*/);	//////////
 		// na2s connection el State machine 
+
+		//connecting interface to the divers and monitors of each agent
+		tx_agent.drv.lpif_vif=cfg.lpif_vif;
+		tx_agent.tx_mon.lpif_vif=cfg.lpif_vif;
+		rx_agent.rx_mon.lpif_vif=cfg.lpif_vif;
 	endfunction : connect_phase
 
 endclass : pcie_vip_env

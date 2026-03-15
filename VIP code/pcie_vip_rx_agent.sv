@@ -32,10 +32,6 @@ class pcie_vip_rx_agent extends uvm_agent;
   function void build_phase(uvm_phase phase);
     super.build_phase(phase);
 
-    // Get interface 
-    if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG",cfg))
-      `uvm_fatal("build_phase","unable to get configuration object")
-
     rx_mon = pcie_vip_rx_monitor::type_id::create("rx_mon", this);
   
     rx_agent_ap = new("rx_agent_ap", this);
@@ -43,7 +39,6 @@ class pcie_vip_rx_agent extends uvm_agent;
 
 
   function void connect_phase(uvm_phase phase);
-    rx_mon.lpif_vif=cfg.lpif_vif;
     rx_mon.rx_mon_ap.connect(rx_agent_ap);
   endfunction : connect_phase
 
