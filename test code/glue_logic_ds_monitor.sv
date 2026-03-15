@@ -1,7 +1,7 @@
 class glue_logic_ds_monitor extends uvm_monitor;
 
     `uvm_component_utils(glue_logic_ds_monitor)
-    virtual lpif_ds_if lpif_ds_vif;
+    virtual lpif_if    lpif_ds_vif;
     pcie_seq_item      s_item_ds  ;
     uvm_analysis_port#(pcie_seq_item) mon_ap;
     

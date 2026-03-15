@@ -2,7 +2,7 @@ class glue_logic_ds_driver extends uvm_driver;
 
     `uvm_component_utils(glue_logic_ds_driver)
 
-    virtual lpif_ds_if lpif_ds_vif;
+    virtual lpif_if    lpif_ds_vif;
     pcie_seq_item      s_item_us  ;
 
     uvm_tlm_analysis_fifo #(pcie_seq_item) fifo_mon_us;
