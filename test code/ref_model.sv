@@ -14,6 +14,7 @@ class dll_ref_model #(
 
     dl_state_t   current_state;        // DL state machine
     bit          FI1, FI2;
+    bit          fi1_p, fi1_np, fi1_cpl;   // per-type trackers for FI1
     bit          scaled_fc_active;
     fc_credits_t local_fc ;           // credits advertised by this VIP
     fc_credits_t remote_fc;           // credits received from peer
@@ -66,9 +67,10 @@ class dll_ref_model #(
 
         _is_legal = 1;
         if (_current_state == DL_INACTIVE) begin
-            -is_legal = 0;
+            _is_legal = 0;
             `uvm_error("DLL_RM", "[check_rx_legality] Illegal DLLP receving in state DL_INACTIVE")
         end
+        // need to add legality for tx too
     endfunction : check_rx_legality
 
     function void process_rx_dllp;
@@ -76,12 +78,22 @@ class dll_ref_model #(
         input bit [DLLP_WIDTH-1:0] _dllp     ;
 
         case (_dllp_type)
-            INITFC1_P, INITFC1_NP, INITFC1_CPL, INITFC2_P, INITFC2_NP, INITFC2_CPL: begin
+            INITFC1_P, INITFC1_NP, INITFC1_CPL: begin
                 if (this.current_state == DL_INIT1) begin
                     record_fc_values(_dllp);
-                    update_fi_flags(_dllp);
+                    update_fi_flags(_dllp_type);
+                end
+            end
+            INITFC2_P, INITFC2_NP, INITFC2_CPL: begin
+                // Process received InitFC1 and InitFC2 DLLPs:
+                //    ▪ Record the indicated HdrFC and DataFC values
+                if (this.current_state == DL_INIT1) begin
+                    record_fc_values(_dllp);
+                    update_fi_flags(_dllp_type);
                 end else if (this.current_state == DL_INIT2) begin
-                    update_fi_flags(_dllp);
+                    // update_fi_flags(_dllp_type);
+                    // not sure if we should update the flag FI2 once we receiVe any of INITFC2 in DL_INIT2 or not
+                    this.FI2 = 1;
                 end
             end
             DL_FEATURE : begin 
@@ -93,8 +105,11 @@ class dll_ref_model #(
                 end
             end
            UPDATEFC_P, UPDATEFC_NP, UPDATEFC_CPL : begin 
+            if (this.current_state == DL_INIT2) begin
+                this.FI2 = 1;
+            end
             if (this.current_state == DL_ACTIVE)
-            record_fc_values(_dllp);
+                record_fc_values(_dllp);
            end
         default: 
        endcase
@@ -102,14 +117,14 @@ class dll_ref_model #(
     endfunction
 
     function void record_Feature_Supported_field;
-    input bit [DLLP_WIDTH-1:0] _dllp;
-    feature_status_reg.remote_feature_supported = _dllp[31:9]; //not sure
+        input bit [DLLP_WIDTH-1:0] _dllp;
+        feature_status_reg.remote_feature_supported = _dllp[31:9]; //not sure
     endfunction
 
     // Activate Data Link feature negotiated through the DL_FEATURE DLLP
     // Enable Scaled Flow Control (bit 0) only if it is supported by both the local port and the remote port
-     function void activate_dl_feature;
-    scaled_fc_active = feature_status_reg.remote_feature_supported[0] & feature_cap_reg.local_feature_supported[0];
+    function void activate_dl_feature;
+        scaled_fc_active = feature_status_reg.remote_feature_supported[0] & feature_cap_reg.local_feature_supported[0];
     endfunction
 
     function void record_fc_values;
@@ -120,6 +135,51 @@ class dll_ref_model #(
 
         `uvm_info("DLL_RM",$sformatf("[record_fc_values] HDR_FC=%0d  DATA_FC=%0d", remote_fc.hdr, remote_fc.data), UVM_MEDIUM)
     endfunction : record_fc_values
+ 
+    function void update_fi_flags;
+        input dllp_type_t _dllp_type;
+
+        case (_dllp_type)
+            INITFC1_P, INITFC2_P: begin
+                // Posted credits must come first so non-posted and compeletion mustm't be set yet
+                if (fi1_np || fi1_cpl) begin
+                    `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — P received after NP or CPL")
+                end else begin
+                    fi1_p = 1;
+                    `uvm_info("DLL_RM", "[update_fi_flags] P credits recorded", UVM_HIGH)
+                end
+            end
+
+            INITFC1_NP, INITFC2_NP: begin
+                // NP must come after P
+                if (!fi1_p) begin
+                    `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — NP received before P")
+                end else if (fi1_cpl) begin
+                    `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — NP received after CPL")
+                end else begin
+                    fi1_np = 1;
+                    `uvm_info("DLL_RM", "[update_fi_flags] NP credits recorded", UVM_HIGH)
+                end
+            end
+
+            INITFC1_CPL, INITFC2_CPL: begin
+                // CPL must come after P and NP 
+                if (!fi1_p || !fi1_np) begin
+                    `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — CPL received before P or NP")
+                end else begin
+                    fi1_cpl = 1;
+                    `uvm_info("DLL_RM", "[update_fi_flags] CPL credits recorded", UVM_HIGH)
+                end
+            end
+        endcase
+
+        // FI1 set only when all three received IN ORDER
+        if (fi1_p && fi1_np && fi1_cpl) begin
+            this.FI1 = 1;
+            `uvm_info("DLL_RM", "[update_fi_flags] FI1 SET — P/NP/CPL all received in order", UVM_MEDIUM)
+        end
+
+    endfunction : update_fi_flags
 
     function void crc_calc;
         input  bit [PAYLOAD_WIDTH-1:0] _dllp_without_crc;
