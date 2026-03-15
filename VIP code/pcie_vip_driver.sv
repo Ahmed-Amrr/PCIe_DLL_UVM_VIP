@@ -4,7 +4,7 @@
 class pcie_vip_driver extends uvm_driver #(/*seq_item*/);
     `uvm_component_utils(pcie_vip_driver)
 
-    // virtual lpif_if lpif_vif
+    virtual lpif_if lpif_vif
     // seq_item   dll_item & tlp ???
 
     function new(string name = "pcie_vip_driver", uvm_component parent = null);

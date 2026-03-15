@@ -14,11 +14,11 @@ class pcie_vip_rx_agent extends uvm_agent;
   // Provide implementations of virtual methods such as get_type_name and create
   `uvm_component_utils(pcie_vip_rx_agent)
   pcie_vip_rx_monitor rx_mon;
-  pcie_vip_config pcie_vip_cfg;
+  pcie_vip_config cfg;
 
-  virtual pcie_vip_if pcie_vip_vif;
+  virtual lpif_if lpif_vif;
 
-  uvm_analysis_port #(pcie_vip_seq_item) rx_agent_ap;  //analysis port declaration
+  uvm_analysis_port #(/*pcie_vip_seq_item*/) rx_agent_ap;  //analysis port declaration
 
 /*-------------------------------------------------------------------------------
 -- Functions
@@ -33,7 +33,7 @@ class pcie_vip_rx_agent extends uvm_agent;
     super.build_phase(phase);
 
     // Get interface 
-    if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG",pcie_vip_cfg))
+    if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG",cfg))
       `uvm_fatal("build_phase","unable to get configuration object")
 
     rx_mon = pcie_vip_rx_monitor::type_id::create("rx_mon", this);
@@ -43,7 +43,7 @@ class pcie_vip_rx_agent extends uvm_agent;
 
 
   function void connect_phase(uvm_phase phase);
-    rx_mon.pcie_vip_vif=pcie_vip_cfg.pcie_vip_vif;
+    rx_mon.lpif_vif=cfg.lpif_vif;
     rx_mon.rx_mon_ap.connect(rx_agent_ap);
   endfunction : connect_phase
 

@@ -16,11 +16,11 @@ class pcie_vip_tx_agent extends uvm_agent;
   pcie_vip_sequencer sqr;
   pcie_vip_driver drv;
   pcie_vip_tx_monitor tx_mon;
-  pcie_vip_config pcie_vip_cfg;
+  pcie_vip_config cfg;
 
-  virtual pcie_vip_if pcie_vip_vif;
+  virtual lpif_if lpif_vif;
 
-  uvm_analysis_port #(pcie_vip_seq_item) tx_agent_ap;  //analysis port declaration
+  uvm_analysis_port #(/*pcie_vip_seq_item*/) tx_agent_ap;  //analysis port declaration
 
 /*-------------------------------------------------------------------------------
 -- Functions
@@ -35,7 +35,7 @@ class pcie_vip_tx_agent extends uvm_agent;
     super.build_phase(phase);
 
     // Get interface 
-    if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG",pcie_vip_cfg))
+    if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG",cfg))
       `uvm_fatal("build_phase","unable to get configuration object")
 
     sqr = pcie_vip_sequencer::type_id::create("sqr", this);
@@ -47,8 +47,8 @@ class pcie_vip_tx_agent extends uvm_agent;
 
 
   function void connect_phase(uvm_phase phase);
-    drv.pcie_vip_vif=pcie_vip_cfg.pcie_vip_vif;
-    tx_mon.pcie_vip_vif=pcie_vip_cfg.pcie_vip_vif;
+    drv.lpif_vif=cfg.lpif_vif;
+    tx_mon.lpif_vif=cfg.lpif_vif;
     drv.seq_item_port.connect(sqr.seq_item_export); //sqr.seqitem_imp
     tx_mon.tx_mon_ap.connect(tx_agent_ap);
   endfunction : connect_phase
