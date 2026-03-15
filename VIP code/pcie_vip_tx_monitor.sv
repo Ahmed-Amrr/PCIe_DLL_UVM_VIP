@@ -1,12 +1,12 @@
-`ifndef VIP_RX_MONITOR
-`define VIP_RX_MONITOR
+`ifndef PCIE_VIP_TX_MONITOR
+`define PCIE_VIP_TX_MONITOR
 
-class vip_rx_monitor extends uvm_monitor;
+class pcie_vip_tx_monitor extends uvm_monitor;
 /*-------------------------------------------------------------------------------
 -- UVM Factory register
 -------------------------------------------------------------------------------*/
 	// Provide implementations of virtual methods such as get_type_name and create
-	`uvm_component_utils(vip_rx_monitor)
+	`uvm_component_utils(pcie_vip_tx_monitor)
 
 /*-------------------------------------------------------------------------------
 -- Interface, port, fields
@@ -14,19 +14,19 @@ class vip_rx_monitor extends uvm_monitor;
 
     // virtual lpif_if lpif_vif
     // seq_item   dll_item & tlp ???
-	uvm_analysis_port #(/*seq_item*/) rx_mon_ap;
+	uvm_analysis_port #(/*seq_item*/) tx_mon_ap;
 
 /*-------------------------------------------------------------------------------
 -- Functions
 -------------------------------------------------------------------------------*/
 	// Constructor
-	function new(string name = "vip_rx_monitor", uvm_component parent=null);
+	function new(string name = "pcie_vip_tx_monitor", uvm_component parent=null);
 		super.new(name, parent);
 	endfunction : new
 
 	function void build_phase(uvm_phase phase);
 		super.build_phase(phase);
-		rx_mon_ap=new("rx_mon_ap", this);
+		tx_mon_ap=new("tx_mon_ap", this);
 	endfunction : build_phase
 
 	task run_phase(uvm_phase phase);	//check the names for vif & seq_item & variables
@@ -36,6 +36,6 @@ class vip_rx_monitor extends uvm_monitor;
 		end
 	endtask : run_phase
 
-endclass : vip_rx_monitor
+endclass : pcie_vip_tx_monitor
 
 `endif 

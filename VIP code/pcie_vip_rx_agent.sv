@@ -1,7 +1,7 @@
-`ifndef VIP_RX_AGENT
-`define VIP_RX_AGENT
+`ifndef PCIE_VIP_RX_AGENT
+`define PCIE_VIP_RX_AGENT
 
-class vip_rx_agent extends uvm_agent;
+class pcie_vip_rx_agent extends uvm_agent;
 
 /*-------------------------------------------------------------------------------
 -- Interface, port, fields
@@ -12,19 +12,19 @@ class vip_rx_agent extends uvm_agent;
 -- UVM Factory register
 -------------------------------------------------------------------------------*/
   // Provide implementations of virtual methods such as get_type_name and create
-  `uvm_component_utils(vip_rx_agent)
-  vip_rx_monitor rx_mon;
-  //vip_config vip_cfg;
+  `uvm_component_utils(pcie_vip_rx_agent)
+  pcie_vip_rx_monitor rx_mon;
+  pcie_vip_config pcie_vip_cfg;
 
-  //virtual vip_if vip_vif;
+  virtual pcie_vip_if pcie_vip_vif;
 
-  uvm_analysis_port #(/*vip_seq_item*/) rx_agent_ap;  //analysis port declaration
+  uvm_analysis_port #(pcie_vip_seq_item) rx_agent_ap;  //analysis port declaration
 
 /*-------------------------------------------------------------------------------
 -- Functions
 -------------------------------------------------------------------------------*/
   // Constructor
-  function new(string name = "vip_rx_agent", uvm_component parent=null);
+  function new(string name = "pcie_vip_rx_agent", uvm_component parent=null);
     super.new(name, parent);
   endfunction : new
 
@@ -33,20 +33,20 @@ class vip_rx_agent extends uvm_agent;
     super.build_phase(phase);
 
     // Get interface 
-    /*if(!uvm_config_db #(vip_config)::get(this,"","CFG",vip_cfg))
-      `uvm_fatal("build_phase","unable to get configuration object")*/
+    if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG",pcie_vip_cfg))
+      `uvm_fatal("build_phase","unable to get configuration object")
 
-    rx_mon = vip_rx_monitor::type_id::create("rx_mon", this);
+    rx_mon = pcie_vip_rx_monitor::type_id::create("rx_mon", this);
   
     rx_agent_ap = new("rx_agent_ap", this);
   endfunction : build_phase
 
 
   function void connect_phase(uvm_phase phase);
-    //rx_mon.vip_vif=vip_cfg.vip_vif;
+    rx_mon.pcie_vip_vif=pcie_vip_cfg.pcie_vip_vif;
     rx_mon.rx_mon_ap.connect(rx_agent_ap);
   endfunction : connect_phase
 
-endclass : vip_rx_agent
+endclass : pcie_vip_rx_agent
 
 `endif // End of include guard

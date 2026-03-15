@@ -15,14 +15,28 @@ interface lpif_if (
 
     // driver clocking block
     clocking drv_cb (@posedge lclk);
-        default output #2;
-        output pl_lnk_up, lp_irdy, lp_valid, lp_data, pl_trdy, pl_valid, pl_data;
+        default output #0;
+
+        output pl_lnk_up;
+        output lp_irdy;
+        output lp_valid;
+        output lp_data;
+        output pl_trdy;
+        output pl_valid;
+        output pl_data;
     endclocking
 
     // monitor clocking block
     clocking mon_cb (@posedge lclk);
-        default input #1;
-        input pl_lnk_up, lp_irdy, lp_valid, lp_data, pl_trdy, pl_valid, pl_data;
+        default input #1step;
+
+        input pl_lnk_up;
+        input lp_irdy;
+        input lp_valid;
+        input lp_data;
+        input pl_trdy;
+        input pl_valid;
+        input pl_data;
     endclocking
 
 endinterface // lpif_if
