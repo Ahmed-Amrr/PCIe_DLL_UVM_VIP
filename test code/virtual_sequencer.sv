@@ -1,8 +1,8 @@
 class vsqr extends uvm_sequencer; 
 
   `uvm_component_utils(vsqr) 
-  tx_us_sequencer tx_us_sqr; 
-  tx_ds_sequencer tx_ds_sqr; 
+  pcie_vip_tx_sequencer tx_us_sqr; 
+  pcie_vip_tx_sequencer tx_ds_sqr; 
 
   function new(string name = "vsqr", uvm_component parent = null); 
     super.new(name, parent); 

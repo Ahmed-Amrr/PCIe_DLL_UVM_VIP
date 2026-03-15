@@ -8,8 +8,8 @@ class vseq_base extends uvm_sequence;
     super.new(name); 
   endfunction 
   
-  tx_us_sequencer tx_us_sqr; 
-  tx_ds_sequencer tx_ds_sqr;
+  pcie_vip_tx_sequencer tx_us_sqr; 
+  pcie_vip_tx_sequencer tx_ds_sqr;
 
   virtual task body(); 
     tx_us_sqr = p_sequencer.tx_us_sqr; 
