@@ -33,7 +33,7 @@ class pcie_state_machine extends uvm_component;
 	function void build_phase(uvm_phase phase);
 		super.build_phase(phase);
 
-		// Get interface to assign it to the driver and the monitor's virtual interface
+		// Get the configuration object to access the configuration registers
 	    if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG_ENV",cfg))
 	      `uvm_fatal("build_phase","unable to get configuration object in SM")
 
@@ -60,7 +60,8 @@ class pcie_state_machine extends uvm_component;
 		end
 	endtask : run_phase
 
-	
+
+
 	function CRC_generation;
 		input 	bit	[31:0] 	dllp_before_crc;			//the default is {Byte 0, Byte 1, Byte 2, Byte 3}
 		output 	bit	[15:0] 	crc;						//each byte (7,6,5,4,3,2,1,0)
