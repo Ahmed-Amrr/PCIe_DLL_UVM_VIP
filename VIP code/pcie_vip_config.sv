@@ -1,8 +1,6 @@
 `ifndef PCIE_VIP_CONFIG
 `define PCIE_VIP_CONFIG
 
-import dll_pkg::*;
-
 class pcie_vip_config extends uvm_object;
     `uvm_object_utils (pcie_vip_config)
 

@@ -12,15 +12,15 @@ class pcie_state_machine extends uvm_component;
 /*-------------------------------------------------------------------------------
 -- Interface, port, fields
 -------------------------------------------------------------------------------*/
-	uvm_analysis_export #(pcie_dllp_seq_item) sm_export_tx;
+	uvm_analysis_export #(pcie_dllp_seq_item) sm_export_tx;		//getting the data from tx monitor
 	uvm_tlm_analysis_fifo #(pcie_dllp_seq_item) sm_fifo_tx;
 	pcie_dllp_seq_item seq_item_tx;
 
-	uvm_analysis_export #(pcie_dllp_seq_item) sm_export_rx;
+	uvm_analysis_export #(pcie_dllp_seq_item) sm_export_rx;		//getting the data from rx monitor
 	uvm_tlm_analysis_fifo #(pcie_dllp_seq_item) sm_fifo_rx;
 	pcie_dllp_seq_item seq_item_rx;
 
-	pcie_vip_config cfg;
+	pcie_vip_config cfg;										//to get the configuration registers
 
 /*-------------------------------------------------------------------------------
 -- Functions
@@ -56,11 +56,11 @@ class pcie_state_machine extends uvm_component;
 		forever begin
 			sm_fifo_tx.get(seq_item_tx);
 			sm_fifo_rx.get(seq_item_rx);
-			
+
 		end
 	endtask : run_phase
 
-
+	
 	function CRC_generation;
 		input 	bit	[31:0] 	dllp_before_crc;			//the default is {Byte 0, Byte 1, Byte 2, Byte 3}
 		output 	bit	[15:0] 	crc;						//each byte (7,6,5,4,3,2,1,0)
