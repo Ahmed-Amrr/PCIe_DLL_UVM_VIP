@@ -33,7 +33,7 @@ class pcie_vip_env extends  uvm_env;
 		super.build_phase(phase);
 
 		// Get interface to assign it to the driver and the monitor's virtual interface
-	    if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG",cfg))
+	    if(!uvm_config_db #(pcie_vip_config)::get(this,"","vip_cfg",cfg))
 	      `uvm_fatal("build_phase","unable to get configuration object in VIP ENV")
 
 	  	//setting the configuration object to get the configuration registers in the scoreboard and State machine components
