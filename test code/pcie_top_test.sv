@@ -16,7 +16,7 @@
         pcie_base_seq seq_u;
         pcie_base_seq seq_d;
 
-        uvm_object obj;
+        pcie_top_env top_env;
         
 
         // Constructor
@@ -24,7 +24,8 @@
             super.new(name, parent);
         endfunction : new
 
-        function void configure_top (ref pcie_top_cfg top_cfg, pcie_base_seq seq_u, pcie_base_seq seq_d);
+        function void configure_top (ref pcie_top_cfg top_cfg, pcie_base_seq seq_u, pcie_base_seq seq_d
+                                    pcie_vip_cfg u_cfg, pcie_vip_cfg d_cfg);
             if (seq_u == || seq_d== ) 
                 top_cfg.link_down_test = 1;
             else
@@ -41,13 +42,17 @@
             else 
                 top_cfg.pl_data_off = 0;
 
+
+            top_cfg.u_lpif_vif = u_cfg.lpif_vif;
+            top_cfg.d_lpif_vif = d_cfg.lpif_vif;
+
         endfunction  
 
-        function void configure_vip_u (ref pcie_vip_cfg u_cfg, pcie_base_seq seq_u);
+        function void configure_vip_u (ref pcie_vip_cfg u_cfg, pcie_base_seq seq_u, pcie_base_seq seq_d);
                     
         endfunction 
 
-        function void configure_vip_d (ref pcie_vip_cfg d_cfg, pcie_base_seq seq_d);
+        function void configure_vip_d (ref pcie_vip_cfg d_cfg, pcie_base_seq seq_u, pcie_base_seq seq_d);
                     
         endfunction 
 
@@ -75,15 +80,22 @@
       
             top_cfg = pcie_top_cfg::type_id::create("top_cfg");  
             u_cfg = pcie_vip_cfg::type_id::create("u_cfg");
-            d_cfg = pcie_vip_cfg::type_id::create("d_cfg");                                
+            d_cfg = pcie_vip_cfg::type_id::create("d_cfg");  
+            top_env = pcie_top_env::type_id::create("top_env",this);                                
 
-            configure_top (top_cfg, seq_u, seq_d);
-            configure_vip_u (u_cfg, seq_u);
-            configure_vip_d (d_cfg, seq_d);
+            configure_vip_u (u_cfg, seq_u, seq_d);
+            configure_vip_d (d_cfg, seq_u, seq_d);
 
-            uvm_config_db#(pcie_top_cfg)::set(this, "*", "top_cfg", top_cfg);
-            uvm_config_db#(pcie_vip_cfg)::set(this, "to be set to the first vip only", "vip_cfg", u_cfg);
-            uvm_config_db#(pcie_vip_cfg)::set(this, "to be set to the second vip only", "vip_cfg", d_cfg);
+            if (!(uvm_config_db#(virtual lpif_if)::get(this, "", "u_lpif", u_cfg.lpif_vif))) 
+                `uvm_fatal("build_phase", "unable to get vitual interface from top module");
+            if (!(uvm_config_db#(virtual lpif_if)::get(this, "", "d_lpif", d_cfg.lpif_vif))) 
+                `uvm_fatal("build_phase", "unable to get vitual interface from top module");
+
+            configure_top (top_cfg, seq_u, seq_d, u_cfg, seq_d);
+
+            uvm_config_db#(pcie_top_cfg)::set(this, "top_env", "top_cfg", top_cfg);
+            uvm_config_db#(pcie_vip_cfg)::set(this, "top_env.u_vip", "vip_cfg", u_cfg);
+            uvm_config_db#(pcie_vip_cfg)::set(this, "top_env.d_vip", "vip_cfg", d_cfg);
 
         endfunction : build_phase
 
