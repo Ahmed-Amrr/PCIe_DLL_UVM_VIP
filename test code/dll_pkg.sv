@@ -48,6 +48,7 @@ package dll_pkg;
     typedef struct packed {
         logic [7:0]  hdr_credits  [3];   // [FC_POSTED], [FC_NON_POSTED], [FC_COMPLETION]
         logic [11:0] data_credits [3];
+        logic [1:0] hdr_scale, data_scale;
     } fc_credits_t;
 
     typedef struct packed {

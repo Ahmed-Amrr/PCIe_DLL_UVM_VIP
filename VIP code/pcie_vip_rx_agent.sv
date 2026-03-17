@@ -18,7 +18,7 @@ class pcie_vip_rx_agent extends uvm_agent;
 
   virtual lpif_if lpif_vif;
 
-  uvm_analysis_port #(/*pcie_vip_seq_item*/) rx_agent_ap;  //analysis port declaration
+  uvm_analysis_port #(pcie_dllp_seq_item) rx_agent_ap;  //analysis port declaration
 
 /*-------------------------------------------------------------------------------
 -- Functions

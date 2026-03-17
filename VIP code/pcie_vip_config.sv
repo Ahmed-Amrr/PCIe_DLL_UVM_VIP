@@ -13,8 +13,10 @@ class pcie_vip_config extends uvm_object;
                                                         //feature_exchange_enable and local_feature_supported [0] (Supported or not)
      dl_feature_status_reg_t remote_register_feature;   //for feature "Scaled Flow Control" the only important bits are
                                                         //remote_feature_valid and remote_feature_supported [0] (Supported or not)
-
      // the other bits are reserved must be 0s.
+
+     fc_credits_t fc_credits_register;                  //for "hdr_credits & data_credits" are for the credits counter
+                                                        //for "hdr_scale & data_scale" are for the scale
 
      function new (string name ="pcie_vip_config");
       super.new(name);

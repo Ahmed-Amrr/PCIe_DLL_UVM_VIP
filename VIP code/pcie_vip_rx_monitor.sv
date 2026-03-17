@@ -13,8 +13,8 @@ class pcie_vip_rx_monitor extends uvm_monitor;
 -------------------------------------------------------------------------------*/
 
     virtual lpif_if lpif_vif;
-    // seq_item   dll_item & tlp ???
-	uvm_analysis_port #(/*seq_item*/) rx_mon_ap;
+    pcie_dllp_seq_item   seq_item_rx_mon;
+	uvm_analysis_port #(pcie_dllp_seq_item) rx_mon_ap;
 
 /*-------------------------------------------------------------------------------
 -- Functions
@@ -32,7 +32,15 @@ class pcie_vip_rx_monitor extends uvm_monitor;
 	task run_phase(uvm_phase phase);	//check the names for vif & seq_item & variables
 		super.run_phase(phase);
 		forever begin
-			// Read the signals in Seq_Item and write in tx_mon_ap
+			seq_item_rx_mon=pcie_dllp_seq_item::type_id::create("seq_item_rx_mon");
+            @(lpif_vif.mon_cb);
+            if (lpif_vif.pl_valid) begin //ask abedllatif
+				seq_item_rx_mon.dllp=lpif_vif.pl_data;
+				seq_item_rx_mon.pl_valid=lpif_vif.pl_valid;
+				seq_item_rx_mon.pl_lnk_up=lpif_vif.pl_lnk_up;
+				tx_mon_ap.write(seq_item_rx_mon);
+            end
+			/*`uvm_info("run_phase", seq_item_rx_mon.convert2string(), UVM_HIGH)*/
 		end
 	endtask : run_phase
 
