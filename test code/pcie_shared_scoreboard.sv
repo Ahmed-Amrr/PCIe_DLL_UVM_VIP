@@ -291,7 +291,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
         end
 
         default: return 0;
-
       endcase
 
     endfunction
@@ -350,8 +349,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
     report = {report, $sformatf("║  State Pair Validation:                                    ║\n")};
     report = {report, $sformatf("║    Total checks  : %6d                                   ║\n", state_pair_checks)};
     report = {report, $sformatf("║    Illegal pairs : %6d                                   ║\n", illegal_pair_count)};
-    report = {report, "╠══════════════════════════════════════════════════════════════╣\n"};
-    report = {report, $sformatf("║  Deadlock Timeout : %0d ns                           \n", deadlock_timeout_ns)};
     report = {report, "╚══════════════════════════════════════════════════════════════╝\n"};
 
     // Use appropriate severity for the summary line
