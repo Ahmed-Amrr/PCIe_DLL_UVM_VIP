@@ -12,6 +12,10 @@ class pcie_vip_state_machine extends uvm_component;
 /*-------------------------------------------------------------------------------
 -- Interface, port, fields
 -------------------------------------------------------------------------------*/
+	uvm_analysis_port #(pcie_state_seq_item) sm_ap; //sending data to the shared scoreboard and local scoreboard
+	pcie_state_seq_item state_seq_item;
+
+
 	uvm_analysis_export #(pcie_dllp_seq_item) sm_export_tx;		//getting the data from tx monitor
 	uvm_tlm_analysis_fifo #(pcie_dllp_seq_item) sm_fifo_tx;
 

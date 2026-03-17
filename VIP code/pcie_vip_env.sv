@@ -54,6 +54,7 @@ class pcie_vip_env extends  uvm_env;
 		rx_agent.rx_agent_ap.connect(coverage.cov_export_rx);	
 		rx_agent.rx_agent_ap.connect(scoreboard.sb_export_rx);	
 		rx_agent.rx_agent_ap.connect(state_machine.sm_export_rx);
+		state_machine.sm_ap.connect(scoreboard.sb_export_state);
 
 		//connecting interface to the divers and monitors of each agent
 		tx_agent.drv.lpif_vif=cfg.lpif_vif;

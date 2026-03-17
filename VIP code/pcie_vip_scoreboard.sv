@@ -22,6 +22,10 @@ class pcie_vip_scoreboard extends uvm_component;
 
 	pcie_dllp_seq_item seq_item_rx;
 
+	uvm_analysis_export #(pcie_state_seq_item) sb_export_state;		//getting the data from state machine
+	uvm_tlm_analysis_fifo #(pcie_state_seq_item) sb_fifo_state;
+	pcie_state_seq_item state_seq_item;
+
 	pcie_vip_config cfg;										//to get the configuration registers
 /*-------------------------------------------------------------------------------
 -- Functions
@@ -44,12 +48,16 @@ class pcie_vip_scoreboard extends uvm_component;
 		sb_export_rx=new("sb_export_rx",this);
 		sb_fifo_rx=new("sb_fifo_rx",this);
 
+		sb_export_state=new("sb_export_state",this);
+		sb_fifo_state=new("sb_fifo_state",this);
+
 	endfunction : build_phase
 
 	function void connect_phase(uvm_phase phase);
 		super.connect_phase(phase);
 		sb_export_tx.connect(sb_fifo_tx.analysis_export);
 		sb_export_rx.connect(sb_fifo_rx.analysis_export);
+		sb_export_state.connect(sb_fifo_state.analysis_export);
 	endfunction : connect_phase
 
 	task run_phase(uvm_phase phase);
