@@ -29,7 +29,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
   // ════════════════════════════════════════════════════════════════════════
   int  u2l_matches;
   int  u2l_mismatches;
-  int  u2l_drops;       // TX with no RX (leftover in check_phase)
+  int  u2l_drops;       // TX with no RX
   int  u2l_phantoms;    // RX with no TX
 
   int  l2u_matches;
@@ -126,7 +126,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Thread 1: Upper TX — enqueue into u2l_queue
+  //  Upper TX — enqueue into u2l_queue
   // ════════════════════════════════════════════════════════════════════════
   task process_upper_tx();
     pcie_dllp_seq_item txn;
@@ -142,12 +142,13 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Thread 2: Lower RX — match against u2l_queue
+  //  Lower RX — match against u2l_queue
   // ════════════════════════════════════════════════════════════════════════
   task process_lower_rx();
     pcie_dllp_seq_item rx_txn;
     forever begin
         // Wait for RX packet or timeout
+        time start_time = tx_u_time;
         forever begin
             // Try to get RX with small step (1ns)
             if(lower_rx_fifo.try_get(rx_txn, 1ns)) begin
@@ -161,7 +162,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
             end
 
             // Timeout check
-            if($time - tx_u_time >= RX_TIMEOUT) begin
+            if($time - start_time >= RX_TIMEOUT) begin
                 `uvm_error(get_type_name(),
                     $sformatf("[U2L-RX] Timeout! No RX received within %0t", RX_TIMEOUT));
                 break; // exit inner loop after timeout
@@ -172,7 +173,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Thread 3: Lower TX — enqueue into l2u_queue
+  // Lower TX — enqueue into l2u_queue
   // ════════════════════════════════════════════════════════════════════════
   task process_lower_tx();
     pcie_dllp_seq_item txn;
@@ -187,7 +188,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Thread 4: Upper RX — match against l2u_queue
+  //  Upper RX — match against l2u_queue
   // ════════════════════════════════════════════════════════════════════════
   task process_upper_rx();
     pcie_dllp_seq_item rx_txn;
@@ -201,7 +202,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Thread 5: Upper SM — state pair validation
+  //  Upper SM — state pair validation
   // ════════════════════════════════════════════════════════════════════════
   task process_upper_sm();
     pcie_state_seq_item sm_txn;
@@ -217,7 +218,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Thread 6: Lower SM — state pair validation
+  //  Lower SM — state pair validation
   // ════════════════════════════════════════════════════════════════════════
   task process_lower_sm();
     pcie_state_seq_item sm_txn;
@@ -232,11 +233,10 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
   endtask
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Match Logic: Upper-to-Lower (u2l) direction
+  //  Match Logic
   // ════════════════════════════════════════════════════════════════════════
   function void match_u2l(pcie_dllp_seq_item rx_item);
     pcie_dllp_seq_item tx_item;
-    string mismatch_msg;
 
     if (u2l_queue.size() == 0) begin
       // Phantom: RX arrived but no TX was enqueued
@@ -251,25 +251,20 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
     tx_item = u2l_queue.pop_front();
 
     // Field-by-field comparison
-    if (tx_item.fields_match(rx_item, mismatch_msg)) begin
+    if (tx_item.dllp == rx_item.dllp) begin
       u2l_matches++;
       `uvm_info(get_type_name(),
         $sformatf("[U2L-MATCH] OK. TX: %s", tx_item.convert2string()), UVM_MEDIUM)
     end else begin
       u2l_mismatches++;
       `uvm_error(get_type_name(),
-        $sformatf("[U2L-CORRUPT] Fields mismatch!\n  TX: %s\n  RX: %s\n  Detail: %s",
-                  tx_item.convert2string(), rx_item.convert2string(), mismatch_msg))
+        $sformatf("[U2L-CORRUPT] Fields mismatch!\n  TX: %s\n  RX: %s\n",
+                  tx_item.convert2string(), rx_item.convert2string()))
     end
   endfunction
 
-
-  // ════════════════════════════════════════════════════════════════════════
-  //  Match Logic: Lower-to-Upper (l2u) direction
-  // ════════════════════════════════════════════════════════════════════════
   function void match_l2u(pcie_dllp_seq_item rx_item);
     pcie_dllp_seq_item tx_item;
-    string mismatch_msg;
 
     if (l2u_queue.size() == 0) begin
       l2u_phantoms++;
@@ -281,15 +276,15 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
     tx_item = l2u_queue.pop_front();
 
-    if (tx_item.fields_match(rx_item, mismatch_msg)) begin
+    if (tx_item.dllp == rx_item.dllp) begin
       l2u_matches++;
       `uvm_info(get_type_name(),
         $sformatf("[L2U-MATCH] OK. TX: %s", tx_item.convert2string()), UVM_MEDIUM)
     end else begin
       l2u_mismatches++;
       `uvm_error(get_type_name(),
-        $sformatf("[L2U-CORRUPT] Fields mismatch!\n  TX: %s\n  RX: %s\n  Detail: %s",
-                  tx_item.convert2string(), rx_item.convert2string(), mismatch_msg))
+        $sformatf("[L2U-CORRUPT] Fields mismatch!\n  TX: %s\n  RX: %s\n",
+                  tx_item.convert2string(), rx_item.convert2string()))
     end
   endfunction
 
@@ -416,27 +411,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
     endcase
     
   endfunction
-
-  task wait_rx( 
-    input string pkt_name,
-    output bit rx_received
-  );
-      // Wait for an item with a small timeout step
-      if(upper_rx_fifo.try_get(rx_txn, 1us)) begin
-        `uvm_info(get_type_name(),
-              $sformatf("[%0t] RX received for: %s", $time, rx_txn.convert2string()), UVM_HIGH)
-            match_u2l(rx_txn); // call your matching function
-            disable wait_rx_after_tx; // exit task after RX
-        end
-
-        // Check time
-        if($time - tx_time >= RX_TIMEOUT) begin
-            `uvm_error(get_type_name(),
-              $sformatf("[%0t] Timeout! No RX received within %0t", $time, RX_TIMEOUT))
-            disable wait_rx_after_tx; // exit task after timeout
-        end
-      
-  endtask
 
   // ════════════════════════════════════════════════════════════════════════
   //  Check Phase — report unmatched items
