@@ -148,6 +148,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
     pcie_dllp_seq_item rx_txn;
     forever begin
         // Wait for RX packet or timeout
+        time start_time = tx_u_time;
         forever begin
             // Try to get RX with small step (1ns)
             if(lower_rx_fifo.try_get(rx_txn, 1ns)) begin
@@ -161,7 +162,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
             end
 
             // Timeout check
-            if($time - tx_u_time >= RX_TIMEOUT) begin
+            if($time - start_time >= RX_TIMEOUT) begin
                 `uvm_error(get_type_name(),
                     $sformatf("[U2L-RX] Timeout! No RX received within %0t", RX_TIMEOUT));
                 break; // exit inner loop after timeout
