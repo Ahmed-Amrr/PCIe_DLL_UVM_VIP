@@ -1,7 +1,12 @@
+`ifndef GLUE_LOGIC_AGENT
+`define GLUE_LOGIC_AGENT
+
 class glue_logic_agent extends uvm_agent;
 
+    // UVM Factory register
     `uvm_component_utils(glue_logic_agent)
 
+    // Create handles to all agent components
     glue_logic_driver  ds_driver ;
     glue_logic_driver  us_driver ;
     glue_logic_monitor ds_monitor;
@@ -19,9 +24,11 @@ class glue_logic_agent extends uvm_agent;
 
     endfunction
 
+    // Connect agent components together
     function void connect_phase(uvm_phase phase);
         super.connect_phase(phase); 
         ds_monitor.mon_ap.connect(us_driver.fifo_mon.analysis_export);
         us_monitor.mon_ap.connect(ds_driver.fifo_mon.analysis_export);
     endfunction
 endclass //glue_logic_agent extends uvm_agent
+`endif

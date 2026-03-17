@@ -1,5 +1,8 @@
+`ifndef GLUE_LOGIC_MONITOR
+`define GLUE_LOGIC_MONITOR
 class glue_logic_monitor extends uvm_monitor;
 
+    // UVM Factory register
     `uvm_component_utils(glue_logic_monitor)
     virtual lpif_if    lpif_vif;
     pcie_seq_item      s_item  ;
@@ -27,3 +30,4 @@ class glue_logic_monitor extends uvm_monitor;
     endtask
 
 endclass //glue_logic_monitor extends uvm_monitor
+`endif
