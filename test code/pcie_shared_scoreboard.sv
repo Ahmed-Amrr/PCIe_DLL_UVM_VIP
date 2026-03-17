@@ -417,27 +417,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
     
   endfunction
 
-  task wait_rx( 
-    input string pkt_name,
-    output bit rx_received
-  );
-      // Wait for an item with a small timeout step
-      if(upper_rx_fifo.try_get(rx_txn, 1us)) begin
-        `uvm_info(get_type_name(),
-              $sformatf("[%0t] RX received for: %s", $time, rx_txn.convert2string()), UVM_HIGH)
-            match_u2l(rx_txn); // call your matching function
-            disable wait_rx_after_tx; // exit task after RX
-        end
-
-        // Check time
-        if($time - tx_time >= RX_TIMEOUT) begin
-            `uvm_error(get_type_name(),
-              $sformatf("[%0t] Timeout! No RX received within %0t", $time, RX_TIMEOUT))
-            disable wait_rx_after_tx; // exit task after timeout
-        end
-      
-  endtask
-
   // ════════════════════════════════════════════════════════════════════════
   //  Check Phase — report unmatched items
   // ════════════════════════════════════════════════════════════════════════
