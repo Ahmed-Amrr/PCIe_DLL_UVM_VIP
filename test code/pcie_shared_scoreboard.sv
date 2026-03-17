@@ -156,11 +156,9 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
                 `uvm_info(get_type_name(),
                     $sformatf("[U2L-RX] Received Lower RX: %s at time %0t", rx_txn.convert2string(), rx_l_time),
                     UVM_HIGH);
-
                 match_u2l(rx_txn); // process RX
                 break; // exit inner loop after RX received
             end
-
             // Timeout check
             if($time - start_time >= RX_TIMEOUT) begin
                 `uvm_error(get_type_name(),
