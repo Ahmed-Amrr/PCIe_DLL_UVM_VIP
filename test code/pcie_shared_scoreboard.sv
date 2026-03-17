@@ -74,7 +74,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Run Phase — 7 parallel threads
+  //  Run Phase 
   // ════════════════════════════════════════════════════════════════════════
   task run_phase(uvm_phase phase);
     fork
@@ -180,7 +180,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   // ════════════════════════════════════════════════════════════════════════
   //  Match Logic: Upper-to-Lower (u2l) direction
-  //
   // ════════════════════════════════════════════════════════════════════════
   function void match_u2l(pcie_dllp_seq_item rx_item);
     pcie_dllp_seq_item tx_item;
