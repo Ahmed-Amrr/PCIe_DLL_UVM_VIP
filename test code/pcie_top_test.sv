@@ -87,9 +87,9 @@
             configure_vip_d (d_cfg, seq_u, seq_d);
 
             if (!(uvm_config_db#(virtual lpif_if)::get(this, "", "u_lpif", u_cfg.lpif_vif))) 
-                `uvm_fatal("build_phase", "unable to get vitual interface from top module");
+                `uvm_fatal("build_phase", "Test unable to get upper vitual interface from top module");
             if (!(uvm_config_db#(virtual lpif_if)::get(this, "", "d_lpif", d_cfg.lpif_vif))) 
-                `uvm_fatal("build_phase", "unable to get vitual interface from top module");
+                `uvm_fatal("build_phase", "unable to get lower vitual interface from top module");
 
             configure_top (top_cfg, seq_u, seq_d, u_cfg, seq_d);
 
