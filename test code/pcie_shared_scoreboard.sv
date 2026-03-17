@@ -77,22 +77,27 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
   //  Run Phase 
   // ════════════════════════════════════════════════════════════════════════
   task run_phase(uvm_phase phase);
-    fork
-      // --- DLLP Processing (4 threads) ---
-      process_upper_tx();       // Thread 1: Upper TX → enqueue into u2l_queue
-      process_lower_rx();       // Thread 2: Lower RX → match against u2l_queue
-      process_lower_tx();       // Thread 3: Lower TX → enqueue into l2u_queue
-      process_upper_rx();       // Thread 4: Upper RX → match against l2u_queue
+    super.run_phase(phase);
 
-      // --- State Machine Processing (2 threads) ---
-      process_upper_sm();       // Thread 5: Upper SM state transitions
-      process_lower_sm();       // Thread 6: Lower SM state transitions
-    join_none
+    forever begin
+        fork
+          // --- DLLP Processing (4 threads) ---
+          process_upper_tx();       // Thread 1: Upper TX → enqueue into u2l_queue
+          process_lower_rx();       // Thread 2: Lower RX → match against u2l_queue
+          process_lower_tx();       // Thread 3: Lower TX → enqueue into l2u_queue
+          process_upper_rx();       // Thread 4: Upper RX → match against l2u_queue
+
+          // --- State Machine Processing (2 threads) ---
+          process_upper_sm();       // Thread 5: Upper SM state transitions
+          process_lower_sm();       // Thread 6: Lower SM state transitions
+        join_none
+    end
+    
   endtask
 
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Thread 1: Upper TX — enqueue into u2l_queue
+  //  Upper TX — enqueue into u2l_queue
   // ════════════════════════════════════════════════════════════════════════
   task process_upper_tx();
     pcie_dllp_seq_item txn;
@@ -106,7 +111,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Thread 2: Lower RX — match against u2l_queue
+  //  Lower RX — match against u2l_queue
   // ════════════════════════════════════════════════════════════════════════
   task process_lower_rx();
     pcie_dllp_seq_item rx_txn;
@@ -120,7 +125,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Thread 3: Lower TX — enqueue into l2u_queue
+  //  Lower TX — enqueue into l2u_queue
   // ════════════════════════════════════════════════════════════════════════
   task process_lower_tx();
     pcie_dllp_seq_item txn;
@@ -134,7 +139,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Thread 4: Upper RX — match against l2u_queue
+  //  Upper RX — match against l2u_queue
   // ════════════════════════════════════════════════════════════════════════
   task process_upper_rx();
     pcie_dllp_seq_item rx_txn;
@@ -148,7 +153,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Thread 5: Upper SM — state pair validation
+  //  Upper SM — state pair validation
   // ════════════════════════════════════════════════════════════════════════
   task process_upper_sm();
     pcie_state_seq_item sm_txn;
@@ -179,7 +184,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
   endtask
 
   // ════════════════════════════════════════════════════════════════════════
-  //  Match Logic: Upper-to-Lower (u2l) direction
+  //  Match Logic
   // ════════════════════════════════════════════════════════════════════════
   function void match_u2l(pcie_dllp_seq_item rx_item);
     pcie_dllp_seq_item tx_item;
@@ -210,10 +215,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
     end
   endfunction
 
-
-  // ════════════════════════════════════════════════════════════════════════
-  //  Match Logic: Lower-to-Upper (l2u) direction
-  // ════════════════════════════════════════════════════════════════════════
   function void match_l2u(pcie_dllp_seq_item rx_item);
     pcie_dllp_seq_item tx_item;
     string mismatch_msg;
@@ -319,8 +320,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
       end
     end
   endfunction
-
-
 
   // ════════════════════════════════════════════════════════════════════════
   //  Report Phase — summary
