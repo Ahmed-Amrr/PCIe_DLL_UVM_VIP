@@ -19,9 +19,11 @@ class dll_ref_model #(
     bit dl_feat_extended_capability;
     fc_credits_t local_fc ;           // credits advertised by this VIP
     fc_credits_t remote_fc;           // credits received from peer
+    bit hdr_infinite [3];   // infinite credits from initialization
+    bit data_infinite[3];
     dl_feature_cap_reg_t feature_cap_reg;
     dl_feature_status_reg_t  feature_status_reg;
-
+    
     bit [1:0] local_hdr_scale;    // scaling factor for header credits
     bit [1:0] local_data_scale;   // scaling factor for data credits
     int       initfc1_tx_count;   // tracks P/NP/Cpl TX order in INIT1
@@ -89,10 +91,10 @@ class dll_ref_model #(
         input bit [DLLP_WIDTH-1:0] _rx_item;
         
         bit [BYTE-1:0] type_byte;
-        type_byte = _rx_item[BYTE-1:0];
+        type_byte = _rx_item[DLLP_WIDTH-1:40];
 
         // mask VC bits [2:0] for all FC types
-        if (type_byte[7:4] inside {4'b0100, 4'b0101, 4'b0110, 4'b1100, 4'b1101, 4'b1110, 4'b1000, 4'b1001, 4'b1010}) 
+        if (type_byte[BYTE-1:4] inside {4'b0100, 4'b0101, 4'b0110, 4'b1100, 4'b1101, 4'b1110, 4'b1000, 4'b1001, 4'b1010}) 
             type_byte[2:0] = 3'b000;
 
         return dllp_type_t'(type_byte);
@@ -100,7 +102,7 @@ class dll_ref_model #(
 
     function logic [2:0] get_vc_num;
         input bit [DLLP_WIDTH-1:0] _rx_item;
-        return _rx_item[2:0];  
+        return _rx_item[42:40];  
     endfunction : get_vc_num
     
     // Function : verify_rx_crc
@@ -184,7 +186,8 @@ class dll_ref_model #(
                 end
             end
             // DL_ACTIVE : normal operation, 
-            // only FC_INIT2 and initialization dllps are expected
+            // only active and initialization dllps are expected
+            // INITFC1 are expected in case of initializing other VCs
             DL_ACTIVE: begin
                 if (_dllp_type inside DL_FEATURE) begin
                     _is_legal = 0;
@@ -228,20 +231,27 @@ class dll_ref_model #(
                 end
             end
             UPDATEFC_P, UPDATEFC_NP, UPDATEFC_CPL : begin 
+            // in INIT2: receiving any UpdateFC completes initialization state (FI2 set)
+            Set flag FI2 on receipt of any TLP on VCx, or any UpdateFC 
             if (this.current_state == DL_INIT2) begin
                 this.FI2 = 1;
             end
+            // in ACTIVE: UpdateFC updates credits, but only if it is protocol-correct
+            // (invalid UpdateFC is ignored after reporting FCPE)
             if (this.current_state == DL_ACTIVE)
-                record_fc_values(_dllp);
+                if (!check_FCPE(_dllp)) begin
+                        record_fc_values(_dllp);
+                end
            end
             default: 
        endcase
         
     endfunction
+    
 
     function void record_Feature_Supported_field;
         input bit [DLLP_WIDTH-1:0] _dllp;
-        feature_status_reg.remote_feature_supported = _dllp[31:9]; //not sure
+        feature_status_reg.remote_feature_supported = _dllp[38:16]; 
     endfunction
 
     // Activate Data Link feature negotiated through the DL_FEATURE DLLP
@@ -252,21 +262,26 @@ class dll_ref_model #(
   
     function void record_fc_values;
         input bit [DLLP_WIDTH-1:0] _dllp     ;
-        input int                  _vc_num   ;
-        input dllp_type_t          _dllp_type;
-
         fc_type_t fc;
-
-        fc = decode_fc_type(_dllp_type);
-        // extract remote device credits *LE*
-        remote_fc[_vc_num].hdr_credits [fc] = { _dllp[23:22], _dllp[13:8] };
-        remote_fc[_vc_num].data_credits[fc] = { _dllp[31:24], _dllp[19:16] };
+        // decode FC type (P / NP / CPL)
+        fc = decode_fc_type(get_dllp_type(_dllp));
+        // extract remote device credits *BE*
+        remote_fc.hdr_credits [fc] = _dllp[37:30] ;
+        remote_fc.data_credits[fc] = _dllp[27:16] ;
+        // extract scale values if scaled flow control activated
         if (scaled_fc_active) begin
-        // extract scale values
-            remote_scale_fc[_vc_num].hdr_Scale[fc] = _dllp[15:14];
-            remote_scale_fc[_vc_num].data_Scale[fc] = _dllp[21:20];
+            remote_scale_fc.hdr_Scale[fc] = _dllp[39:38];
+            remote_scale_fc.data_Scale[fc] = _dllp[29:28];
         end
-
+        // during initialization phase, detect infinite credit advertisement
+        // Infinite Credit advertisement hdr_credits = 00h or data_credits = 000h
+        if ( this.FI1 == 1 && this.FI2 == 0 ) begin
+             if (remote_fc.hdr_credits[fc] == 0)
+                 hdr_infinite[fc] = 1;
+             if (remote_fc.data_credits[fc] == 0) 
+                 data_infinite[fc] = 1;
+        end
+        
         `uvm_info("DLL_RM",
             $sformatf("[record_fc_values] VC%0d TYPE=%0d HDR=%0d DATA=%0d",_vc_num,fc,remote_fc[_vc_num].hdr_credits[fc],remote_fc[_vc_num].data_credits[fc]),UVM_MEDIUM)
 
@@ -283,7 +298,50 @@ class dll_ref_model #(
             end
         endcase
     endfunction
-    
+
+    function bit check_FCPE;
+    input bit [DLLP_WIDTH-1:0] _dllp;
+
+    bit [7:0] hdr;
+    bit [11:0] data;
+    bit fcpe_detected;
+    fc_type_t fc;
+    // decode FC type (P / NP / CPL)
+    fc = decode_fc_type(get_dllp_type(_dllp));
+    // extract UpdateFC values
+    hdr  = _dllp[37:30] ;
+    data = _dllp[29:28];
+    fcpe_detected = 0;
+
+    // both header and data credits were infinite → both updates must be zero
+    if (hdr_infinite[fc] && data_infinite[fc]) begin
+        if (hdr != 0 || data != 0) begin
+             `uvm_error("DLL_RM","FCPE: UpdateFC must contain zero credits after infinite advertisement")
+             fcpe_detected = 1;
+        end
+     end
+
+    // header only infinite → header must stay zero
+    if (hdr_infinite[fc] && hdr != 0) begin
+         `uvm_error("DLL_RM","FCPE: Header must remain zero")
+         fcpe_detected = 1;
+    end
+    // data only infinite → data must stay zero
+    if (data_infinite[fc] && data != 0) begin
+         `uvm_error("DLL_RM","FCPE: Data must remain zero")
+         fcpe_detected = 1;
+    end
+    // Scaled flow control rule : HdrScale and DataScale fields in the UpdateFCs must match initialized values
+    if (scaled_fc_active) begin
+        if (remote_scale_fc[vc_num].hdr_Scale[fc] != _dllp[39:38] || remote_scale_fc[vc_num].data_Scale[fc] != _dllp[29:28])
+             `uvm_error("DLL_RM", "FCPE: Scale mismatch in UpdateFC")
+              fcpe_detected = 1;
+
+    end
+    return fcpe_detected;
+
+    endfunction
+
     function void update_fi_flags;
         input dllp_type_t _dllp_type;
 
