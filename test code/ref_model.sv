@@ -441,7 +441,7 @@ class dll_ref_model #(
         state_changed = 1'b0;
         surprise_down_event  = 1'b0;
         
-        // Reset handling (hot/warm/cold reset)
+        // Reset handling (reset)
         if (dl_reset) begin
             next_state = DL_INACTIVE;
             if (_current_state != DL_INACTIVE) begin
@@ -519,7 +519,7 @@ class dll_ref_model #(
                 if (_dllp_type == INITFC1_P ||_dllp_type == INITFC1_NP ||_dllp_type == INITFC1_CPL) begin
                     next_state    = DL_INIT1;
                     state_changed = 1'b1;
-                end else if (_dllp_type == DL_FEATURE && _dllp[15]) begin
+                end else if (_dllp_type == DL_FEATURE && _dllp[39]) begin //_dllp[39] :Feature ack
                     // feature ack seen → exchange complete
                     next_state    = DL_INIT1;
                     state_changed = 1'b1;
@@ -570,8 +570,8 @@ class dll_ref_model #(
         output bit        _DL_Up;
 
         case (_state)
-            DL_INACTIVE, DL_FEATURE, DL_INIT1 : _DL_Down = 1'b1;  // spec: DL_Down reported
-            DL_INIT2, DL_ACTIVE : _DL_Up   = 1'b1;                // spec: DL_Up reported
+            DL_INACTIVE, DL_FEATURE, DL_INIT1 : _DL_Down = 1'b1;  //  DL_Down reported
+            DL_INIT2, DL_ACTIVE : _DL_Up   = 1'b1;                //  DL_Up reported
             default : _DL_Down = 1'b1;                            // unknown state → safe default = DL_Down
         endcase
     endfunction : get_dl_status
@@ -581,7 +581,6 @@ function void predict_expected_tx_response;
 
     input  dl_state_t current_state;
     output dllp_type_t expected_type;
-    output bit [DLLP_WIDTH-1:0] expected_dllp;
 
     case (current_state)
         // DL_FEATURE : transmit DL_FEATURE DLLP
@@ -610,7 +609,7 @@ function void predict_expected_tx_response;
                     initfc1_tx_count++;
                 end
                 default: begin
-                    // spec: repeat P→NP→Cpl frequently until FI1 is set
+                    // repeat P→NP→Cpl frequently until FI1 is set
                     // reset counter → next call starts from P again
                     initfc1_tx_count = 0;
                     expected_type    = INITFC1_P;
