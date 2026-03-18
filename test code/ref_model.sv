@@ -624,7 +624,7 @@ function void predict_expected_tx_response;
             case (initfc2_tx_count)
                 0: begin
                     expected_type = INITFC2_P;
-                    initfc2_tx_count++;  //---->>>>>> put its initialization in the new function
+                    initfc2_tx_count++;  
                 end
                 1: begin
                     expected_type = INITFC2_NP;
@@ -632,7 +632,7 @@ function void predict_expected_tx_response;
                 end
                 2: begin
                     expected_type = INITFC2_CPL;
-\                    initfc2_tx_count++;
+                    initfc2_tx_count++;
                 end
                 default: begin
                     // same — repeat P→NP→Cpl until FI2 is set
