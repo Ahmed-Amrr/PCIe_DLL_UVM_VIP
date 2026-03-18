@@ -1,3 +1,6 @@
+`ifndef PCIE_SHARED_SCOREBOARD
+`define PCIE_SHARED_SCOREBOARD
+
 class pcie_shared_scoreboard extends uvm_scoreboard;
   // UVM Factory register
   `uvm_component_utils(pcie_shared_scoreboard)
@@ -112,31 +115,46 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
     join_none
   endtask
 
-
-  
-  //  Upper TX — enqueue into u2l_queue
+  // Task    : process_upper_tx
+  // Inputs  : TX DLLP transactions from upper layer
+  // Outputs : None
+  // Description:
+  // This task continuously receives TX DLLP transactions from the upper layer FIFO.
+  // Each received transaction is logged and pushed into the U2L queue for further processing.
   task process_upper_tx();
-    pcie_dllp_seq_item txn;
-    forever begin
-      upper_tx_fifo.get(txn);
-      `uvm_info(get_type_name(),
-        $sformatf("[U2L-TX] Enqueued Upper TX: %s", txn.convert2string()), UVM_HIGH)
-      u2l_queue.push_back(txn);
-      tx_u_time = $time;
-      timing_check(txn);
-    end
+  pcie_dllp_seq_item txn;
+  forever begin
+    // Get transaction from upper layer FIFO
+    upper_tx_fifo.get(txn);
+    `uvm_info(get_type_name(), $sformatf("[U2L-TX] Enqueued Upper TX: %s", txn.convert2string()), UVM_HIGH)
+
+    // Store transaction in U2L queue
+    u2l_queue.push_back(txn);
+
+    // Capture transmission time
+    tx_u_time = $time;
+
+    // Perform timing checks on the transaction
+    timing_check(txn);
+  end
   endtask
 
 
   
-  //  Lower RX — match against u2l_queue
+  // Task    : process_lower_rx
+  // Inputs  : RX DLLP transactions from lower layer
+  // Outputs : None
+  // Description:
+  // This task continuously receives RX DLLP transactions from the lower layer FIFO.
+  // If an RX transaction is received, its arrival time is recorded and it is passed for matching.
+  // If no RX is received within RX_TIMEOUT, an error is reported.
   task process_lower_rx();
     pcie_dllp_seq_item rx_txn;
     forever begin
         // Wait for RX packet or timeout
         time start_time = tx_u_time;
         forever begin
-            // Try to get RX with small step (1ns)
+            // Try to get RX with small step
             if(lower_rx_fifo.try_get(rx_txn, 1ns)) begin
                 rx_l_time = $time; // store RX arrival time
                 `uvm_info(get_type_name(),
@@ -157,28 +175,58 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
 
   
-  // Lower TX — enqueue into l2u_queue
+  // Task    : process_lower_tx
+  // Inputs  : TX DLLP transactions from upper layer
+  // Outputs : None
+  // Description:
+  // This task continuously receives TX DLLP transactions from the lower layer FIFO.
+  // Each received transaction is logged and pushed into the L2U queue for further processing.
   task process_lower_tx();
     pcie_dllp_seq_item txn;
     forever begin
+      // Get transaction from lower layer FIFO
       lower_tx_fifo.get(txn);
-      `uvm_info(get_type_name(),
-        $sformatf("[L2U-TX] Enqueued Lower TX: %s", txn.convert2string()), UVM_HIGH)
+      `uvm_info(get_type_name(), $sformatf("[L2U-TX] Enqueued Lower TX: %s", txn.convert2string()), UVM_HIGH)
+
+      // Store transaction in U2L queue
       l2u_queue.push_back(txn);
+
+      // Capture transmission time
+      tx_l_time = $time;
+
+      // Perform timing checks on the transaction
       timing_check(txn);
     end
   endtask
 
 
   
-  //  Upper RX — match against l2u_queue
+  // Task    : process_upper_rx
+  // Inputs  : RX DLLP transactions from upper layer
+  // Outputs : None
+  // Description:
+  // This task continuously receives RX DLLP transactions from the upper layer FIFO.
+  // If an RX transaction is received, its arrival time is recorded and it is passed for matching.
+  // If no RX is received within RX_TIMEOUT, an error is reported.
   task process_upper_rx();
     pcie_dllp_seq_item rx_txn;
     forever begin
-      upper_rx_fifo.get(rx_txn);
-      `uvm_info(get_type_name(),
-        $sformatf("[L2U-RX] Received Upper RX: %s", rx_txn.convert2string()), UVM_HIGH)
-      match_l2u(rx_txn);
+        // Wait for RX packet or timeout
+        time start_time = tx_l_time;
+        forever begin
+            // Try to get RX with small step
+            if(upper_rx_fifo.try_get(rx_txn, 1ns)) begin
+                rx_l_time = $time; // store RX arrival time
+                `uvm_info(get_type_name(), $sformatf("[L2U-RX] Received UPPER RX: %s at time %0t", rx_txn.convert2string(), rx_l_time),UVM_HIGH);
+                match_l2u(rx_txn); // process RX
+                break; // exit inner loop after RX received
+            end
+            // Timeout check
+            if($time - start_time >= RX_TIMEOUT) begin
+                `uvm_error(get_type_name(), $sformatf("[L2U-RX] Timeout! No RX received within %0t", RX_TIMEOUT));
+                break; // exit inner loop after timeout
+            end
+        end
     end
   endtask
 
@@ -191,8 +239,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
       upper_sm_fifo.get(sm_txn);
       last_upper_sm_activity = $time;
       upper_state = sm_txn.vip_state;
-      `uvm_info(get_type_name(),
-        $sformatf("[SM-UPPER] %s ", sm_txn.vip_state.name()), UVM_MEDIUM)
+      `uvm_info(get_type_name(), $sformatf("[SM-UPPER] %s ", sm_txn.vip_state.name()), UVM_MEDIUM)
       validate_state_pair();
     end
   endtask
@@ -206,8 +253,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
       lower_sm_fifo.get(sm_txn);
       last_lower_sm_activity = $time;
       lower_state = sm_txn.vip_state;
-      `uvm_info(get_type_name(),
-        $sformatf("[SM-LOWER] %s ", sm_txn.vip_state.name()), UVM_MEDIUM)
+      `uvm_info(get_type_name(), $sformatf("[SM-LOWER] %s ", sm_txn.vip_state.name()), UVM_MEDIUM)
       validate_state_pair();
     end
   endtask
@@ -318,60 +364,69 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   
   //  Check Timeout
-  
   function void timing_check(pcie_dllp_seq_item txn);
   //timing check 
-    case(txn.dllp_type)
+    case(txn.dllp[47:40])
       INITFC1_P: begin
         if(last_fc1_p != 0 && ($time - last_fc1_p) > FC_UPDATE_TIMEOUT) 
                 `uvm_error("FC_TIMEOUT", $sformatf("InitFC1-P timeout: %0t", $time-last_fc1_p))
         last_fc1_p = $time;
       end
+
       INITFC1_NP: begin
       	if(last_fc1_np != 0 && ($time - last_fc1_np) > FC_UPDATE_TIMEOUT)
           `uvm_error("FC_TIMEOUT", $sformatf("InitFC1-NP timeout: %0t", $time-last_fc1_np))
         last_fc1_np = $time;
       end
+
       INITFC1_CPL: begin
         if(last_fc1_cpl != 0 && ($time - last_fc1_cpl) > FC_UPDATE_TIMEOUT)
           `uvm_error("FC_TIMEOUT", $sformatf("InitFC1-CPL timeout: %0t", $time-last_fc1_cpl))
         last_fc1_cpl = $time;
       end
+
       INITFC2_P: begin
         if(last_fc2_p != 0 && ($time - last_fc2_p) > FC_UPDATE_TIMEOUT) 
                 `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-P timeout: %0t", $time-last_fc2_p))
         last_fc2_p = $time;
       end
+
       INITFC2_NP: begin
       	if(last_fc2_np != 0 && ($time - last_fc1_np) > FC_UPDATE_TIMEOUT)
           `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-NP timeout: %0t", $time-last_fc2_np))
         last_fc2_np = $time;
       end
+
       INITFC2_CPL: begin
         if(last_fc2_cpl != 0 && ($time - last_fc2_cpl) > FC_UPDATE_TIMEOUT)
           `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-CPL timeout: %0t", $time-last_fc2_cpl))
         last_fc2_cpl = $time;
       end
+
       UPDATE_FC_P: begin
         if(last_upfc_p != 0 && ($time - last_upfc_p) > FC_UPDATE_TIMEOUT)
           `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-CPL timeout: %0t", $time-last_upfc_p))
         last_upfc_p = $time;
       end
+
       UPDATE_FC_NP: begin
         if(last_upfc_np != 0 && ($time - last_upfc_np) > FC_UPDATE_TIMEOUT)
           `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-CPL timeout: %0t", $time-last_upfc_np))
         last_upfc_np = $time;
       end
+
       UPDATE_FC_CPL: begin
         if(last_upfc_cpl != 0 && ($time - last_upfc_cpl) > FC_UPDATE_TIMEOUT)
           `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-CPL timeout: %0t", $time-last_upfc_cpl))
         last_upfc_cpl = $time;
       end
+
       FEATURE_DLLP: begin
         if(last_dlf != 0 && ($time - last_dlf) > FC_UPDATE_TIMEOUT)
           `uvm_error("DLF_TIMEOUT",$sformatf("DL Feature DLLP interval exceeded: %0t",$time-last_dlf))
         last_dlf = $time;
       end
+
 			default:begin
 				last_fc1_p   = 0;
   			last_fc1_np  = 0;
@@ -419,25 +474,23 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
     string report;
     super.report_phase(phase);
 
-    report = "\n";
-    report = {report, "╔══════════════════════════════════════════════════════════════╗\n"};
-    report = {report, "║          PCIe Shared Scoreboard — Final Report              ║\n"};
-    report = {report, "╠══════════════════════════════════════════════════════════════╣\n"};
-    report = {report, $sformatf("║  Upper-to-Lower (U2L):                                     ║\n")};
-    report = {report, $sformatf("║    Matches    : %6d                                      ║\n", u2l_matches)};
-    report = {report, $sformatf("║    Mismatches : %6d  (corruption)                         ║\n", u2l_mismatches)};
-    report = {report, $sformatf("║    Drops      : %6d  (TX with no RX)                      ║\n", u2l_drops)};
-    report = {report, "╠══════════════════════════════════════════════════════════════╣\n"};
-    report = {report, $sformatf("║  Lower-to-Upper (L2U):                                     ║\n")};
-    report = {report, $sformatf("║    Matches    : %6d                                      ║\n", l2u_matches)};
-    report = {report, $sformatf("║    Mismatches : %6d  (corruption)                         ║\n", l2u_mismatches)};
-    report = {report, $sformatf("║    Drops      : %6d  (TX with no RX)                      ║\n", l2u_drops)};
-    report = {report, "╠══════════════════════════════════════════════════════════════╣\n"};
-    report = {report, $sformatf("║  State Pair Validation:                                    ║\n")};
-    report = {report, $sformatf("║    Total checks  : %6d                                   ║\n", state_pair_checks)};
-    report = {report, $sformatf("║    Illegal pairs : %6d                                   ║\n", illegal_pair_count)};
-    report = {report, "╚══════════════════════════════════════════════════════════════╝\n"};
+    report = "\n==== PCIe Shared Scoreboard Report ====\n";
 
+    report = {report, $sformatf("\nU2L:\n")};
+    report = {report, $sformatf("  Matches    : %0d\n", u2l_matches)};
+    report = {report, $sformatf("  Mismatches : %0d (corruption)\n", u2l_mismatches)};
+    report = {report, $sformatf("  Drops      : %0d (TX with no RX)\n", u2l_drops)};
+
+    report = {report, $sformatf("\nL2U:\n")};
+    report = {report, $sformatf("  Matches    : %0d\n", l2u_matches)};
+    report = {report, $sformatf("  Mismatches : %0d (corruption)\n", l2u_mismatches)};
+    report = {report, $sformatf("  Drops      : %0d (TX with no RX)\n", l2u_drops)};
+
+    report = {report, $sformatf("\nState Pair Check:\n")};
+    report = {report, $sformatf("  Total   : %0d\n", state_pair_checks)};
+    report = {report, $sformatf("  Illegal : %0d\n", illegal_pair_count)};
+
+    report = {report, "======================================\n"};
     // Use appropriate severity for the summary line
     if ((u2l_mismatches + u2l_drops +
          l2u_mismatches + l2u_drops +
@@ -449,3 +502,4 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
   endfunction
 
 endclass
+`endif
