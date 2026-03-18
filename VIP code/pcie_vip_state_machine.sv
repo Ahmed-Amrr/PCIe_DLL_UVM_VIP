@@ -3,6 +3,11 @@
 
 class pcie_vip_state_machine extends uvm_component;
 
+	parameter int DLLP_WIDTH    = 48;
+    parameter int PAYLOAD_WIDTH = 32;
+    parameter int CRC_WIDTH     = 16;
+    parameter int BYTE 			= 8;
+
 /*-------------------------------------------------------------------------------
 -- UVM Factory register
 -------------------------------------------------------------------------------*/
@@ -33,17 +38,21 @@ class pcie_vip_state_machine extends uvm_component;
 
 	bit init1_p_f;
 	bit init1_np_f;
-	bit init1_cpl_f;
-	bit FI1;
+	bit init1_cpl_f;								// these flags used for getting dllp with init type in order
+	bit FI1;										//FI1 : initfc1 flag
 	assign FI1 = init1_cpl_f;
 
 	bit init2_p_f;
 	bit init2_np_f;
 	bit init2_cpl_f;
-	bit FI2;
+	bit FI2;										//FI1 : initfc2 flag
 	assign FI2 = init2_cpl_f;
 
-	bit[15:0] crc_expected;
+	bit[PAYLOAD_WIDTH-1:0] received_dllp_payload;
+	bit[CRC_WIDTH-1:0] received_crc;
+	dllp_type_t received_type;		//ACK, NAK, INIT1_p ....... 
+
+	bit[CRC_WIDTH-1:0] crc_expected;							//used in crc_checking
 
 /*-------------------------------------------------------------------------------
 -- Functions
@@ -51,13 +60,17 @@ class pcie_vip_state_machine extends uvm_component;
 	// Constructor
 	function new(string name = "pcie_vip_state_machine", uvm_component parent=null);
 		super.new(name, parent);
+
+		current_state = DL_INACTIVE;		//initialize states and flags
+		FI1 = 0;
+		FI2 = 0;
 	endfunction : new
 
 	function void build_phase(uvm_phase phase);
 		super.build_phase(phase);
 
 		// Get the configuration object to access the configuration registers
-	    if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG_ENV",cfg))
+	    if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG_ENV",cfg))		//get configuration object from env
 	      `uvm_fatal("build_phase","unable to get configuration object in SM")
 
 	  	sm_export_tx=new("sm_export_tx",this);
@@ -79,12 +92,32 @@ class pcie_vip_state_machine extends uvm_component;
 		forever begin
 			// sm_fifo_tx.get(seq_item_tx);
 			sm_fifo_rx.get(seq_item_rx);
-			CRC_generation(seq_item_rx.dllp[47:16],crc_expected);
-			if (seq_item_rx.dllp[15:0] == crc_expected) begin
+			received_dllp_payload = seq_item_rx.dllp[DLLP_WIDTH-1:CRC_WIDTH];
+			received_crc = seq_item_rx.dllp[CRC_WIDTH-1:0];
+			get_type(.received_rx(seq_item_rx.dllp), .type_rx(received_type));	//get type
+
+			CRC_generation(received_dllp_payload,crc_expected);			//calculate the expected crc
+
+			if (received_crc == crc_expected) begin 			//check on crc before state transition
 				state_transition();
 			end
 		end
 	endtask : run_phase
+
+	function void get_type();
+		input bit [DLLP_WIDTH-1:0] received_rx;
+		output dllp_type_t [BYTE-1:0] type_rx;
+
+		bit [BYTE-1:0] type_;
+
+		type_ = received_rx[DLLP_WIDTH-1:(DLLP_WIDTH-BYTE)];
+
+		if ((type_[7:4] inside {4'b0100, 4'b0101, 4'b0110, 4'b1100, 4'b1101, 4'b1110, 4'b1000, 4'b1001, 4'b1010}) begin
+			type_[3:0] = 4'b0000;	//to not making types be like initfc_p_vc0, initfc_p_vc1 ......
+									//we will just consider having initfc_p and so on
+		end
+		type_rx = dllp_type_t'(type_);
+	endfunction : get_type
 
 	function void state_transition();
 		case (current_state)
@@ -129,15 +162,15 @@ class pcie_vip_state_machine extends uvm_component;
 		// end else 
 		if (!seq_item_rx.pl_lnk_up) begin 	//comes from the LPIF
 			next_state = DL_INACTIVE;
-		end else if ((seq_item_rx.dllp[47:43] == 5'b01000) || (seq_item_rx.dllp[47:43] == 5'b01010) || (seq_item_rx.dllp[47:43] == 5'b01100)) begin
+		end else if ((received_type == INITFC1_P) || (received_type == INITFC1_NP) || (received_type == INITFC1_CPL)) begin
 			next_state = DL_INIT1;
-		end else if ((seq_item_rx.dllp[47:40] == 00000010) && (seq_item_rx.dllp[39] == 1)) begin
+		end else if ((received_type == DL_FEATURE) && (seq_item_rx.dllp[39] == 1)) begin
 			next_state = DL_INIT1;
 		end else begin 
 			next_state = DL_FEATURE;
 		end
 
-		if ((seq_item_rx.dllp[47:40] == 00000010) && (cfg.remote_register_feature.remote_feature_valid == 0)) begin
+		if ((received_type == DL_FEATURE) && (cfg.remote_register_feature.remote_feature_valid == 0)) begin
 			cfg.remote_register_feature.remote_feature_valid = 1;
 			cfg.remote_register_feature.remote_feature_supported = seq_item_rx.dllp[38:16];
 		end
@@ -149,7 +182,7 @@ class pcie_vip_state_machine extends uvm_component;
 		// end else 
 		if (!seq_item_rx.pl_lnk_up) begin 	//comes from the LPIF
 			next_state = DL_INACTIVE;
-		end else if (seq_item_rx.dllp[47:43] == 5'b01000) begin
+		end else if (received_type == INITFC1_P) begin 		//raise init1_p_f
 			init1_p_f = 1;
 			init1_np_f = 0;
 			init1_cpl_f = 0;
@@ -157,12 +190,12 @@ class pcie_vip_state_machine extends uvm_component;
 			fc_registers = seq_item_rx.dllp[39:16];
 
 			next_state = DL_INIT1;
-		end else if ((seq_item_rx.dllp[47:43] == 5'b01010) && init1_p_f && (seq_item_rx.dllp[39:16] == fc_registers)) begin
+		end else if ((received_type == INITFC1_NP) && init1_p_f && (seq_item_rx.dllp[39:16] == fc_registers)) begin
 			init1_p_f = 0;
 			init1_np_f = 1;
 			init1_cpl_f = 0;
 			next_state = DL_INIT1;
-		end else if ((seq_item_rx.dllp[47:43] == 5'b01100) && init1_np_f && (seq_item_rx.dllp[39:16] == fc_registers)) begin
+		end else if ((received_type == INITFC1_CPL) && init1_np_f && (seq_item_rx.dllp[39:16] == fc_registers)) begin
 			init1_p_f = 0;
 			init1_np_f = 0;
 			init1_cpl_f = 1;
@@ -186,17 +219,17 @@ class pcie_vip_state_machine extends uvm_component;
 		// end else 
 		if (!seq_item_rx.pl_lnk_up) begin 	//comes from the LPIF
 			next_state = DL_INACTIVE;
-		end else if (seq_item_rx.dllp[47:43] == 5'b11000) begin
+		end else if (received_type == INITFC2_P) begin
 			init2_p_f = 1;
 			init2_np_f = 0;
 			init2_cpl_f = 0;
 			next_state = DL_INIT2;
-		end else if ((seq_item_rx.dllp[47:43] == 5'b11010) && init2_p_f) begin
+		end else if ((received_type == INITFC2_NP) && init2_p_f) begin
 			init2_p_f = 0;
 			init2_np_f = 1;
 			init2_cpl_f = 0;
 			next_state = DL_INIT2;
-		end else if ((seq_item_rx.dllp[47:43] == 5'b11100) && init2_np_f) begin
+		end else if ((received_type == INITFC2_CPL) && init2_np_f) begin
 			init2_p_f = 0;
 			init2_np_f = 0;
 			init2_cpl_f = 1;
@@ -218,27 +251,27 @@ class pcie_vip_state_machine extends uvm_component;
 		end
 	endfunction : active_state
 
-	function CRC_generation(input bit[31:0] dllp_before_crc,	//the default is {Byte 0, Byte 1, Byte 2, Byte 3}
-							output bit[15:0] crc				//each byte (7,6,5,4,3,2,1,0)
+	function CRC_generation(input bit[PAYLOAD_WIDTH-1:0] dllp_before_crc,	//the default is {Byte 0, Byte 1, Byte 2, Byte 3}
+							output bit[CRC_WIDTH-1:0] crc				//each byte (7,6,5,4,3,2,1,0)
 	);
 
-		bit 		[15:0]	crc_calc = 16'hFFFF;		//initial value
-		bit			[31:0] 	dllp_before_crc_rearanged;	//rearrange each byte to be (0,1,2,3,4,5,6,7)
-		bit 		[7:0]	flipped_byte;				//used in the flipping loops
-		bit 				feedback;					//get the last bit of the crc and add it to the input bit
+		bit [CRC_WIDTH-1:0]		crc_calc = 16'hFFFF;		//initial value
+		bit	[PAYLOAD_WIDTH-1:0] dllp_before_crc_rearanged;	//rearrange each byte to be (0,1,2,3,4,5,6,7)
+		bit [BYTE-1:0]			flipped_byte;				//used in the flipping loops
+		bit 					feedback;					//get the last bit of the crc and add it to the input bit
 
 	//flipping each byte in dllp_pkg as specified
 		for (int i = 0; i < 4; i++) begin
-			for (int j = 0; j < 8; j++) begin
-				flipped_byte[7-j] = dllp_before_crc[(i*8)+j];
+			for (int j = 0; j < BYTE; j++) begin
+				flipped_byte[7-j] = dllp_before_crc[(i*BYTE)+j];
 			end
-			dllp_before_crc_rearanged[((i*8)+7):(i*8)] = flipped_byte;		//{Byte 0, Byte 1, Byte 2, Byte 3}
+			dllp_before_crc_rearanged[((i*BYTE)+7):(i*BYTE)] = flipped_byte;		//{Byte 0, Byte 1, Byte 2, Byte 3}
 		end 																//each byte (0,1,2,3,4,5,6,7)
 
 	//generating crc
-		for (int k = 0; k < 32; k++) begin
-			feedback 	 =	dllp_before_crc_rearanged[31-k] ^ crc_calc[15];	//adding bit[15] with the input
-			crc_calc	 =	{crc_calc[14:0] , feedback};
+		for (int k = 0; k < PAYLOAD_WIDTH; k++) begin
+			feedback 	 =	dllp_before_crc_rearanged[PAYLOAD_WIDTH-k] ^ crc_calc[CRC_WIDTH-1];	//adding bit[15] with the input
+			crc_calc	 =	{crc_calc[CRC_WIDTH-2:0] , feedback};			//shift and add feedback
 			crc_calc[1]	 =	feedback ^ crc_calc[1];							//calculated using the polynomial 100Bh
 			crc_calc[3]	 =	feedback ^ crc_calc[3];
 			crc_calc[12] =	feedback ^ crc_calc[12];
@@ -246,10 +279,10 @@ class pcie_vip_state_machine extends uvm_component;
 
 	//flipping each byte in crc as specified
 		for (int i = 0; i < 2; i++) begin
-			for (int j = 0; j < 8; j++) begin
-				flipped_byte[7-j] = crc_calc[(i*8)+j];
+			for (int j = 0; j < BYTE; j++) begin
+				flipped_byte[7-j] = crc_calc[(i*BYTE)+j];
 			end
-			crc_calc[((i*8)+7):(i*8)] = flipped_byte;	//{Byte 0, Byte 1} each byte (7,6,5,4,3,2,1,0)
+			crc_calc[((i*BYTE)+7):(i*BYTE)] = flipped_byte;	//{Byte 0, Byte 1} each byte (7,6,5,4,3,2,1,0)
 		end 											//instead of (0,1,2,3,4,5,6,7)
 	//inverse each bit to model the inverter in the crc
 		crc = ~crc_calc;
