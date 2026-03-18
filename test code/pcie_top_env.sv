@@ -6,11 +6,16 @@
         // Provide implementations of virtual methods 
         `uvm_component_utils(pcie_top_env)
 
+        // VIP environment of each side
         pcie_vip_env u_vip;
         pcie_vip_env d_vip;
 
+        // Top env components 
         glue_logic_agent gl_agt;
         pcie_shared_scoreboard shared_sb;
+
+        // Virtual sequencer 
+        v_sequencer vsqr;
 
         pcie_top_cfg top_cfg;
 
@@ -22,13 +27,16 @@
         function void build_phase(uvm_phase phase);
             super.build_phase(phase);
 
+            // Retreving the cfg object from the top test
             if(!uvm_config_db #(pcie_top_cfg)::get(this,"","top_cfg",top_cfg))
                 `uvm_fatal("build_phase","Top env unable to get configuration object")
+
 
             u_vip = pcie_top_env::type_id::create("u_vip",this);
             d_vip = pcie_top_env::type_id::create("d_vip",this);
             gl_agt = pcie_top_env::type_id::create("gl_agt",this);
             shared_sb = pcie_top_env::type_id::create("shared_sb",this);
+            vsqr = pcie_top_env::type_id::create("vsqr",this); 
 
         endfunction : build_phase
 
@@ -50,6 +58,10 @@
             // connect each state machine with the shared scoreboard 
             u_vip.state_machine.sm_ap.connect(shared_sb.upper_sm_fifo.analysis_export);
             d_vip.state_machine.sm_ap.connect(shared_sb.lower_sm_fifo.analysis_export);
+
+            // connect the virtual sequencer with each environment sequencer 
+            vsqr.tx_us_sqr = u_vip.tx_agent.sqr;
+            vsqr.tx_ds_sqr = d_vip.tx_agent.sqr;
         endfunction : connect_phase
     
     endclass 

@@ -1,34 +1,38 @@
 `ifndef GLUE_LOGIC_AGENT
 `define GLUE_LOGIC_AGENT
 
-class glue_logic_agent extends uvm_agent;
+    class glue_logic_agent extends uvm_agent;
 
-    // UVM Factory register
-    `uvm_component_utils(glue_logic_agent)
+        // UVM Factory register
+        `uvm_component_utils(glue_logic_agent)
 
-    // Create handles to all agent components
-    glue_logic_driver  ds_driver ;
-    glue_logic_driver  us_driver ;
-    glue_logic_monitor ds_monitor;
-    glue_logic_monitor us_monitor;
-    function new(string name = "glue_logic_agent", uvm_component parent = null);
-        super.new(name, parent);
-    endfunction //new()
+        // Create handles to all agent components
+        glue_logic_driver  ds_driver ;
+        glue_logic_driver  us_driver ;
+        glue_logic_monitor ds_monitor;
+        glue_logic_monitor us_monitor;
 
-    function void build_phase(uvm_phase phase);
-        super.build_phase(phase);
-        ds_driver  = glue_logic_driver::type_id::create("ds_driver", this);
-        us_driver  = glue_logic_driver::type_id::create("us_driver", this);
-        ds_monitor = glue_logic_monitor::type_id::create("ds_monitor", this);
-        us_monitor = glue_logic_monitor::type_id::create("us_monitor", this);
+        function new(string name = "glue_logic_agent", uvm_component parent = null);
+            super.new(name, parent);
+        endfunction //new()
 
-    endfunction
+        function void build_phase(uvm_phase phase);
+            super.build_phase(phase);
+            ds_driver  = glue_logic_driver::type_id::create("ds_driver", this);
+            us_driver  = glue_logic_driver::type_id::create("us_driver", this);
+            ds_monitor = glue_logic_monitor::type_id::create("ds_monitor", this);
+            us_monitor = glue_logic_monitor::type_id::create("us_monitor", this);
 
-    // Connect agent components together
-    function void connect_phase(uvm_phase phase);
-        super.connect_phase(phase); 
-        ds_monitor.mon_ap.connect(us_driver.fifo_mon.analysis_export);
-        us_monitor.mon_ap.connect(ds_driver.fifo_mon.analysis_export);
-    endfunction
-endclass //glue_logic_agent extends uvm_agent
+        endfunction
+
+
+        function void connect_phase(uvm_phase phase);
+            super.connect_phase(phase); 
+
+            // Connect upstream monitor with downstream driver and vise vera
+            ds_monitor.mon_ap.connect(us_driver.fifo_mon.analysis_export);
+            us_monitor.mon_ap.connect(ds_driver.fifo_mon.analysis_export);
+        endfunction
+    endclass //glue_logic_agent extends uvm_agent
+
 `endif

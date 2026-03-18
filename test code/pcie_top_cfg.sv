@@ -9,12 +9,13 @@
          // Provide implementations of virtual methods such as get_type_name and create
          `uvm_object_utils(pcie_top_cfg)
 
+         // Holding virtual interfaces for bothe sides
          virtual lpif_if u_lpif_vif;
          virtual lpif_if d_lpif_vif;
 
-         bit link_down_test;
-         bit GL_error_inj;
-         bit pl_valid_off;
+         bit link_down_test;        // Signal to configure linkdown testcases
+         bit GL_error_inj;          // Signal to configure Glue logic error injection tetcases
+         bit pl_valid_off;          // Signal to configure Valid off interface testcases
 
      /*-------------------------------------------------------------------------------
      -- Functions

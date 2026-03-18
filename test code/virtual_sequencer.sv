@@ -1,22 +1,16 @@
-class vsqr extends uvm_sequencer; 
+`ifndef V_SEQUENCER
+`define V_SEQUENCER 
 
-  `uvm_component_utils(vsqr) 
-  pcie_vip_tx_sequencer tx_us_sqr; 
-  pcie_vip_tx_sequencer tx_ds_sqr; 
+  class v_sequencer extends uvm_sequencer; 
 
-  function new(string name = "vsqr", uvm_component parent = null); 
-    super.new(name, parent); 
-  endfunction 
+    `uvm_component_utils(v_sequencer) 
+    pcie_vip_tx_sequencer tx_us_sqr; 
+    pcie_vip_tx_sequencer tx_ds_sqr; 
 
-  function void end_of_elaboration_phase(uvm_phase phase); 
-    super.end_of_elaboration_phase(phase); 
+    function new(string name = "v_sequencer", uvm_component parent = null); 
+      super.new(name, parent); 
+    endfunction 
 
-    if (!uvm_config_db#(tx_us_sequencer)::get(this, "tx_us_sqr", "", tx_us_sqr)) begin 
-        `uvm_fatal("VSQR", "No tx_us_sqr specified for this instance"); 
-    end 
+  endclass 
 
-    if (!uvm_config_db#(tx_ds_sequencer)::get(this, "tx_ds_sqr", "", tx_ds_sqr)) begin 
-        `uvm_fatal("VSQR", "No tx_ds_sqr specified for this instance"); 
-    end 
-  endfunction 
-endclass 
+`endif

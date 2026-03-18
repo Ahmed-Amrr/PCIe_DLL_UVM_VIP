@@ -1,19 +1,29 @@
-class vseq_base extends uvm_sequence; 
+`ifndef V_SEQUENCE
+`define V_SEQUENCE 
 
-  `uvm_object_utils(vseq_base) 
+  class vseq_base extends uvm_sequence #(uvm_sequence_item);
+    `uvm_object_utils(vseq_base)
 
-  `uvm_declare_p_sequencer(vsqr) 
+    `uvm_declare_p_sequencer(v_sequencer)
 
-  function new(string name="vseq_base"); 
-    super.new(name); 
-  endfunction 
-  
-  pcie_vip_tx_sequencer tx_us_sqr; 
-  pcie_vip_tx_sequencer tx_ds_sqr;
+    // Sequences to run 
+    pcie_base_seq us_seq;
+    pcie_base_seq ds_seq;
 
-  virtual task body(); 
-    tx_us_sqr = p_sequencer.tx_us_sqr; 
-    tx_ds_sqr = p_sequencer.tx_ds_sqr; 
-  endtask 
+    task body();
 
-endclass 
+      fork
+        begin
+          if (us_seq != null)
+            us_seq.start(p_sequencer.tx_us_sqr);
+        end
+        begin
+          if (ds_seq != null)
+            ds_seq.start(p_sequencer.tx_ds_sqr);
+        end
+      join
+
+    endtask
+  endclass 
+
+`endif
