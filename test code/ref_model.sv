@@ -387,39 +387,7 @@ class dll_ref_model #(
 
     endfunction : update_fi_flags
 
-    function void crc_calc;
-        input  bit [PAYLOAD_WIDTH-1:0] _dllp_without_crc;
-        output bit [CRC_WIDTH-1:0]     _crc             ;
-
-        bit [BYTE-1:0] data [PAYLOAD_IN_BYTES];
-        bit [CRC_WIDTH-1:0] crc;
-        bit [CRC_WIDTH-1:0] mapped_crc;
-        bit feedback;
-        
-        // split the payload into bytes as CRC calculation starts with bit 0 of byte 0 and proceeds from bit 0 to bit 7 of each byte
-        foreach (data[i]) begin
-            data[i] = _dllp_without_crc[(BYTE*i) +: BYTE];
-        end
-        // load the LFSR with the initial seed
-        crc = initial_seed;
-
-        // process the btes to generate the crc
-        for (int i = 0; i < PAYLOAD_IN_BYTES; i++) begin            
-            for (int j = 0; j < BYTE; j++) begin
-                feedback = data[i][j] ^ crc[CRC_WIDTH-1];
-                crc = crc << 1;
-                crc[0] = feedback;
-                if (feedback) 
-                    crc = crc ^ generator_polynomial;
-            end
-        end
-        // complemet the crc "The result of the calculation is complemented"
-        crc = ~crc;
-        // map the bits as specs say
-        mapped_crc[7:0]   = {<<{crc[7:0]}};
-        mapped_crc[15:8]  = {<<{crc[15:8]}};
-        _crc = mapped_crc;
-    endfunction : crc_calc
+   
 
     //Main Function
     function  void update_sm_on_rx;
@@ -577,73 +545,106 @@ class dll_ref_model #(
     endfunction : get_dl_status
 
 
-function void predict_expected_tx_response;
+    function void predict_expected_tx_response;
 
-    input  dl_state_t current_state;
-    output dllp_type_t expected_type;
+        input  dl_state_t current_state;
+        output dllp_type_t expected_type;
 
-    case (current_state)
-        // DL_FEATURE : transmit DL_FEATURE DLLP
-        DL_FEATURE: begin
-            expected_type = DL_FEATURE;
-            `uvm_info("DLL_RM",
-            $sformatf("[predict_expected_tx_response] TX DL_FEATURE: supported=0x%0h ack=%0b",
-                feature_cap_reg.local_feature_supported,
-                feature_status_reg.remote_feature_valid),
-            UVM_MEDIUM)
-        end
-    
-        // DL_INIT1 : send InitFC1 sequence
-        DL_INIT1: begin
-            case (initfc1_tx_count)
-                0: begin
-                    expected_type = INITFC1_P;
-                    initfc1_tx_count++;
-                end
-                1: begin
-                    expected_type = INITFC1_NP;
-                    initfc1_tx_count++;
-                end
-                2: begin
-                    expected_type = INITFC1_CPL;
-                    initfc1_tx_count++;
-                end
-                default: begin
-                    // repeat P→NP→Cpl frequently until FI1 is set
-                    // reset counter → next call starts from P again
-                    initfc1_tx_count = 0;
-                    expected_type    = INITFC1_P;
-                    initfc1_tx_count++;
-               end
-            endcase
-        end
+        case (current_state)
+            // DL_FEATURE : transmit DL_FEATURE DLLP
+            DL_FEATURE: begin
+                expected_type = DL_FEATURE;
+                `uvm_info("DLL_RM",
+                $sformatf("[predict_expected_tx_response] TX DL_FEATURE: supported=0x%0h ack=%0b",
+                    feature_cap_reg.local_feature_supported,
+                    feature_status_reg.remote_feature_valid),
+                UVM_MEDIUM)
+            end
+        
+            // DL_INIT1 : send InitFC1 sequence
+            DL_INIT1: begin
+                case (initfc1_tx_count)
+                    0: begin
+                        expected_type = INITFC1_P;
+                        initfc1_tx_count++;
+                    end
+                    1: begin
+                        expected_type = INITFC1_NP;
+                        initfc1_tx_count++;
+                    end
+                    2: begin
+                        expected_type = INITFC1_CPL;
+                        initfc1_tx_count++;
+                    end
+                    default: begin
+                        // repeat P→NP→Cpl frequently until FI1 is set
+                        // reset counter → next call starts from P again
+                        initfc1_tx_count = 0;
+                        expected_type    = INITFC1_P;
+                        initfc1_tx_count++;
+                   end
+                endcase
+            end
 
-        // DL_INIT2 : send InitFC2 sequence
-        DL_INIT2: begin
-            case (initfc2_tx_count)
-                0: begin
-                    expected_type = INITFC2_P;
-                    initfc2_tx_count++;  
-                end
-                1: begin
-                    expected_type = INITFC2_NP;
-                    initfc2_tx_count++;
-                end
-                2: begin
-                    expected_type = INITFC2_CPL;
-                    initfc2_tx_count++;
-                end
-                default: begin
-                    // same — repeat P→NP→Cpl until FI2 is set
-                    initfc2_tx_count = 0;
-                    expected_type    = INITFC2_P;
-                    initfc2_tx_count++;
-                end
-            endcase
-        end
-    endcase
-endfunction : predict_expected_tx_response
+            // DL_INIT2 : send InitFC2 sequence
+            DL_INIT2: begin
+                case (initfc2_tx_count)
+                    0: begin
+                        expected_type = INITFC2_P;
+                        initfc2_tx_count++;  
+                    end
+                    1: begin
+                        expected_type = INITFC2_NP;
+                        initfc2_tx_count++;
+                    end
+                    2: begin
+                        expected_type = INITFC2_CPL;
+                        initfc2_tx_count++;
+                    end
+                    default: begin
+                        // same — repeat P→NP→Cpl until FI2 is set
+                        initfc2_tx_count = 0;
+                        expected_type    = INITFC2_P;
+                        initfc2_tx_count++;
+                    end
+                endcase
+            end
+        endcase
+    endfunction : predict_expected_tx_response
 
+     function void crc_calc;
+            input  bit [PAYLOAD_WIDTH-1:0] _dllp_without_crc;
+            output bit [CRC_WIDTH-1:0]     _crc             ;
+
+            bit [BYTE-1:0] data [PAYLOAD_IN_BYTES];
+            bit [CRC_WIDTH-1:0] crc;
+            bit [CRC_WIDTH-1:0] mapped_crc;
+            bit feedback;
+            
+            // split the payload into bytes as CRC calculation starts with bit 0 of byte 0 and proceeds from bit 0 to bit 7 of each byte
+            foreach (data[i]) begin
+                data[i] = _dllp_without_crc[(BYTE*i) +: BYTE];
+            end
+            // load the LFSR with the initial seed
+            crc = initial_seed;
+
+            // process the btes to generate the crc
+            for (int i = 0; i < PAYLOAD_IN_BYTES; i++) begin            
+                for (int j = 0; j < BYTE; j++) begin
+                    feedback = data[i][j] ^ crc[CRC_WIDTH-1];
+                    crc = crc << 1;
+                    crc[0] = feedback;
+                    if (feedback) 
+                        crc = crc ^ generator_polynomial;
+                end
+            end
+            // complemet the crc "The result of the calculation is complemented"
+            crc = ~crc;
+            // map the bits as specs say
+            mapped_crc[7:0]   = {<<{crc[7:0]}};
+            mapped_crc[15:8]  = {<<{crc[15:8]}};
+            _crc = mapped_crc;
+        endfunction : crc_calc
 // =========================================================
 // =======    move this part to the sb  ==============
 
