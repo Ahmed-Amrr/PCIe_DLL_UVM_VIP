@@ -403,25 +403,25 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
         last_fc2_cpl = $time;
       end
 
-      UPDATE_FC_P: begin
+      UPDATEFC_P: begin
         if(last_upfc_p != 0 && ($time - last_upfc_p) > FC_UPDATE_TIMEOUT)
           `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-CPL timeout: %0t", $time-last_upfc_p))
         last_upfc_p = $time;
       end
 
-      UPDATE_FC_NP: begin
+      UPDATEFC_NP: begin
         if(last_upfc_np != 0 && ($time - last_upfc_np) > FC_UPDATE_TIMEOUT)
           `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-CPL timeout: %0t", $time-last_upfc_np))
         last_upfc_np = $time;
       end
 
-      UPDATE_FC_CPL: begin
+      UPDATEFC_CPL: begin
         if(last_upfc_cpl != 0 && ($time - last_upfc_cpl) > FC_UPDATE_TIMEOUT)
           `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-CPL timeout: %0t", $time-last_upfc_cpl))
         last_upfc_cpl = $time;
       end
 
-      FEATURE_DLLP: begin
+      DL_FEATURE: begin
         if(last_dlf != 0 && ($time - last_dlf) > FC_UPDATE_TIMEOUT)
           `uvm_error("DLF_TIMEOUT",$sformatf("DL Feature DLLP interval exceeded: %0t",$time-last_dlf))
         last_dlf = $time;
