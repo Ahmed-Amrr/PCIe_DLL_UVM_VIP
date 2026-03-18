@@ -1,32 +1,29 @@
 class pcie_shared_scoreboard extends uvm_scoreboard;
+  // UVM Factory register
   `uvm_component_utils(pcie_shared_scoreboard)
 
   
-  //  ANALYSIS FIFOs
-  
-  uvm_tlm_analysis_fifo #(pcie_dllp_seq_item)  upper_tx_fifo;   // Upper TX monitor → here
-  uvm_tlm_analysis_fifo #(pcie_dllp_seq_item)  upper_rx_fifo;   // Upper RX monitor → here
-  uvm_tlm_analysis_fifo #(pcie_dllp_seq_item)  lower_tx_fifo;   // Lower TX monitor → here
-  uvm_tlm_analysis_fifo #(pcie_dllp_seq_item)  lower_rx_fifo;   // Lower RX monitor → here
+  //  ANALYSIS FIFOs 
+  uvm_tlm_analysis_fifo #(pcie_dllp_seq_item)  upper_tx_fifo;   // Upper TX monitor 
+  uvm_tlm_analysis_fifo #(pcie_dllp_seq_item)  upper_rx_fifo;   // Upper RX monitor
+  uvm_tlm_analysis_fifo #(pcie_dllp_seq_item)  lower_tx_fifo;   // Lower TX monitor 
+  uvm_tlm_analysis_fifo #(pcie_dllp_seq_item)  lower_rx_fifo;   // Lower RX monitor 
 
-  uvm_tlm_analysis_fifo #(pcie_state_seq_item)  upper_sm_fifo;   // Upper SM → here
-  uvm_tlm_analysis_fifo #(pcie_state_seq_item)  lower_sm_fifo;   // Lower SM → here
+  uvm_tlm_analysis_fifo #(pcie_state_seq_item)  upper_sm_fifo;   // Upper SM 
+  uvm_tlm_analysis_fifo #(pcie_state_seq_item)  lower_sm_fifo;   // Lower SM 
 
   
   //  Internal Matching Queues
-  
   pcie_dllp_seq_item  u2l_queue[$];
   pcie_dllp_seq_item  l2u_queue[$];
 
   
   //  State Pair Tracking
-  
   dl_state_t  upper_state;
   dl_state_t  lower_state;
 
   
   //  Statistics
-  
   int  u2l_matches;
   int  u2l_mismatches;
   int  u2l_drops;       
@@ -40,7 +37,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   
   //  Timing Check
-  
 	localparam time FC_UPDATE_TIMEOUT = 34us ;
   localparam time RX_TIMEOUT        = 1000us;
 
@@ -65,7 +61,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   
   //  Constructor
-  
   function new(string name = "pcie_shared_scoreboard", uvm_component parent = null);
     super.new(name, parent);
   endfunction
@@ -73,7 +68,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   
   //  Build Phase
-  
   function void build_phase(uvm_phase phase);
     super.build_phase(phase);
 
@@ -107,14 +101,12 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   
   //  Run Phase 
-  
   task run_phase(uvm_phase phase);
     fork
       process_upper_tx();       // Thread 1: Upper TX → enqueue into u2l_queue
       process_lower_rx();       // Thread 2: Lower RX → match against u2l_queue
       process_lower_tx();       // Thread 3: Lower TX → enqueue into l2u_queue
       process_upper_rx();       // Thread 4: Upper RX → match against l2u_queue
-
       process_upper_sm();       // Thread 5: Upper SM state transitions
       process_lower_sm();       // Thread 6: Lower SM state transitions
     join_none
@@ -123,7 +115,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   
   //  Upper TX — enqueue into u2l_queue
-  
   task process_upper_tx();
     pcie_dllp_seq_item txn;
     forever begin
@@ -139,7 +130,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   
   //  Lower RX — match against u2l_queue
-  
   task process_lower_rx();
     pcie_dllp_seq_item rx_txn;
     forever begin
@@ -168,7 +158,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   
   // Lower TX — enqueue into l2u_queue
-  
   task process_lower_tx();
     pcie_dllp_seq_item txn;
     forever begin
@@ -183,7 +172,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   
   //  Upper RX — match against l2u_queue
-  
   task process_upper_rx();
     pcie_dllp_seq_item rx_txn;
     forever begin
@@ -197,7 +185,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   
   //  Upper SM — state pair validation
-  
   task process_upper_sm();
     pcie_state_seq_item sm_txn;
     forever begin
@@ -213,7 +200,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   
   //  Lower SM — state pair validation
-  
   task process_lower_sm();
     pcie_state_seq_item sm_txn;
     forever begin
@@ -228,7 +214,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   
   //  Match Logic
-  
   function void match_u2l(pcie_dllp_seq_item rx_item);
     pcie_dllp_seq_item tx_item;
 
@@ -284,10 +269,8 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   
   //  State Pair Validation
-  
-    function void validate_state_pair();
+  function void validate_state_pair();
     state_pair_checks++;
-
     if (is_legal_pair(upper_state, lower_state)) begin
       `uvm_info(get_type_name(),
         $sformatf("[STATE-PAIR] Legal: Upper=%s, Lower=%s (check #%0d)",
@@ -298,10 +281,9 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
         $sformatf("[STATE-PAIR] ILLEGAL: Upper=%s, Lower=%s (check #%0d)",
                   upper_state.name(), lower_state.name(), state_pair_checks))
     end
-    endfunction
+  endfunction
 
-    function bit is_legal_pair(dl_state_t upper_state, dl_state_t lower_state);
-
+  function bit is_legal_pair(dl_state_t upper_state, dl_state_t lower_state);
       case (upper_state)
 
         DL_INACTIVE: begin
@@ -332,15 +314,14 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
         default: return 0;
       endcase
-
-    endfunction
+  endfunction
 
   
   //  Check Timeout
   
   function void timing_check(pcie_dllp_seq_item txn);
   //timing check 
-    case(txn.dllp_type) ///////////////////////////////////////
+    case(txn.dllp_type)
       INITFC1_P: begin
         if(last_fc1_p != 0 && ($time - last_fc1_p) > FC_UPDATE_TIMEOUT) 
                 `uvm_error("FC_TIMEOUT", $sformatf("InitFC1-P timeout: %0t", $time-last_fc1_p))
@@ -407,7 +388,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   
   //  Check Phase — report unmatched items
-  
   function void check_phase(uvm_phase phase);
     super.check_phase(phase);
 
@@ -435,7 +415,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   
   //  Report Phase — summary
-  
   function void report_phase(uvm_phase phase);
     string report;
     super.report_phase(phase);
