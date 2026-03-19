@@ -34,8 +34,6 @@ class pcie_vip_state_machine extends uvm_component;
 	pcie_vip_config cfg;										//to get the configuration registers
 	dl_state_t current_state, next_state;						//used for the FSM
 
-	logic[23:0] fc_registers;
-
 	bit init1_p_f;
 	bit init1_np_f;
 	bit init1_cpl_f;								// these flags used for getting dllp with init type in order
@@ -47,6 +45,8 @@ class pcie_vip_state_machine extends uvm_component;
 	bit init2_cpl_f;
 	bit FI2;										//FI1 : initfc2 flag
 	assign FI2 = init2_cpl_f;
+
+	fc_type_t fc_type;								//P, NP, CPL.
 
 	bit[PAYLOAD_WIDTH-1:0] received_dllp_payload;
 	bit[CRC_WIDTH-1:0] received_crc;
@@ -187,23 +187,28 @@ class pcie_vip_state_machine extends uvm_component;
 			init1_np_f = 0;
 			init1_cpl_f = 0;
 
-			fc_registers = seq_item_rx.dllp[39:16];
+			fc_type = FC_POSTED;
+			save_conf_regs(fc_type);	//save configuration regs
 
 			next_state = DL_INIT1;
-		end else if ((received_type == INITFC1_NP) && init1_p_f && (seq_item_rx.dllp[39:16] == fc_registers)) begin
+		end else if ((received_type == INITFC1_NP) && init1_p_f) begin
 			init1_p_f = 0;
 			init1_np_f = 1;
 			init1_cpl_f = 0;
+
+			fc_type = FC_NON_POSTED;
+			save_conf_regs(fc_type);	//save configuration regs
+
 			next_state = DL_INIT1;
-		end else if ((received_type == INITFC1_CPL) && init1_np_f && (seq_item_rx.dllp[39:16] == fc_registers)) begin
+		end else if ((received_type == INITFC1_CPL) && init1_np_f) begin
 			init1_p_f = 0;
 			init1_np_f = 0;
 			init1_cpl_f = 1;
+
+			fc_type = FC_NON_POSTED;
+			save_conf_regs(fc_type);	//save configuration regs
+
 			next_state = DL_INIT2;
-			cfg.fc_credits_register.hdr_scale = seq_item_rx.dllp[39:38];
-			cfg.fc_credits_register.hdr_credits = seq_item_rx.dllp[37:30];
-			cfg.fc_credits_register.data_scale = seq_item_rx.dllp[29:28];
-			cfg.fc_credits_register.data_credits = seq_item_rx.dllp[27:16];
 		end else begin
 			init1_p_f = 0;
 			init1_np_f = 0;
@@ -213,7 +218,7 @@ class pcie_vip_state_machine extends uvm_component;
 		end
 	endfunction : init1_state
 
-	function void init2_state ();
+	function void init2_state ();						//should be checking on regs and report error if exist
 		// if (/* reset */) begin 						//requirs modeling for the reset logic
 		// 	next_state = DL_INACTIVE;
 		// end else 
@@ -250,6 +255,14 @@ class pcie_vip_state_machine extends uvm_component;
 			next_state = DL_INACTIVE;
 		end
 	endfunction : active_state
+
+	function void save_conf_regs(fc_type_t fc_type);	//saving configuration registers
+														//na2s reseting
+		cfg.fc_credits_register.hdr_scale[fc_type] = seq_item_rx.dllp[39:38];
+		cfg.fc_credits_register.hdr_credits[fc_type] = seq_item_rx.dllp[37:30];
+		cfg.fc_credits_register.data_scale[fc_type] = seq_item_rx.dllp[29:28];
+		cfg.fc_credits_register.data_credits[fc_type] = seq_item_rx.dllp[27:16];
+	endfunction : save_conf_regs
 
 	function CRC_generation(input bit[PAYLOAD_WIDTH-1:0] dllp_before_crc,	//the default is {Byte 0, Byte 1, Byte 2, Byte 3}
 							output bit[CRC_WIDTH-1:0] crc				//each byte (7,6,5,4,3,2,1,0)
