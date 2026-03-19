@@ -144,6 +144,7 @@ class pcie_vip_state_machine extends uvm_component;
 	//Function for the Inactive state
 	//checks for the required signals to exit from the inactive state
 	function void inactive_state ();
+		reset_conf_regs();								//resets configuration regesters
 		// if (/* reset */) begin 						//requirs modeling for the reset logic
 		// 	next_state = DL_INACTIVE;
 		// end else 
@@ -205,7 +206,7 @@ class pcie_vip_state_machine extends uvm_component;
 			init1_np_f = 0;
 			init1_cpl_f = 1;
 
-			fc_type = FC_NON_POSTED;
+			fc_type = FC_COMPLETION;
 			save_conf_regs(fc_type);	//save configuration regs
 
 			next_state = DL_INIT2;
@@ -213,7 +214,6 @@ class pcie_vip_state_machine extends uvm_component;
 			init1_p_f = 0;
 			init1_np_f = 0;
 			init1_cpl_f = 0;
-			fc_registers = 0;
 			next_state = DL_INIT1;
 		end
 	endfunction : init1_state
@@ -228,16 +228,28 @@ class pcie_vip_state_machine extends uvm_component;
 			init2_p_f = 1;
 			init2_np_f = 0;
 			init2_cpl_f = 0;
+
+			fc_type = FC_POSTED;
+			check_conf_regs(fc_type);
+
 			next_state = DL_INIT2;
 		end else if ((received_type == INITFC2_NP) && init2_p_f) begin
 			init2_p_f = 0;
 			init2_np_f = 1;
 			init2_cpl_f = 0;
+
+			fc_type = FC_NON_POSTED;
+			check_conf_regs(fc_type);
+
 			next_state = DL_INIT2;
 		end else if ((received_type == INITFC2_CPL) && init2_np_f) begin
 			init2_p_f = 0;
 			init2_np_f = 0;
 			init2_cpl_f = 1;
+
+			fc_type = FC_COMPLETION;
+			check_conf_regs(fc_type);
+
 			next_state = DL_ACTIVE;
 		end else begin
 			init2_p_f = 0;
@@ -256,13 +268,32 @@ class pcie_vip_state_machine extends uvm_component;
 		end
 	endfunction : active_state
 
+	function void reset_conf_regs();					//resets configuration regesters
+		for (int i = 0; i < 3; i++) begin
+			cfg.fc_credits_register.hdr_scale[i] = 2'b00;
+			cfg.fc_credits_register.hdr_credits[i] = {8{1'b0}};
+			cfg.fc_credits_register.data_scale[i] = 2'b00;
+			cfg.fc_credits_register.data_credits[i] = {12{1'b0}};
+		end
+	endfunction : reset_conf_regs
+
 	function void save_conf_regs(fc_type_t fc_type);	//saving configuration registers
-														//na2s reseting
 		cfg.fc_credits_register.hdr_scale[fc_type] = seq_item_rx.dllp[39:38];
 		cfg.fc_credits_register.hdr_credits[fc_type] = seq_item_rx.dllp[37:30];
 		cfg.fc_credits_register.data_scale[fc_type] = seq_item_rx.dllp[29:28];
 		cfg.fc_credits_register.data_credits[fc_type] = seq_item_rx.dllp[27:16];
 	endfunction : save_conf_regs
+
+	function void check_conf_regs(fc_type_t fc_type);	//check on configuration registers
+		if(	(cfg.fc_credits_register.hdr_scale[fc_type]   != seq_item_rx.dllp[39:38]) ||
+			(cfg.fc_credits_register.hdr_credits[fc_type] != seq_item_rx.dllp[37:30]) ||
+			(cfg.fc_credits_register.data_scale[fc_type]  != seq_item_rx.dllp[29:28]) ||
+			(cfg.fc_credits_register.data_credits[fc_type]!= seq_item_rx.dllp[27:16])) begin
+				
+				`uvm_error("FC_init2 doesn't match",
+       			 $sformatf("unmatche_type: %s",fc_type))
+			end
+	endfunction : check_conf_regs
 
 	function CRC_generation(input bit[PAYLOAD_WIDTH-1:0] dllp_before_crc,	//the default is {Byte 0, Byte 1, Byte 2, Byte 3}
 							output bit[CRC_WIDTH-1:0] crc				//each byte (7,6,5,4,3,2,1,0)
