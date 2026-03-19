@@ -10,6 +10,10 @@ interface lpif_if (
     bit        pl_valid;   // Indicates that pl_data contains valid data from PL
     bit [63:0] pl_data ;   // 64-bit data bus from Physical Layer
 
+    bit reset;
+    bit rst_req;
+
+
     // driver clocking block
     clocking drv_cb (@posedge lclk);
         default output #0;
@@ -18,6 +22,8 @@ interface lpif_if (
         output lp_data;
         output pl_data;
         output pl_valid;
+        output reset;
+        output rst_req;
     endclocking
 
     // monitor clocking block
@@ -28,6 +34,8 @@ interface lpif_if (
         input lp_data;
         input pl_data;
         input pl_valid;
+        input reset;
+        input rst_req;
     endclocking
 
 endinterface // lpif_if

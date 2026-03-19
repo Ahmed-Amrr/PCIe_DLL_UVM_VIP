@@ -10,6 +10,9 @@ class pcie_dllp_seq_item extends uvm_sequence_item;
 	logic pl_lnk_up;
 	logic pl_valid;
 
+	logic reset;
+	logic rst_req;
+
 	// Constructor
 	function new(string name = "pcie_dllp_seq_item");
 		super.new(name);

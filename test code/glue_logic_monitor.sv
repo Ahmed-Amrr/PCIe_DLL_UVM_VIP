@@ -25,6 +25,7 @@
                 if (lpif_vif.mon_cb.lp_valid) begin   // If lp_valid signal then process transaction 
                     s_item_ds = pcie_dllp_seq_item::type_id::create("s_item", this);
                     s_item.lp_data = lpif_vif.mon_cb.lp_data;
+                    s_item.rst_req = lpif_vif.mon_cb.rst_req;
                 end
                 mon_ap.write(s_item);
             end

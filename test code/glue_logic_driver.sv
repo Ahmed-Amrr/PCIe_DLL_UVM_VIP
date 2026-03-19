@@ -31,6 +31,9 @@
             forever begin
                 fifo_mon.get(s_item);
                 @(lpif_vif.drv_cb)
+                if (s_item.rst_req == 1) begin
+                    lpif_vif.drv_cb.reset <= 1;
+                end
                 if (cfg.link_down_test == 0) begin              // Normal operation 
                     lpif_vif.drv_cb.pl_lnk_up <= 1;
                     lpif_vif.drv_cb.pl_data <= s_item.lp_data;
