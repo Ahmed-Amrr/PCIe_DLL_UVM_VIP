@@ -59,18 +59,26 @@
   // start_from_INIT1 task  
   // Sends DL_FEATURE DLLPs while state is DL_FEATURE
   task pcie_base_seq::start_from_INIT1();
-      
+      int i = 0;
+
       start_from_Feature(); 
 
       if (cfg.local_register_feature.feature_exchange_enable) begin
-        do begin
+        while (p_sequencer.state == DL_FEATURE) begin
           item = pcie_dllp_seq_item::type_id::create("item");
           start_item(item);
             item.dllp[47:40] = DL_FEATURE; 
             item.dllp[38:16] = cfg.local_register_feature.local_feature_supported;
             item.dllp[39] = cfg.remote_register_feature.remote_feature_valid;
           finish_item(item);
-        end while (p_sequencer.state == DL_FEATURE)
+          i++;
+
+          // Counter to count Timeout for each state in order not to stuck 
+          if (i == 1000) begin
+            `uvm_error("Base Seq", "Timeout for the base seq in DL_FEATURE state")
+            break;
+          end
+        end 
       end
 
   endtask : start_from_INIT1
@@ -80,10 +88,11 @@
   // Perform Flow Control initialization phase 1
   // Sends INITFC1 (P/NP/CPL) DLLPs using cfg credits    
   task pcie_base_seq::start_from_INIT2();
-      
+      int i = 0;
+
       start_from_INIT1(); 
 
-      do begin
+      while (p_sequencer.state == DL_INIT1) begin
         item = pcie_dllp_seq_item::type_id::create("item");
         start_item(item);
           item.dllp[47:40] = INITFC1_P; 
@@ -110,19 +119,28 @@
           item.dllp[29:28] = cfg.fc_credits_register.data_scale[2];
           item.dllp[27:16] = cfg.fc_credits_register.data_credits[2];
         finish_item(item);
-      end while (p_sequencer.state == DL_INIT1)
+
+        i++;
+
+        // Counter to count Timeout for each state in order not to stuck 
+        if (i == 1000) begin
+          `uvm_error("Base Seq", "Timeout for the base seq in DL_INIT1 state")
+          break;
+        end
+      end 
 
   endtask : start_from_INIT2
 
 
   // start_from_ACTIVE task  
-  // Complete Flow Control initialization (phase 2)
+  // Complete Flow Control initialization phase 2
   // Sends INITFC2 (P/NP/CPL) DLLPs
   task pcie_base_seq::start_from_ACTIVE();
+    int i = 0;
 
     start_from_INIT2(); 
 
-      do begin
+      while (p_sequencer.state == DL_INIT2) begin
         item = pcie_dllp_seq_item::type_id::create("item");
         start_item(item);
           item.dllp[47:40] = INITFC2_P; 
@@ -149,7 +167,15 @@
           item.dllp[29:28] = cfg.fc_credits_register.data_scale[2];
           item.dllp[27:16] = cfg.fc_credits_register.data_credits[2];
         finish_item(item);
-      end while (p_sequencer.state == DL_INIT2)
+
+        i++;
+
+        // Counter to count Timeout for each state in order not to stuck 
+        if (i == 1000) begin
+          `uvm_error("Base Seq", "Timeout for the base seq in DL_INIT2 state")
+          break;
+        end
+      end 
 
   endtask : start_from_ACTIVE
 
