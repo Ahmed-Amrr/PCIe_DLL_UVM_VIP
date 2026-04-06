@@ -24,7 +24,6 @@ class pcie_init1_seq extends pcie_base_seq;
 
         uvm_config_db#(pcie_top_cfg)::set(this, "*", "top_cfg", top_cfg);
 
-        // Continue transmitting until FI1 flag is set
         while(p_sequencer.state == DL_INIT1) begin 
             // Send InitFC1 DLLPs in STRICT ORDER 
             send_initfc1_pkt(INITFC1_P);    // FIRST
