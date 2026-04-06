@@ -8,14 +8,12 @@
 
     pcie_vip_config cfg;
 
-    pcie_dllp_seq_item item;
-
     // Tasks to walk through the states
-    extern virtual task start_from_INACTIVE();
-    extern virtual task start_from_Feature();
-    extern virtual task start_from_INIT1();
-    extern virtual task start_from_INIT2();
-    extern virtual task start_from_ACTIVE();
+    extern virtual task start_from_INACTIVE(pcie_dllp_seq_item item);
+    extern virtual task start_from_Feature(pcie_dllp_seq_item item);
+    extern virtual task start_from_INIT1(pcie_dllp_seq_item item);
+    extern virtual task start_from_INIT2(pcie_dllp_seq_item item);
+    extern virtual task start_from_ACTIVE(pcie_dllp_seq_item item);
 
     function new(string name = "pcie_base_seq");
         super.new(name);
@@ -39,7 +37,7 @@
 
   // start_from_INACTIVE task 
   // Send reset DLLPs to initialize the link from INACTIVE state
-  task pcie_base_seq::start_from_INACTIVE();
+  task pcie_base_seq::start_from_INACTIVE(pcie_dllp_seq_item item);
       for (int i = 0; i < 10; i++) begin
         item = pcie_dllp_seq_item::type_id::create("item");
 
@@ -52,16 +50,16 @@
 
   // start_from_Feature task 
   // Enter FEATURE stage by reusing INACTIVE initialization then wait the SM to change state
-  task pcie_base_seq::start_from_Feature();
-      start_from_INACTIVE(); 
+  task pcie_base_seq::start_from_Feature(pcie_dllp_seq_item item);
+      start_from_INACTIVE(item); 
   endtask : start_from_Feature
 
   // start_from_INIT1 task  
   // Sends DL_FEATURE DLLPs while state is DL_FEATURE
-  task pcie_base_seq::start_from_INIT1();
+  task pcie_base_seq::start_from_INIT1(pcie_dllp_seq_item item);
       int i = 0;
 
-      start_from_Feature(); 
+      start_from_Feature(item); 
 
       if (cfg.local_register_feature.feature_exchange_enable) begin
         while (p_sequencer.state == DL_FEATURE) begin
@@ -87,10 +85,10 @@
   // start_from_INIT2 task  
   // Perform Flow Control initialization phase 1
   // Sends INITFC1 (P/NP/CPL) DLLPs using cfg credits    
-  task pcie_base_seq::start_from_INIT2();
+  task pcie_base_seq::start_from_INIT2(pcie_dllp_seq_item item);
       int i = 0;
 
-      start_from_INIT1(); 
+      start_from_INIT1(item); 
 
       while (p_sequencer.state == DL_INIT1) begin
         item = pcie_dllp_seq_item::type_id::create("item");
@@ -135,10 +133,10 @@
   // start_from_ACTIVE task  
   // Complete Flow Control initialization phase 2
   // Sends INITFC2 (P/NP/CPL) DLLPs
-  task pcie_base_seq::start_from_ACTIVE();
+  task pcie_base_seq::start_from_ACTIVE(pcie_dllp_seq_item item);
     int i = 0;
 
-    start_from_INIT2(); 
+    start_from_INIT2(item); 
 
       while (p_sequencer.state == DL_INIT2) begin
         item = pcie_dllp_seq_item::type_id::create("item");
