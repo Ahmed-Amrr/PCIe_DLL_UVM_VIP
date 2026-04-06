@@ -20,10 +20,8 @@
 
         // Virtual sequence
         vseq_base vseq;
-        
 
         pcie_top_env top_env;
-        
 
         // Constructor
         function new(string name = "PCIe_top_test_base", uvm_component parent=null);
@@ -33,18 +31,18 @@
         // Function to configure the top cfg testcases based of the sequences
         function void configure_top (ref pcie_top_cfg top_cfg, pcie_base_seq seq_u, pcie_base_seq seq_d
                                     pcie_vip_cfg u_cfg, pcie_vip_cfg d_cfg);
-            if (seq_u == || seq_d== ) 
+            if (seq_u.get_type_name() == "pcie_inactive_seq" || seq_d.get_type_name() == "pcie_inactive_seq") 
                 top_cfg.link_down_test = 1;
             else
                 top_cfg.link_down_test = 0;
 
 
-            if (seq_u == || seq_d== ) 
+            if (seq_u == || seq_d == ) 
                 top_cfg.GL_error_inj = 1;
             else 
                 top_cfg.GL_error_inj = 0;
 
-            if (seq_u == || seq_d== ) 
+            if (seq_u == || seq_d == ) 
                 top_cfg.pl_data_off = 1;
             else 
                 top_cfg.pl_data_off = 0;
@@ -87,7 +85,7 @@
                 uvm_factory::get().set_type_override_by_name(
                   "pcie_base_seq", seq_name_d);
 
-                seq_d = pcie_base_seq::type_id::create("seq_u");
+                seq_d = pcie_base_seq::type_id::create("seq_d");
             end
       
             top_cfg = pcie_top_cfg::type_id::create("top_cfg");  
