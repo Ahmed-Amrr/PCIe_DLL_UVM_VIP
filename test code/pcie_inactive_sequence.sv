@@ -1,5 +1,5 @@
 class pcie_inactive_seq extends pcie_base_seq;
-    `uvm_object_utils(pcie_init1_seq)
+    `uvm_object_utils(pcie_inactive_seq)
 
     function new(string name = "pcie_inactive_seq");
         super.new(name);
