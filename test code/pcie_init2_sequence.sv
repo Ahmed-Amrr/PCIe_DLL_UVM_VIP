@@ -3,7 +3,6 @@ class pcie_init2_seq extends pcie_base_seq;
     
     pcie_dllp_seq_item item;
     pcie_vip_config cfg;
-    time start_seq_time;
     dllp_type_t pkt_type;
 
     
@@ -25,10 +24,10 @@ class pcie_init2_seq extends pcie_base_seq;
         uvm_config_db#(pcie_top_cfg)::set(this, "*", "top_cfg", top_cfg);
 
         while(p_sequencer.state == DL_INIT2) begin 
-            // Send InitFC1 DLLPs in STRICT ORDER 
-            send_initfc1_pkt(INITFC2_P);    // FIRST
-            send_initfc1_pkt(INITFC2_NP);   // SECOND
-            send_initfc1_pkt(INITFC2_CPL);  // THIRD
+            // Send InitFC2 DLLPs in STRICT ORDER 
+            send_initfc2_pkt(INITFC2_P);    // FIRST
+            send_initfc2_pkt(INITFC2_NP);   // SECOND
+            send_initfc2_pkt(INITFC2_CPL);  // THIRD
         end
 
         `uvm_info(get_type_name(), "FC_INIT1 complete", UVM_LOW)

@@ -134,20 +134,6 @@ class dll_ref_model #(
     // Outputs : bit indicating if this dllp is legal to be received or not
     // Verify that receiving dllp_type is legal in current_state.
     // Sets is_legal = 0 and reports an error when the combination is not permitted by the PCIe Gen-5 specification.
-    //============================================================================
-    // function void check_rx_legality;
-    //     input  dllp_type_t _dllp_type    ;
-    //     input  dl_state_t  _current_state;
-    //     output bit         _is_legal     ;
-
-    //     _is_legal = 1;
-    //     if (_current_state == DL_INACTIVE) begin
-    //         _is_legal = 0;
-    //         `uvm_error("DLL_RM", "[check_rx_legality] Illegal DLLP receving in state DL_INACTIVE")
-    //     end
-    //     // need to add legality for tx too
-    // endfunction : check_rx_legality
-    //============================================================================
 
     function void check_rx_legality;
         input  dllp_type_t _dllp_type    ;
