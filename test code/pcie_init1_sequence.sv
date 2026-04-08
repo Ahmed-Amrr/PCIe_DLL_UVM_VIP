@@ -3,10 +3,7 @@ class pcie_init1_seq extends pcie_base_seq;
     
     pcie_dllp_seq_item item;
     pcie_vip_config cfg;
-    time start_seq_time;
-    dllp_type_t pkt_type;
-
-    
+   
     function new(string name = "pcie_init1_seq");
         super.new(name);
     endfunction
@@ -15,14 +12,14 @@ class pcie_init1_seq extends pcie_base_seq;
 
         super.start_from_INIT1(item);
 
-        if(!uvm_config_db #(pcie_top_cfg)::get(this,"","top_cfg",top_cfg))
-            `uvm_fatal("build_phase","Top env unable to get configuration object")
-        top_cfg.fc_credits_register.hdr_scale[fc_type]    = 2'b00;
-        top_cfg.fc_credits_register.data_scale[fc_type]   = 2'b00;
-        top_cfg.fc_credits_register.hdr_credits[fc_type]  = $random;
-        top_cfg.fc_credits_register.data_credits[fc_type] = $random;
+        if(!uvm_config_db #(pcie_vip_cfg)::get(this,"", "cfg", cfg))
+            `uvm_fatal("build_phase","Init sequence unable to get configuration object")
+        cfg.fc_credits_register.hdr_scale[fc_type]    = 2'b00;
+        cfg.fc_credits_register.data_scale[fc_type]   = 2'b00;
+        cfg.fc_credits_register.hdr_credits[fc_type]  = $random;
+        cfg.fc_credits_register.data_credits[fc_type] = $random;
 
-        uvm_config_db#(pcie_top_cfg)::set(this, "*", "top_cfg", top_cfg);
+        uvm_config_db#(pcie_vip_cfg)::set(this, "*", "cfg", cfg);
 
         while(p_sequencer.state == DL_INIT1) begin 
             // Send InitFC1 DLLPs in STRICT ORDER 
