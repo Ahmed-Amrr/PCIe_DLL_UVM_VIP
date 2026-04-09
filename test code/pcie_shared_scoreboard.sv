@@ -62,6 +62,9 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
   time rx_u_time;
   time rx_l_time;
 
+  time last_upper_sm_activity;
+  time last_lower_sm_activity ;
+
   
   //  Constructor
   function new(string name = "pcie_shared_scoreboard", uvm_component parent = null);
@@ -338,23 +341,23 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
         DL_FEATURE: begin
           return (lower_state == DL_FEATURE ||
-                  lower_state == FC_INIT1);
+                  lower_state == DL_INIT1);
         end
 
-        FC_INIT1: begin
+        DL_INIT1: begin
           return (lower_state == DL_FEATURE ||
-                  lower_state == FC_INIT1 ||
-                  lower_state == FC_INIT2);
+                  lower_state == DL_INIT1 ||
+                  lower_state == DL_INIT2);
         end
 
-        FC_INIT2: begin
-          return (lower_state == FC_INIT1 ||
-                  lower_state == FC_INIT2 ||
+        DL_INIT2: begin
+          return (lower_state == DL_INIT1 ||
+                  lower_state == DL_INIT2 ||
                   lower_state == DL_ACTIVE);
         end
 
         DL_ACTIVE: begin
-          return (lower_state == FC_INIT2 ||
+          return (lower_state == DL_INIT2 ||
                   lower_state == DL_ACTIVE);
         end
 
@@ -434,7 +437,9 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 				last_fc2_p   = 0;
   			last_fc2_np  = 0;
 				last_fc2_cpl = 0;
-				last_up_fc   = 0;
+        last_upfc_p = 0;
+        last_upfc_np = 0;
+				last_upfc_cpl = 0;
 				last_dlf     = 0;
 			end
     endcase

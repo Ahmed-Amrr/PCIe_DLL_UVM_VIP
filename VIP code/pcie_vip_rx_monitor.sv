@@ -38,7 +38,7 @@
 					seq_item_rx_mon.dllp=lpif_vif.pl_data;
 					seq_item_rx_mon.pl_valid=lpif_vif.pl_valid;
 					seq_item_rx_mon.pl_lnk_up=lpif_vif.pl_lnk_up;
-					tx_mon_ap.write(seq_item_rx_mon);
+					rx_mon_ap.write(seq_item_rx_mon);
 	            end
 				/*`uvm_info("run_phase", seq_item_rx_mon.convert2string(), UVM_HIGH)*/
 			end

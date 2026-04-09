@@ -6,6 +6,10 @@ class pcie_state_seq_item extends uvm_sequence_item;
 
 	dl_state_t vip_state;
 
+	logic DL_Up;
+	logic DL_Down;
+	logic surprise_down_event;
+
 	// Constructor
 	function new(string name = "pcie_state_seq_item");
 		super.new(name);

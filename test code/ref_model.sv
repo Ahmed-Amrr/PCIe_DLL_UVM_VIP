@@ -1,6 +1,8 @@
 `ifndef REF_MODEL_SV
 `define REF_MODEL_SV
-
+import dll_pkg::*;
+import uvm_pkg::*;
+  `include "uvm_macros.svh"
 class dll_ref_model #(
     parameter int DLLP_WIDTH       = 48,
     parameter int PAYLOAD_WIDTH    = 32,  
@@ -11,6 +13,7 @@ class dll_ref_model #(
 
     bit [CRC_WIDTH-1:0] generator_polynomial;
     bit [CRC_WIDTH-1:0] initial_seed        ;
+
 
     dl_state_t   current_state;        // DL state machine
     bit          FI1, FI2;
@@ -175,7 +178,7 @@ class dll_ref_model #(
             // only active and initialization dllps are expected
             // INITFC1 are expected in case of initializing other VCs
             DL_ACTIVE: begin
-                if (_dllp_type inside DL_FEATURE) begin
+                if (_dllp_type == DL_FEATURE) begin
                     _is_legal = 0;
                     `uvm_error("DLL_RM", "[check_rx_legality] Illegal DLLP receving in state DL_ACTIVE")
                 end
@@ -218,7 +221,7 @@ class dll_ref_model #(
             end
             UPDATEFC_P, UPDATEFC_NP, UPDATEFC_CPL : begin 
             // in INIT2: receiving any UpdateFC completes initialization state (FI2 set)
-            Set flag FI2 on receipt of any TLP on VCx, or any UpdateFC 
+            //Set flag FI2 on receipt of any TLP on VCx, or any UpdateFC 
             if (this.current_state == DL_INIT2) begin
                 this.FI2 = 1;
             end
@@ -229,7 +232,6 @@ class dll_ref_model #(
                         record_fc_values(_dllp);
                 end
            end
-            default: 
        endcase
         
     endfunction
@@ -256,8 +258,8 @@ class dll_ref_model #(
         remote_fc.data_credits[fc] = _dllp[27:16] ;
         // extract scale values if scaled flow control activated
         if (scaled_fc_active) begin
-            remote_scale_fc.hdr_Scale[fc] = _dllp[39:38];
-            remote_scale_fc.data_Scale[fc] = _dllp[29:28];
+            remote_fc.hdr_scale[fc] = _dllp[39:38];
+            remote_fc.data_scale[fc] = _dllp[29:28];
         end
         // during initialization phase, detect infinite credit advertisement
         // Infinite Credit advertisement hdr_credits = 00h or data_credits = 000h
@@ -269,7 +271,7 @@ class dll_ref_model #(
         end
         
         `uvm_info("DLL_RM",
-            $sformatf("[record_fc_values] VC%0d TYPE=%0d HDR=%0d DATA=%0d",_vc_num,fc,remote_fc[_vc_num].hdr_credits[fc],remote_fc[_vc_num].data_credits[fc]),UVM_MEDIUM)
+            $sformatf("[record_fc_values] TYPE=%0d HDR=%0d DATA=%0d",fc,remote_fc.hdr_credits[fc],remote_fc.data_credits[fc]),UVM_MEDIUM)
 
     endfunction
 
@@ -287,11 +289,14 @@ class dll_ref_model #(
 
     function bit check_FCPE;
     input bit [DLLP_WIDTH-1:0] _dllp;
+    bit [2:0] vc_num   ;
 
     bit [7:0] hdr;
     bit [11:0] data;
     bit fcpe_detected;
     fc_type_t fc;
+
+    vc_num    = get_vc_num(._rx_item(_dllp));
     // decode FC type (P / NP / CPL)
     fc = decode_fc_type(get_dllp_type(_dllp));
     // extract UpdateFC values
@@ -319,7 +324,7 @@ class dll_ref_model #(
     end
     // Scaled flow control rule : HdrScale and DataScale fields in the UpdateFCs must match initialized values
     if (scaled_fc_active) begin
-        if (remote_scale_fc[vc_num].hdr_Scale[fc] != _dllp[39:38] || remote_scale_fc[vc_num].data_Scale[fc] != _dllp[29:28])
+        if (remote_fc.hdr_scale[fc] != _dllp[39:38] || remote_fc.data_scale[fc] != _dllp[29:28])
              `uvm_error("DLL_RM", "FCPE: Scale mismatch in UpdateFC")
               fcpe_detected = 1;
 
@@ -539,7 +544,7 @@ class dll_ref_model #(
         case (current_state)
             // DL_FEATURE : transmit DL_FEATURE DLLP
             DL_FEATURE: begin
-                expected_type = DL_FEATURE;
+                expected_type = FEATURE;
                 `uvm_info("DLL_RM",
                 $sformatf("[predict_expected_tx_response] TX DL_FEATURE: supported=0x%0h ack=%0b",
                     feature_cap_reg.local_feature_supported,

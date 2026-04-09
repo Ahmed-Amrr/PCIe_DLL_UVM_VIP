@@ -6,12 +6,18 @@ class pcie_dllp_seq_item extends uvm_sequence_item;
 
 	rand logic [47:0] dllp;			// 8 * 6bytes = 48 bits
 	rand logic lp_valid;
+	
+	dllp_type_t dllp_type;
 
 	logic pl_lnk_up;
 	logic pl_valid;
 
 	logic reset;
 	logic rst_req;
+
+	logic surprise_down_capable;
+	logic link_not_disabled;
+	logic surprise_down_event;
 
 	// Constructor
 	function new(string name = "pcie_dllp_seq_item");

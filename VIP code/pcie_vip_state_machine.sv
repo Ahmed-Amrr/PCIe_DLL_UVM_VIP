@@ -38,13 +38,13 @@ class pcie_vip_state_machine extends uvm_component;
 	bit init1_np_f;
 	bit init1_cpl_f;								// these flags used for getting dllp with init type in order
 	bit FI1;										//FI1 : initfc1 flag
-	assign FI1 = init1_cpl_f;
+	//assign FI1 = init1_cpl_f;
 
 	bit init2_p_f;
 	bit init2_np_f;
 	bit init2_cpl_f;
 	bit FI2;										//FI1 : initfc2 flag
-	assign FI2 = init2_cpl_f;
+	//assign FI2 = init2_cpl_f;
 
 	fc_type_t fc_type;								//P, NP, CPL.
 
@@ -94,7 +94,7 @@ class pcie_vip_state_machine extends uvm_component;
 			sm_fifo_rx.get(seq_item_rx);
 			received_dllp_payload = seq_item_rx.dllp[DLLP_WIDTH-1:CRC_WIDTH];
 			received_crc = seq_item_rx.dllp[CRC_WIDTH-1:0];
-			get_type(.received_rx(seq_item_rx.dllp), .type_rx(received_type));	//get type
+			get_type_sm(.received_rx(seq_item_rx.dllp), .type_rx(received_type));	//get type
 
 			CRC_generation(received_dllp_payload,crc_expected);			//calculate the expected crc
 
@@ -104,20 +104,20 @@ class pcie_vip_state_machine extends uvm_component;
 		end
 	endtask : run_phase
 
-	function void get_type();
+	function void get_type_sm;
 		input bit [DLLP_WIDTH-1:0] received_rx;
-		output dllp_type_t [BYTE-1:0] type_rx;
+		output dllp_type_t type_rx;
 
 		bit [BYTE-1:0] type_;
 
 		type_ = received_rx[DLLP_WIDTH-1:(DLLP_WIDTH-BYTE)];
 
-		if ((type_[7:4] inside {4'b0100, 4'b0101, 4'b0110, 4'b1100, 4'b1101, 4'b1110, 4'b1000, 4'b1001, 4'b1010}) begin
+		if (type_[7:4] inside {4'b0100, 4'b0101, 4'b0110, 4'b1100, 4'b1101, 4'b1110, 4'b1000, 4'b1001, 4'b1010}) begin
 			type_[3:0] = 4'b0000;	//to not making types be like initfc_p_vc0, initfc_p_vc1 ......
 									//we will just consider having initfc_p and so on
 		end
 		type_rx = dllp_type_t'(type_);
-	endfunction : get_type
+	endfunction : get_type_sm
 
 	function void state_transition();
 		case (current_state)

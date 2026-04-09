@@ -1,5 +1,5 @@
 interface lpif_if (
-    input bit lclk   // Link clock used to synchronize all signals
+    input logic lclk   // Link clock used to synchronize all signals
 );
 
     bit        pl_lnk_up;   // Indicates that the physical link is up and active

@@ -6,28 +6,28 @@
 `uvm_analysis_imp_decl(_tx_mon)
 `uvm_analysis_imp_decl(_sm_mon)
 
-class dll_vip_scoreboard #(
-    parameter int DLLP_WIDTH    = 48,
-    parameter int PAYLOAD_WIDTH = 32,
-    parameter int CRC_WIDTH     = 16
-) extends uvm_scoreboard;
+class dll_vip_scoreboard extends uvm_scoreboard;
+
+    parameter int DLLP_WIDTH    = 48;
+    parameter int PAYLOAD_WIDTH = 32;
+    parameter int CRC_WIDTH     = 16;
 
     `uvm_component_utils(dll_vip_scoreboard)
 
     uvm_analysis_imp_rx_mon #(pcie_dllp_seq_item, dll_vip_scoreboard) rx_mon_export;
     uvm_analysis_imp_tx_mon #(pcie_dllp_seq_item, dll_vip_scoreboard) tx_mon_export;
-    uvm_analysis_imp_sm_mon #(pcie_sm_seq_item, dll_vip_scoreboard) sm_mon_export;
+    uvm_analysis_imp_sm_mon #(pcie_state_seq_item, dll_vip_scoreboard) sm_mon_export;
 
    
     pcie_dllp_seq_item rx_queue[$];
     pcie_dllp_seq_item tx_queue[$];
-    pcie_sm_seq_item   sm_queue[$];
+    pcie_state_seq_item   sm_queue[$];
 
     pcie_dllp_seq_item predicted_tx_queue[$];
-    pcie_sm_seq_item   predicted_sm_queue[$];
+    pcie_state_seq_item   predicted_sm_queue[$];
 
     // Reference Model Instance
-    dll_ref_model #(.DLLP_WIDTH(DLLP_WIDTH), .PAYLOAD_WIDTH (PAYLOAD_WIDTH), .CRC_WIDTH(CRC_WIDTH)) ref_model;
+    dll_ref_model ref_model;
 
     // Counters
     int error_count   = 0;
@@ -51,11 +51,11 @@ class dll_vip_scoreboard #(
     // Called when rx monitor sends transaction. This is where ref model is called and predictions are generated
     virtual function void write_rx_mon(pcie_dllp_seq_item trans);
         pcie_dllp_seq_item cloned_rx;
-        pcie_sm_seq_item   predicted_sm;
+        pcie_state_seq_item   predicted_sm;
         pcie_dllp_seq_item predicted_tx;
 
         // create predicted sm transaction
-        predicted_sm = pcie_sm_seq_item::type_id::create("predicted_sm");
+        predicted_sm = pcie_state_seq_item::type_id::create("predicted_sm");
         // create predicted tx transaction
         predicted_tx = pcie_dllp_seq_item::type_id::create("predicted_tx");
 
@@ -72,7 +72,7 @@ class dll_vip_scoreboard #(
         ref_model.rx_path(
             ._rx_item       (cloned_rx.dllp),
             ._pl_lnk_up     (cloned_rx.pl_lnk_up),
-            ._dl_reset      (cloned_rx.dl_reset),
+            ._dl_reset      (cloned_rx.reset),
             ._link_not_disabled(cloned_rx.link_not_disabled),
             ._surprise_down_Error_Reporting_capable(cloned_rx.surprise_down_capable),
             ._DL_Down       (predicted_sm.DL_Down),
@@ -80,11 +80,11 @@ class dll_vip_scoreboard #(
             ._surprise_down_event(predicted_sm.surprise_down_event)
         );
         // get predicted state from model
-        predicted_sm.state = ref_model.current_state;
+        predicted_sm.vip_state = ref_model.current_state;
         // store predicted sm for comparison with actual sm monitor output
         predicted_sm_queue.push_back(predicted_sm);
 
-        `uvm_info("DLL_SB", $sformatf("Model predicted state=%s DL_Up=%0b DL_Down=%0b", predicted_sm.state.name(), predicted_sm.DL_Up, predicted_sm.DL_Down), UVM_MEDIUM)
+        `uvm_info("DLL_SB", $sformatf("Model predicted state=%s DL_Up=%0b DL_Down=%0b", predicted_sm.vip_state.name(), predicted_sm.DL_Up, predicted_sm.DL_Down), UVM_MEDIUM)
 
         // get predicted tx response from model
         ref_model.predict_expected_tx_response(.current_state(ref_model.current_state), .expected_type(predicted_tx.dllp_type));
@@ -119,8 +119,8 @@ class dll_vip_scoreboard #(
 
     // write_sm_mon
     // Called when sm monitor sends transaction. Stores in queue and tries to compare with predicted sm from model
-    virtual function void write_sm_mon(pcie_sm_seq_item trans);
-        pcie_sm_seq_item cloned_sm;
+    virtual function void write_sm_mon(pcie_state_seq_item trans);
+        pcie_state_seq_item cloned_sm;
 
         // clone transaction
         $cast(cloned_sm, trans.clone());
@@ -142,21 +142,21 @@ class dll_vip_scoreboard #(
     // Function : compare_sm_transactions
     // Compares predicted state + DL_Up/Down from model against actual from sm monitor
     protected virtual function void compare_sm_transactions();
-        pcie_sm_seq_item actual_sm;
-        pcie_sm_seq_item predicted_sm;
+        pcie_state_seq_item actual_sm;
+        pcie_state_seq_item predicted_sm;
 
         actual_sm    = sm_queue.pop_front();
         predicted_sm = predicted_sm_queue.pop_front();
 
-        `uvm_info("DLL_SB", $sformatf("Comparing SM: predicted state=%s actual state=%s", predicted_sm.state.name(), actual_sm.state.name()), UVM_MEDIUM)
+        `uvm_info("DLL_SB", $sformatf("Comparing SM: predicted state=%s actual state=%s", predicted_sm.vip_state.name(), actual_sm.vip_state.name()), UVM_MEDIUM)
 
         // Check 1: State correct?
-        if(actual_sm.state !== predicted_sm.state) begin
-            `uvm_error("DLL_SB", $sformatf("[compare_sm] STATE MISMATCH: predicted=%s actual=%s", predicted_sm.state.name(), actual_sm.state.name()))
+        if(actual_sm.vip_state !== predicted_sm.vip_state) begin
+            `uvm_error("DLL_SB", $sformatf("[compare_sm] STATE MISMATCH: predicted=%s actual=%s", predicted_sm.vip_state.name(), actual_sm.vip_state.name()))
             error_count++;
         end
         else begin
-            `uvm_info("DLL_SB", $sformatf("[compare_sm] STATE OK: %s", actual_sm.state.name()), UVM_MEDIUM)
+            `uvm_info("DLL_SB", $sformatf("[compare_sm] STATE OK: %s", actual_sm.vip_state.name()), UVM_MEDIUM)
             correct_count++;
         end
 

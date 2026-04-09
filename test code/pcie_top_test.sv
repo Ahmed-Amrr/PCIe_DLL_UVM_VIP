@@ -8,8 +8,8 @@
 
         // Configuraton objects
         pcie_top_cfg top_cfg;
-        pcie_vip_cfg u_cfg;
-        pcie_vip_cfg d_cfg;
+        pcie_vip_config u_cfg;
+        pcie_vip_config d_cfg;
 
         // Seguence specific signals 
         uvm_cmdline_processor clp;
@@ -29,23 +29,22 @@
         endfunction : new
 
         // Function to configure the top cfg testcases based of the sequences
-        function void configure_top (ref pcie_top_cfg top_cfg, pcie_base_seq seq_u, pcie_base_seq seq_d
-                                    pcie_vip_cfg u_cfg, pcie_vip_cfg d_cfg);
+        function void configure_top (ref pcie_top_cfg top_cfg, pcie_base_seq seq_u, pcie_base_seq seq_d, pcie_vip_config u_cfg, pcie_vip_config d_cfg);
             if (seq_u.get_type_name() == "pcie_inactive_seq" || seq_d.get_type_name() == "pcie_inactive_seq") 
                 top_cfg.link_down_test = 1;
             else
                 top_cfg.link_down_test = 0;
 
 
-            if (seq_u == || seq_d == ) 
-                top_cfg.GL_error_inj = 1;
-            else 
-                top_cfg.GL_error_inj = 0;
+            // if (seq_u == || seq_d == ) 
+            //     top_cfg.GL_error_inj = 1;
+            // else 
+            //     top_cfg.GL_error_inj = 0;
 
-            if (seq_u == || seq_d == ) 
-                top_cfg.pl_data_off = 1;
-            else 
-                top_cfg.pl_data_off = 0;
+            // if (seq_u == || seq_d == ) 
+            //     top_cfg.pl_data_off = 1;
+            // else 
+            //     top_cfg.pl_data_off = 0;
 
             // Getting the upper and lower interfaces from eac environment cfg
             top_cfg.u_lpif_vif = u_cfg.lpif_vif;
@@ -54,11 +53,11 @@
         endfunction  
 
         // Functions to configure each enviroment register based on the current sequence
-        function void configure_vip_u (ref pcie_vip_cfg u_cfg, pcie_base_seq seq_u, pcie_base_seq seq_d);
+        function void configure_vip_u (ref pcie_vip_config u_cfg, pcie_base_seq seq_u, pcie_base_seq seq_d);
                     
         endfunction 
 
-        function void configure_vip_d (ref pcie_vip_cfg d_cfg, pcie_base_seq seq_u, pcie_base_seq seq_d);
+        function void configure_vip_d (ref pcie_vip_config d_cfg, pcie_base_seq seq_u, pcie_base_seq seq_d);
                     
         endfunction 
 
@@ -89,8 +88,8 @@
             end
       
             top_cfg = pcie_top_cfg::type_id::create("top_cfg");  
-            u_cfg = pcie_vip_cfg::type_id::create("u_cfg");
-            d_cfg = pcie_vip_cfg::type_id::create("d_cfg");  
+            u_cfg = pcie_vip_config::type_id::create("u_cfg");
+            d_cfg = pcie_vip_config::type_id::create("d_cfg");  
 
             // Retriving the virtual interfaces from top
             if (!(uvm_config_db#(virtual lpif_if)::get(this, "", "u_lpif", u_cfg.lpif_vif))) 
@@ -101,12 +100,12 @@
             // Call configure functions 
             configure_vip_u (u_cfg, seq_u, seq_d);
             configure_vip_d (d_cfg, seq_u, seq_d);
-            configure_top (top_cfg, seq_u, seq_d, u_cfg, seq_d);
+            configure_top (top_cfg, seq_u, seq_d, u_cfg, d_cfg);
 
             // Set the CFGs to the corresponding enviroments 
             uvm_config_db#(pcie_top_cfg)::set(this, "*", "top_cfg", top_cfg);
-            uvm_config_db#(pcie_vip_cfg)::set(this, "top_env.u_vip*", "vip_cfg", u_cfg);
-            uvm_config_db#(pcie_vip_cfg)::set(this, "top_env.d_vip*", "vip_cfg", d_cfg);
+            uvm_config_db#(pcie_vip_config)::set(this, "top_env.u_vip.*", "vip_cfg", u_cfg);
+            uvm_config_db#(pcie_vip_config)::set(this, "top_env.d_vip.*", "vip_cfg", d_cfg);
 
         endfunction : build_phase
 

@@ -44,10 +44,10 @@
             super.connect_phase(phase);
 
             // connect interfaces with the Glue logic
-            gl_agt.ds_driver = top_cfg.d_lpif_vif;
-            gl_agt.us_driver = top_cfg.u_lpif_vif;
-            gl_agt.ds_monitor = top_cfg.d_lpif_vif;
-            gl_agt.us_monitor = top_cfg.u_lpif_vif;
+            gl_agt.ds_driver.lpif_vif = top_cfg.d_lpif_vif;
+            gl_agt.us_driver.lpif_vif = top_cfg.u_lpif_vif;
+            gl_agt.ds_monitor.lpif_vif = top_cfg.d_lpif_vif;
+            gl_agt.us_monitor.lpif_vif = top_cfg.u_lpif_vif;
 
             // connect vip monitors with the shared scoreboard
             u_vip.tx_agent.tx_agent_ap.connect(shared_sb.upper_tx_fifo.analysis_export);

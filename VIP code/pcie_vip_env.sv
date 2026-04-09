@@ -15,7 +15,7 @@ class pcie_vip_env extends  uvm_env;
 	`uvm_component_utils(pcie_vip_env)
 	pcie_vip_tx_agent tx_agent;
 	pcie_vip_rx_agent rx_agent;
-	pcie_vip_scoreboard scoreboard;
+	dll_vip_scoreboard scoreboard;
 	pcie_vip_coverage coverage;
 	pcie_vip_state_machine state_machine;
 
@@ -41,9 +41,9 @@ class pcie_vip_env extends  uvm_env;
 
 		tx_agent = pcie_vip_tx_agent::type_id::create("tx_agent", this);
 		rx_agent = pcie_vip_rx_agent::type_id::create("rx_agent", this);
-		scoreboard = pcie_vip_scoreboard::type_id::create("scoreboard", this);
+		scoreboard = dll_vip_scoreboard::type_id::create("scoreboard", this);
 		coverage = pcie_vip_coverage::type_id::create("coverage", this);
-		state_machine = pcie_state_machine::type_id::create("state_machine", this);
+		state_machine = pcie_vip_state_machine::type_id::create("state_machine", this);
 	endfunction : build_phase
 
 	function void connect_phase(uvm_phase phase);

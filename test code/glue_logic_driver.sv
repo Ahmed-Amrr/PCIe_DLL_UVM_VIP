@@ -25,7 +25,7 @@
                 `uvm_fatal("CFG", "GL Driver couldn't get config object ")
         endfunction
 
-        task run_phase();
+        task run_phase(uvm_phase phase);
             super.run_phase(phase);
 
             forever begin
@@ -36,7 +36,7 @@
                 end
                 if (cfg.link_down_test == 0) begin              // Normal operation 
                     lpif_vif.drv_cb.pl_lnk_up <= 1;
-                    lpif_vif.drv_cb.pl_data <= s_item.lp_data;
+                    lpif_vif.drv_cb.pl_data <= s_item.dllp;
 
                     if (cfg.pl_valid_off) begin                 // Valid off testcases
                         lpif_vif.drv_cb.pl_valid <= 0;

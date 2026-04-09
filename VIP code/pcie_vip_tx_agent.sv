@@ -13,7 +13,7 @@ class pcie_vip_tx_agent extends uvm_agent;
 -------------------------------------------------------------------------------*/
   // Provide implementations of virtual methods such as get_type_name and create
   `uvm_component_utils(pcie_vip_tx_agent)
-  pcie_vip_sequencer sqr;
+  pcie_vip_tx_sequencer sqr;
   pcie_vip_driver drv;
   pcie_vip_tx_monitor tx_mon;
   pcie_vip_config cfg;
@@ -34,7 +34,7 @@ class pcie_vip_tx_agent extends uvm_agent;
   function void build_phase(uvm_phase phase);
     super.build_phase(phase);
 
-    sqr = pcie_vip_sequencer::type_id::create("sqr", this);
+    sqr = pcie_vip_tx_sequencer::type_id::create("sqr", this);
     drv = pcie_vip_driver::type_id::create("drv", this);
     tx_mon = pcie_vip_tx_monitor::type_id::create("tx_mon", this);
   

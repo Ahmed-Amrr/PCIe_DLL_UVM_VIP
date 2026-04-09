@@ -54,7 +54,6 @@ class pcie_vip_coverage extends uvm_component;
 
 	task run_phase(uvm_phase phase);
 		super.run_phase(phase);
-		end
 	endtask : run_phase
 endclass : pcie_vip_coverage
 
