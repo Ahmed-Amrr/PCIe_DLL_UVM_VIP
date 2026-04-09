@@ -21,6 +21,7 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
         seq_item_drv = pcie_dllp_seq_item::type_id::create("seq_item_drv", this);
         forever begin
             seq_item_port.get_next_item(seq_item_drv);
+            CRC_generation(seq_item_drv.dllp[47:16], seq_item_drv.dllp[15:0]);
             lpif_vif.lp_data = seq_item_drv.dllp;
             lpif_vif.lp_valid = seq_item_drv.lp_valid;
             @(lpif_vif.drv_cb);
@@ -28,7 +29,7 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
         end
     endtask
 
-    function CRC_generation(input bit[31:0] dllp_before_crc,    //the default is {Byte 0, Byte 1, Byte 2, Byte 3}
+    virtual function CRC_generation(input bit[31:0] dllp_before_crc,    //the default is {Byte 0, Byte 1, Byte 2, Byte 3}
                             output bit[15:0] crc                //each byte (7,6,5,4,3,2,1,0)
     );
 
