@@ -309,12 +309,13 @@ class pcie_vip_state_machine extends uvm_component;
 			for (int j = 0; j < BYTE; j++) begin
 				flipped_byte[7-j] = dllp_before_crc[(i*BYTE)+j];
 			end
-			dllp_before_crc_rearanged[((i*BYTE)+7):(i*BYTE)] = flipped_byte;		//{Byte 0, Byte 1, Byte 2, Byte 3}
+			dllp_before_crc_rearanged[((i*BYTE) +: BYTE] = flipped_byte;		//{Byte 0, Byte 1, Byte 2, Byte 3}
 		end 																//each byte (0,1,2,3,4,5,6,7)
-
+																			//[base +: width] (ai generated)
+																			//because (msb:lsb) compile error
 	//generating crc
 		for (int k = 0; k < PAYLOAD_WIDTH; k++) begin
-			feedback 	 =	dllp_before_crc_rearanged[PAYLOAD_WIDTH-k] ^ crc_calc[CRC_WIDTH-1];	//adding bit[15] with the input
+			feedback 	 =	dllp_before_crc_rearanged[PAYLOAD_WIDTH-k-1] ^ crc_calc[CRC_WIDTH-1];	//adding bit[15] with the input
 			crc_calc	 =	{crc_calc[CRC_WIDTH-2:0] , feedback};			//shift and add feedback
 			crc_calc[1]	 =	feedback ^ crc_calc[1];							//calculated using the polynomial 100Bh
 			crc_calc[3]	 =	feedback ^ crc_calc[3];
@@ -326,7 +327,7 @@ class pcie_vip_state_machine extends uvm_component;
 			for (int j = 0; j < BYTE; j++) begin
 				flipped_byte[7-j] = crc_calc[(i*BYTE)+j];
 			end
-			crc_calc[((i*BYTE)+7):(i*BYTE)] = flipped_byte;	//{Byte 0, Byte 1} each byte (7,6,5,4,3,2,1,0)
+			crc_calc[(i*BYTE) +: BYTE] = flipped_byte;	//{Byte 0, Byte 1} each byte (7,6,5,4,3,2,1,0)
 		end 											//instead of (0,1,2,3,4,5,6,7)
 	//inverse each bit to model the inverter in the crc
 		crc = ~crc_calc;
