@@ -49,12 +49,12 @@ class pcie_vip_env extends  uvm_env;
 	function void connect_phase(uvm_phase phase);
 		super.connect_phase(phase);
 		tx_agent.tx_agent_ap.connect(coverage.cov_export_tx);	
-		tx_agent.tx_agent_ap.connect(scoreboard.sb_export_tx);	
+		tx_agent.tx_agent_ap.connect(scoreboard.tx_mon_export);	
 		tx_agent.tx_agent_ap.connect(state_machine.sm_export_tx);
 		rx_agent.rx_agent_ap.connect(coverage.cov_export_rx);	
-		rx_agent.rx_agent_ap.connect(scoreboard.sb_export_rx);	
+		rx_agent.rx_agent_ap.connect(scoreboard.rx_mon_export);	
 		rx_agent.rx_agent_ap.connect(state_machine.sm_export_rx);
-		state_machine.sm_ap.connect(scoreboard.sb_export_state);
+		state_machine.sm_ap.connect(scoreboard.sm_mon_export);
 		state_machine.sm_ap.connect(tx_agent.sqr.sqr_export);
 
 		//connecting interface to the divers and monitors of each agent
