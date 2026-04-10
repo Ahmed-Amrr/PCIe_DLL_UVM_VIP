@@ -1,7 +1,7 @@
 class pcie_dropped_fc_seq extends pcie_fc_init_seq;
     `uvm_object_utils(pcie_dropped_fc_seq)
 
-    function new(name string = "pcie_dropped_fc_seq");
+    function new(string name = "pcie_dropped_fc_seq");
         super.new(name);
     endfunction : new
 
@@ -49,4 +49,3 @@ class pcie_dropped_fc_seq extends pcie_fc_init_seq;
 
 endclass : pcie_dropped_fc_seq 
 
-`endif

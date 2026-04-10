@@ -312,8 +312,6 @@ class pcie_vip_state_machine extends uvm_component;
 			update_cpl_f = 0;
 			next_state = DL_ACTIVE;
 		end
-			
-		end
 	endfunction : active_state
 
 	function void reset_conf_regs();					//resets configuration regesters & Flags
@@ -382,7 +380,7 @@ class pcie_vip_state_machine extends uvm_component;
 			for (int j = 0; j < BYTE; j++) begin
 				flipped_byte[7-j] = dllp_before_crc[(i*BYTE)+j];
 			end
-			dllp_before_crc_rearanged[((i*BYTE) +: BYTE] = flipped_byte;		//{Byte 0, Byte 1, Byte 2, Byte 3}
+			dllp_before_crc_rearanged[(i*BYTE) +: BYTE] = flipped_byte;		//{Byte 0, Byte 1, Byte 2, Byte 3}
 		end 																//each byte (0,1,2,3,4,5,6,7)
 																			//[base +: width] (ai generated)
 																			//because (msb:lsb) compile error

@@ -6,6 +6,7 @@ class pcie_vip_tx_sequencer extends uvm_sequencer #(pcie_dllp_seq_item);
     
     uvm_analysis_export #(pcie_state_seq_item) sqr_export;     //getting the data from tx monitor
     uvm_tlm_analysis_fifo #(pcie_state_seq_item) sqr_fifo;
+    pcie_vip_config cfg;
 
     function new(string name = "pcie_vip_tx_sequencer", uvm_component parent = null);
         super.new(name,parent);

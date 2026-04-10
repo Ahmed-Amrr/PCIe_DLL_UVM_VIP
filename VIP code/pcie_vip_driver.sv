@@ -4,6 +4,10 @@
 class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
     `uvm_component_utils(pcie_vip_driver)
 
+    parameter int DLLP_WIDTH    = 48;
+    parameter int PAYLOAD_WIDTH = 32;
+    parameter int CRC_WIDTH     = 16;
+    parameter int BYTE 			= 8;
     virtual lpif_if lpif_vif;
     pcie_dllp_seq_item   seq_item_drv;
 
@@ -43,7 +47,7 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
             for (int j = 0; j < BYTE; j++) begin
                 flipped_byte[7-j] = dllp_before_crc[(i*BYTE)+j];
             end
-            dllp_before_crc_rearanged[((i*BYTE) +: BYTE] = flipped_byte;        //{Byte 0, Byte 1, Byte 2, Byte 3}
+            dllp_before_crc_rearanged[(i*BYTE) +: BYTE] = flipped_byte;        //{Byte 0, Byte 1, Byte 2, Byte 3}
         end                                                                 //each byte (0,1,2,3,4,5,6,7)
                                                                             //[base +: width] (ai generated)
                                                                             //because (msb:lsb) compile error

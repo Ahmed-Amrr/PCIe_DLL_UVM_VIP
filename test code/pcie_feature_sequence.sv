@@ -1,7 +1,7 @@
 `ifndef PCIE_FEATURE_SEQUENCE_SV
 `define PCIE_FEATURE_SEQUENCE_SV
 
-class pcie_feature_sequence extends pcie_base_sequence;
+class pcie_feature_sequence extends pcie_base_seq;
     `uvm_object_utils(pcie_feature_sequence)
 
     pcie_dllp_seq_item item;

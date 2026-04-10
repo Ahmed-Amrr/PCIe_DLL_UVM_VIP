@@ -13,7 +13,7 @@ class pcie_vip_err_driver extends pcie_vip_driver;
 
     virtual function void build_phase (uvm_phase phase);
         super.build_phase(phase);
-    endfunction : 
+    endfunction
 
     virtual task run_phase(uvm_phase phase);
         seq_item_drv = pcie_dllp_seq_item::type_id::create("seq_item_drv", this);
@@ -32,5 +32,5 @@ class pcie_vip_err_driver extends pcie_vip_driver;
         crc = '0;
     endfunction : CRC_generation
 
-endclass : 
+endclass 
 `endif

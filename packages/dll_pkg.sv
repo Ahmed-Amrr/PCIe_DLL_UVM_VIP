@@ -78,17 +78,21 @@ package dll_pkg;
     `include "pcie_dllp_seq_item.sv"
     `include "pcie_state_seq_item.sv"
 
-    `include "pcie_vip_sequencer.sv"
-    `include "virtual_sequencer.sv"
     `include "pcie_vip_config.sv"
     `include "pcie_top_cfg.sv"
+
+    `include "pcie_vip_sequencer.sv"
+    `include "virtual_sequencer.sv"
     // =======================
     // 4) Sequences
     // =======================
     `include "pcie_base_sequence.sv"
+    `include "pcie_init_sequence.sv"
     `include "pcie_active_sequence.sv"
     `include "pcie_inactive_sequence.sv"
-    `include "pcie_init_sequence.sv"
+    `include "pcie_feature_sequence.sv"
+    `include "pcie_dropped_fc_sequence.sv"
+    `include "pcie_incorrect_dllp_type_sequence.sv"
     `include "virtual_sequence.sv"
 
     // =======================
@@ -99,6 +103,7 @@ package dll_pkg;
     `include "glue_logic_agent.sv"
 
     `include "pcie_vip_driver.sv"
+    `include "pcie_vip_err_driver.sv"
 
 
     `include "pcie_vip_rx_monitor.sv"
@@ -132,5 +137,5 @@ package dll_pkg;
  
 endpackage : dll_pkg
  
-`endif // 
+`endif
 
