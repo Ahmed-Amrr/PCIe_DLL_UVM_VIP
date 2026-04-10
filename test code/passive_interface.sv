@@ -61,6 +61,9 @@ interface passive_interface (input logic clk);
 	bit [47:0] tx_dllp;
 	bit [47:0] rx_dllp;
 
+	logic pl_valid;
+	logic lp_valid;
+
 	dl_feature_cap_reg_t local_register_feature;       //for feature "Scaled Flow Control" the only important bits are
 	                                                //feature_exchange_enable and local_feature_supported [0] (Supported or not)
 	dl_feature_status_reg_t remote_register_feature;   //for feature "Scaled Flow Control" the only important bits are
@@ -72,7 +75,6 @@ interface passive_interface (input logic clk);
 	dl_state_t state;
 
 	logic pl_lnk_up;
-	logic pl_valid;
 
 	logic reset;
 
