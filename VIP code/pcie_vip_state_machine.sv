@@ -17,7 +17,7 @@ class pcie_vip_state_machine extends uvm_component;
 /*-------------------------------------------------------------------------------
 -- Interface, port, fields
 -------------------------------------------------------------------------------*/
-	uvm_analysis_port #(pcie_state_seq_item) sm_ap; //sending data to the shared scoreboard and local scoreboard
+	uvm_analysis_port #(pcie_state_seq_item) sm_ap; //sending data to the shared scoreboard and local scoreboard and sequencer
 	pcie_state_seq_item state_seq_item;
 
 
@@ -38,13 +38,16 @@ class pcie_vip_state_machine extends uvm_component;
 	bit init1_np_f;
 	bit init1_cpl_f;								// these flags used for getting dllp with init type in order
 	bit FI1;										//FI1 : initfc1 flag
-	//assign FI1 = init1_cpl_f;
 
 	bit init2_p_f;
 	bit init2_np_f;
 	bit init2_cpl_f;
 	bit FI2;										//FI1 : initfc2 flag
 	//assign FI2 = init2_cpl_f;
+
+	bit update_p_f;
+	bit update_np_f;
+	bit update_cpl_f;
 
 	fc_type_t fc_type;								//P, NP, CPL.
 
@@ -96,9 +99,9 @@ class pcie_vip_state_machine extends uvm_component;
 			received_crc = seq_item_rx.dllp[CRC_WIDTH-1:0];
 			get_type_sm(.received_rx(seq_item_rx.dllp), .type_rx(received_type));	//get type
 
-			CRC_generation(received_dllp_payload,crc_expected);			//calculate the expected crc
+			CRC_generation(received_dllp_payload,crc_expected);						//calculate the expected crc
 
-			if (received_crc == crc_expected) begin 			//check on crc before state transition
+			if (received_crc == crc_expected) begin 								//check on crc before state transition
 				state_transition();
 			end
 		end
@@ -113,8 +116,8 @@ class pcie_vip_state_machine extends uvm_component;
 		type_ = received_rx[DLLP_WIDTH-1:(DLLP_WIDTH-BYTE)];
 
 		if (type_[7:4] inside {4'b0100, 4'b0101, 4'b0110, 4'b1100, 4'b1101, 4'b1110, 4'b1000, 4'b1001, 4'b1010}) begin
-			type_[3:0] = 4'b0000;	//to not making types be like initfc_p_vc0, initfc_p_vc1 ......
-									//we will just consider having initfc_p and so on
+			type_[3:0] = 4'b0000;	//to force initfc_p, initfc_np ......
+									//to consider only VC0. and disregard VC 1 2 3 ...
 		end
 		type_rx = dllp_type_t'(type_);
 	endfunction : get_type_sm
@@ -145,10 +148,10 @@ class pcie_vip_state_machine extends uvm_component;
 	//checks for the required signals to exit from the inactive state
 	function void inactive_state ();
 		reset_conf_regs();								//resets configuration regesters
-		// if (/* reset */) begin 						//requirs modeling for the reset logic
-		// 	next_state = DL_INACTIVE;
-		// end else 
-		if (!seq_item_rx.pl_lnk_up) begin 	//comes from the LPIF
+		if (seq_item_rx.reset) begin 					//requirs modeling for the reset logic
+			next_state = DL_INACTIVE;
+		end else 
+		if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
 			next_state = DL_INACTIVE;
 		end else if (!cfg.local_register_feature.feature_exchange_enable) begin
 			next_state = DL_INIT1;
@@ -158,10 +161,10 @@ class pcie_vip_state_machine extends uvm_component;
 	endfunction : inactive_state
 
 	function void feature_state ();
-		// if (/* reset */) begin 						//requirs modeling for the reset logic
-		// 	next_state = DL_INACTIVE;
-		// end else 
-		if (!seq_item_rx.pl_lnk_up) begin 	//comes from the LPIF
+		if (seq_item_rx.reset) begin 					//requirs modeling for the reset logic
+			next_state = DL_INACTIVE;
+		end else 
+		if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
 			next_state = DL_INACTIVE;
 		end else if ((received_type == INITFC1_P) || (received_type == INITFC1_NP) || (received_type == INITFC1_CPL)) begin
 			next_state = DL_INIT1;
@@ -178,18 +181,19 @@ class pcie_vip_state_machine extends uvm_component;
 	endfunction : feature_state
 
 	function void init1_state ();
-		// if (/* reset */) begin 						//requirs modeling for the reset logic
-		// 	next_state = DL_INACTIVE;
-		// end else 
-		if (!seq_item_rx.pl_lnk_up) begin 	//comes from the LPIF
+		if (seq_item_rx.reset) begin 					//requirs modeling for the reset logic
 			next_state = DL_INACTIVE;
-		end else if (received_type == INITFC1_P) begin 		//raise init1_p_f
+		end else 
+		if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
+			next_state = DL_INACTIVE;
+		end else if (received_type == INITFC1_P) begin 	//raise init1_p_f
 			init1_p_f = 1;
 			init1_np_f = 0;
 			init1_cpl_f = 0;
 
 			fc_type = FC_POSTED;
-			save_conf_regs(fc_type);	//save configuration regs
+			save_conf_scale_reg(fc_type);	//save configuration regs
+			save_conf_credits_reg(fc_type);
 
 			next_state = DL_INIT1;
 		end else if ((received_type == INITFC1_NP) && init1_p_f) begin
@@ -198,7 +202,8 @@ class pcie_vip_state_machine extends uvm_component;
 			init1_cpl_f = 0;
 
 			fc_type = FC_NON_POSTED;
-			save_conf_regs(fc_type);	//save configuration regs
+			save_conf_scale_reg(fc_type);	//save configuration regs
+			save_conf_credits_reg(fc_type);
 
 			next_state = DL_INIT1;
 		end else if ((received_type == INITFC1_CPL) && init1_np_f) begin
@@ -207,7 +212,8 @@ class pcie_vip_state_machine extends uvm_component;
 			init1_cpl_f = 1;
 
 			fc_type = FC_COMPLETION;
-			save_conf_regs(fc_type);	//save configuration regs
+			save_conf_scale_reg(fc_type);	//save configuration regs
+			save_conf_credits_reg(fc_type);
 
 			next_state = DL_INIT2;
 		end else begin
@@ -216,13 +222,14 @@ class pcie_vip_state_machine extends uvm_component;
 			init1_cpl_f = 0;
 			next_state = DL_INIT1;
 		end
+		FI1 = init1_cpl_f;	//Raise flag for initfc1
 	endfunction : init1_state
 
 	function void init2_state ();						//should be checking on regs and report error if exist
-		// if (/* reset */) begin 						//requirs modeling for the reset logic
-		// 	next_state = DL_INACTIVE;
-		// end else 
-		if (!seq_item_rx.pl_lnk_up) begin 	//comes from the LPIF
+		if (seq_item_rx.reset) begin 					//requirs modeling for the reset logic
+			next_state = DL_INACTIVE;
+		end else 
+		if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
 			next_state = DL_INACTIVE;
 		end else if (received_type == INITFC2_P) begin
 			init2_p_f = 1;
@@ -230,7 +237,8 @@ class pcie_vip_state_machine extends uvm_component;
 			init2_cpl_f = 0;
 
 			fc_type = FC_POSTED;
-			check_conf_regs(fc_type);
+			check_conf_scale_reg(fc_type);
+			check_conf_credits_reg(fc_type);			
 
 			next_state = DL_INIT2;
 		end else if ((received_type == INITFC2_NP) && init2_p_f) begin
@@ -239,7 +247,8 @@ class pcie_vip_state_machine extends uvm_component;
 			init2_cpl_f = 0;
 
 			fc_type = FC_NON_POSTED;
-			check_conf_regs(fc_type);
+			check_conf_scale_reg(fc_type);
+			check_conf_credits_reg(fc_type);			
 
 			next_state = DL_INIT2;
 		end else if ((received_type == INITFC2_CPL) && init2_np_f) begin
@@ -248,7 +257,8 @@ class pcie_vip_state_machine extends uvm_component;
 			init2_cpl_f = 1;
 
 			fc_type = FC_COMPLETION;
-			check_conf_regs(fc_type);
+			check_conf_scale_reg(fc_type);
+			check_conf_credits_reg(fc_type);			
 
 			next_state = DL_ACTIVE;
 		end else begin
@@ -257,18 +267,71 @@ class pcie_vip_state_machine extends uvm_component;
 			init2_cpl_f = 0;
 			next_state = DL_INIT2;
 		end
+		FI2 = init2_cpl_f;	//Raise flag for initfc2
 	endfunction : init2_state
 
 	function void active_state ();
-		// if (/* reset */) begin 						//requirs modeling for the reset logic
-		// 	next_state = DL_INACTIVE;
-		// end else 
-		if (!seq_item_rx.pl_lnk_up) begin 	//comes from the LPIF
+		if (seq_item_rx.reset) begin 					//requirs modeling for the reset logic
 			next_state = DL_INACTIVE;
+		end else 
+		if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
+			next_state = DL_INACTIVE;
+		end else if (received_type == UPDATEFC_P) begin
+			update_p_f = 1;
+			update_np_f = 0;
+			update_cpl_f = 0;
+
+			fc_type = FC_POSTED;
+			// check_conf_scale_reg(fc_type);
+			save_conf_credits_reg(fc_type);
+
+			next_state = DL_ACTIVE;
+		end else if ((received_type == UPDATEFC_NP) && update_p_f) begin
+			update_p_f = 0;
+			update_np_f = 1;
+			update_cpl_f = 0;
+
+			fc_type = FC_NON_POSTED;
+			// check_conf_scale_reg(fc_type);
+			save_conf_credits_reg(fc_type);
+
+			next_state = DL_ACTIVE;
+		end else if ((received_type == UPDATEFC_CPL) && update_np_f) begin
+			update_p_f = 0;
+			update_np_f = 0;
+			update_cpl_f = 1;
+
+			fc_type = FC_COMPLETION;
+			// check_conf_scale_reg(fc_type);
+			save_conf_credits_reg(fc_type);
+
+			next_state = DL_ACTIVE;
+		end else begin
+			update_p_f = 0;
+			update_np_f = 0;
+			update_cpl_f = 0;
+			next_state = DL_ACTIVE;
+		end
+			
 		end
 	endfunction : active_state
 
-	function void reset_conf_regs();					//resets configuration regesters
+	function void reset_conf_regs();					//resets configuration regesters & Flags
+		
+		init1_p_f = 0;
+		init1_np_f = 0;
+		init1_cpl_f = 0;
+		FI1 = 0;
+
+		init2_p_f = 0;
+		init2_np_f = 0;
+		init2_cpl_f = 0;
+		FI2 = 0;
+
+		update_p_f = 0;
+		update_np_f = 0;
+		update_cpl_f = 0;
+
 		for (int i = 0; i < 3; i++) begin
 			cfg.fc_credits_register.hdr_scale[i] = 2'b00;
 			cfg.fc_credits_register.hdr_credits[i] = {8{1'b0}};
@@ -277,23 +340,33 @@ class pcie_vip_state_machine extends uvm_component;
 		end
 	endfunction : reset_conf_regs
 
-	function void save_conf_regs(fc_type_t fc_type);	//saving configuration registers
+	function void save_conf_scale_reg(fc_type_t fc_type);	//saving configuration registers
 		cfg.fc_credits_register.hdr_scale[fc_type] = seq_item_rx.dllp[39:38];
-		cfg.fc_credits_register.hdr_credits[fc_type] = seq_item_rx.dllp[37:30];
 		cfg.fc_credits_register.data_scale[fc_type] = seq_item_rx.dllp[29:28];
-		cfg.fc_credits_register.data_credits[fc_type] = seq_item_rx.dllp[27:16];
-	endfunction : save_conf_regs
+	endfunction : save_conf_scale_reg
 
-	function void check_conf_regs(fc_type_t fc_type);	//check on configuration registers
+	function void save_conf_credits_reg(fc_type_t fc_type);	//saving configuration registers
+		cfg.fc_credits_register.hdr_credits[fc_type] = seq_item_rx.dllp[37:30];
+		cfg.fc_credits_register.data_credits[fc_type] = seq_item_rx.dllp[27:16];
+	endfunction : save_conf_credits_reg
+
+	function void check_conf_scale_reg(fc_type_t fc_type);	//check on configuration registers
 		if(	(cfg.fc_credits_register.hdr_scale[fc_type]   != seq_item_rx.dllp[39:38]) ||
-			(cfg.fc_credits_register.hdr_credits[fc_type] != seq_item_rx.dllp[37:30]) ||
-			(cfg.fc_credits_register.data_scale[fc_type]  != seq_item_rx.dllp[29:28]) ||
-			(cfg.fc_credits_register.data_credits[fc_type]!= seq_item_rx.dllp[27:16])) begin
+			(cfg.fc_credits_register.data_scale[fc_type]  != seq_item_rx.dllp[29:28])) begin
 				
-				`uvm_error("FC_init2 doesn't match",
+				`uvm_error("FC_init2 or FC_update scale doesn't match",
        			 $sformatf("unmatche_type: %s",fc_type))
 			end
-	endfunction : check_conf_regs
+	endfunction : check_conf_scale_reg
+
+	function void check_conf_credits_reg(fc_type_t fc_type);	//check on configuration registers
+		if( (cfg.fc_credits_register.hdr_credits[fc_type] != seq_item_rx.dllp[37:30]) ||
+			(cfg.fc_credits_register.data_credits[fc_type]!= seq_item_rx.dllp[27:16])) begin
+				
+				`uvm_error("FC_init2 credits doesn't match",
+       			 $sformatf("unmatche_type: %s",fc_type))
+			end
+	endfunction : check_conf_credits_reg
 
 	function CRC_generation(input bit[PAYLOAD_WIDTH-1:0] dllp_before_crc,	//the default is {Byte 0, Byte 1, Byte 2, Byte 3}
 							output bit[CRC_WIDTH-1:0] crc				//each byte (7,6,5,4,3,2,1,0)
