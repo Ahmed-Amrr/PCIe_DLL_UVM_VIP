@@ -153,10 +153,10 @@ class pcie_vip_state_machine extends uvm_component;
 		end else 
 		if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
 			next_state = DL_INACTIVE;
-		end else if (!cfg.local_register_feature.feature_exchange_enable) begin
-			next_state = DL_INIT1;
-		end begin
+		end else if (cfg.local_register_feature.feature_exchange_enable & & cfg.feature_exchange_cap) begin
 			next_state = DL_FEATURE;
+		end begin
+			next_state = DL_INIT1;			
 		end
 	endfunction : inactive_state
 

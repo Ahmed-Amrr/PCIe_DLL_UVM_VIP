@@ -41,12 +41,12 @@
             // else 
             //     top_cfg.GL_error_inj = 0;
 
-            // if (seq_u == || seq_d == ) 
-            //     top_cfg.pl_data_off = 1;
-            // else 
-            //     top_cfg.pl_data_off = 0;
+            if (seq_u == "pcie_valid_off_seq" || seq_d == "pcie_valid_off_seq") 
+                top_cfg.pl_data_off = 1;
+            else 
+                top_cfg.pl_data_off = 0;
 
-            // Getting the upper and lower interfaces from eac environment cfg
+            // Getting the upper and lower interfaces from each environment cfg
             top_cfg.u_lpif_vif = u_cfg.lpif_vif;
             top_cfg.d_lpif_vif = d_cfg.lpif_vif;
 
@@ -54,12 +54,55 @@
 
         // Functions to configure each enviroment register based on the current sequence
         function void configure_vip_u (ref pcie_vip_config u_cfg, pcie_base_seq seq_u, pcie_base_seq seq_d);
-                    
+
+            if (seq_u == "pcie_feature_cap_off_seq") 
+                u_cfg.feature_exchange_cap = 0;
+            else if (seq_u == "pcie_feature_disabled_seq") begin
+                u_cfg.feature_exchange_cap = 1;
+                u_cfg.local_register_feature.feature_exchange_enable = 0;
+                u_cfg.local_register_feature.local_feature_supported = 1;
+                u_cfg.remote_register_feature.remote_feature_valid = 0;
+            end
+            else begin
+                u_cfg.feature_exchange_cap = 1;
+                u_cfg.local_register_feature.feature_exchange_enable = 1;
+                u_cfg.local_register_feature.local_feature_supported = 1;
+                u_cfg.remote_register_feature.remote_feature_valid = 0;
+            end
+
+
+            if (seq_u == "pcie_crc_err_seq") begin
+             set_type_override_by_type ( "top_env.u_vip.*", pcie_vip_driver::get_type(),
+                                        pcie_vip_err_driver::get_type());
+            end
+                       
         endfunction 
 
         function void configure_vip_d (ref pcie_vip_config d_cfg, pcie_base_seq seq_u, pcie_base_seq seq_d);
-                    
+              
+            if (seq_d == "pcie_feature_cap_off_seq") 
+                d_cfg.feature_exchange_cap = 0;
+            else if (seq_u == "pcie_feature_disabled_seq") begin
+                d_cfg.feature_exchange_cap = 1;
+                d_cfg.local_register_feature.feature_exchange_enable = 0;
+                d_cfg.local_register_feature.local_feature_supported = 1;
+                d_cfg.remote_register_feature.remote_feature_valid = 0;
+            end
+            else begin
+                d_cfg.feature_exchange_cap = 1;
+                d_cfg.local_register_feature.feature_exchange_enable = 1;
+                d_cfg.local_register_feature.local_feature_supported = 1;
+                d_cfg.remote_register_feature.remote_feature_valid = 0;
+            end
+
+
+
+              if (seq_d == "pcie_crc_err_seq") begin
+                 set_type_override_by_type ( "top_env.d_vip.*", pcie_vip_driver::get_type(),
+                                            pcie_vip_err_driver::get_type());
+             end      
         endfunction 
+
 
         function void build_phase(uvm_phase phase);
             super.build_phase(phase);

@@ -14,6 +14,8 @@
     extern virtual task start_from_INIT1(pcie_dllp_seq_item item);
     extern virtual task start_from_INIT2(pcie_dllp_seq_item item);
     extern virtual task start_from_ACTIVE(pcie_dllp_seq_item item);
+    extern virtual task send_feat_dllp (input dllp_type_t pkt_type);
+    extern virtual task send_fc_dllp(dllp_type_t pkt_type, fc_type_t fc_type);
 
     function new(string name = "pcie_base_seq");
         super.new(name);
@@ -61,7 +63,7 @@
 
       start_from_Feature(item); 
 
-      if (cfg.local_register_feature.feature_exchange_enable) begin
+      if (cfg.local_register_feature.feature_exchange_enable & cfg.feature_exchange_cap) begin
         while (p_sequencer.state == DL_FEATURE) begin
           item = pcie_dllp_seq_item::type_id::create("item");
           start_item(item);
@@ -176,5 +178,36 @@
       end 
 
   endtask : start_from_ACTIVE
+
+    // send_fc_dllp
+  task send_feat_dllp (input dllp_type_t pkt_type);
+      item = pcie_dllp_seq_item::type_id::create("item");
+      start_item(item);
+      item.dllp[47:40] = pkt_type; 
+      item.dllp[38:16] = cfg.local_register_feature.local_feature_supported;
+      // We mirror the remote valid bit back as our Ack
+      item.dllp[39]    = cfg.remote_register_feature.remote_feature_valid;
+      finish_item(item);
+  endtask : send_feat_dllp
+
+    // send_fc_dllp
+  task send_fc_dllp(dllp_type_t pkt_type, fc_type_t fc_type);
+      item = pcie_dllp_seq_item::type_id::create("item");
+
+      start_item(item);
+          item.dllp[47:40] = pkt_type;
+
+          // Scale fields
+          item.dllp[39:38] = cfg.fc_credits_register.hdr_scale  [fc_type];
+          item.dllp[29:28] = cfg.fc_credits_register.data_scale [fc_type];
+
+          // Credit fields
+          item.dllp[37:30] = cfg.fc_credits_register.hdr_credits [fc_type];
+          item.dllp[27:16] = cfg.fc_credits_register.data_credits[fc_type];
+      finish_item(item);
+  endtask
+
+
+
 
 `endif
