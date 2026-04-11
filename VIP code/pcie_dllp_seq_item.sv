@@ -15,10 +15,6 @@ class pcie_dllp_seq_item extends uvm_sequence_item;
 	logic reset;
 	logic rst_req;
 
-	logic surprise_down_capable;
-	logic link_not_disabled;
-	logic surprise_down_event;
-
 	// Constructor
 	function new(string name = "pcie_dllp_seq_item");
 		super.new(name);

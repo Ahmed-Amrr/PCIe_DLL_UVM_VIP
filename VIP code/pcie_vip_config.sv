@@ -19,7 +19,14 @@ class pcie_vip_config extends uvm_object;
                                                         //for "hdr_scale & data_scale" are for the scale
 
 
-     bit feature_exchange_cap;
+    bit feature_exchange_cap;
+
+    bit surprise_down_capable;
+    rand bit link_not_disabled;
+
+    constraint c {
+            link_not_disabled dist {0:=99, 1:=1};
+        }
 
      function new (string name ="pcie_vip_config");
       super.new(name);

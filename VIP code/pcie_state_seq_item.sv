@@ -8,7 +8,11 @@ class pcie_state_seq_item extends uvm_sequence_item;
 
 	logic DL_Up;
 	logic DL_Down;
-	logic surprise_down_event;
+	rand logic surprise_down_event;
+
+	constraint c {
+		surprise_down_event dist {0:=99, 1:=1};
+	}
 
 	// Constructor
 	function new(string name = "pcie_state_seq_item");

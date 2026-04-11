@@ -64,6 +64,12 @@
                     cfg.local_register_feature.feature_exchange_enable = 1;
             end
 
+            if (vip_mode == "surprise_down_capable_off") 
+                surprise_down_capable = 0;
+            else
+               surprise_down_capable = 1;
+           
+
             if (vip_mode == "P_infinite_credits") 
                 cfg.randomize() with { fc_credits_register.hdr_credits[FC_POSTED] == 0;
                                         fc_credits_register.data_credits[FC_POSTED] == 0; };
