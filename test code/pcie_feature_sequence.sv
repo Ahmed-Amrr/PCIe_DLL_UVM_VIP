@@ -12,7 +12,7 @@
       endfunction : new
 
       virtual task body();
-        int i;
+        int i = 0;
           `uvm_info(get_type_name(), "Starting Feature Exchange Sequence", UVM_LOW)
 
           start_from_Feature(item);
@@ -21,24 +21,13 @@
             i++;
             // Counter to count Timeout for each state in order not to stuck 
             if (i == 1000) begin
-              `uvm_error("Base Seq", "Timeout for the base seq in DL_FEATURE state")
+              `uvm_error(get_type_name(), "Timeout for the seq in DL_FEATURE state")
               break;
             end
           end
 
           `uvm_info(get_type_name(), "Feature Exchange Sequence Finished", UVM_LOW)
       endtask : body
-
-      // send_fc_dllp
-      task send_feat_dllp (input dllp_type_t pkt_type);
-          item = pcie_dllp_seq_item::type_id::create("item");
-          start_item(item);
-          item.dllp[47:40] = pkt_type; 
-          item.dllp[38:16] = cfg.local_register_feature.local_feature_supported;
-          // We mirror the remote valid bit back as our Ack
-          item.dllp[39]    = cfg.remote_register_feature.remote_feature_valid;
-          finish_item(item);
-      endtask : send_feat_dllp
 
   endclass : pcie_feature_sequence
 

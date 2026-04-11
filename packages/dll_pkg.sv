@@ -10,8 +10,6 @@ package dll_pkg;
     
     import uvm_pkg::*;
     `include "uvm_macros.svh"
-
-
  
     // Data Link Layer state machine states
     typedef enum { 

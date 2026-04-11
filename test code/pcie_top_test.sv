@@ -18,6 +18,10 @@
         pcie_base_seq seq_u;
         pcie_base_seq seq_d;
 
+        // getiing test type from the cmd line
+        string up_vip_mode;
+        string down_vip_mode;
+
         // Virtual sequence
         vseq_base vseq;
 
@@ -29,22 +33,15 @@
         endfunction : new
 
         // Function to configure the top cfg testcases based of the sequences
-        function void configure_top (ref pcie_top_cfg top_cfg, pcie_base_seq seq_u, pcie_base_seq seq_d, pcie_vip_config u_cfg, pcie_vip_config d_cfg);
-            if (seq_u.get_type_name() == "pcie_inactive_seq" || seq_d.get_type_name() == "pcie_inactive_seq") 
-                top_cfg.link_down_test = 1;
+        function void configure_top (ref pcie_top_cfg top_cfg, string up_vip_mode, string down_vip_mode, pcie_vip_config u_cfg, pcie_vip_config d_cfg);
+            
+            if (up_vip_mode == "link_down_test" || down_vip_mode == "link_down_test") 
+                top_cfg.randomize() with {link_down_test == 1;};
+
+            else if (up_vip_mode == "valid_off_test" || down_vip_mode == "valid_off_test") 
+                top_cfg.randomize() with {pl_valid_off == 1;};
             else
-                top_cfg.link_down_test = 0;
-
-
-            // if (seq_u == || seq_d == ) 
-            //     top_cfg.GL_error_inj = 1;
-            // else 
-            //     top_cfg.GL_error_inj = 0;
-
-            if (seq_u == "pcie_valid_off_seq" || seq_d == "pcie_valid_off_seq") 
-                top_cfg.pl_data_off = 1;
-            else 
-                top_cfg.pl_data_off = 0;
+                assret(top_cfg.randomize());
 
             // Getting the upper and lower interfaces from each environment cfg
             top_cfg.u_lpif_vif = u_cfg.lpif_vif;
@@ -53,54 +50,38 @@
         endfunction  
 
         // Functions to configure each enviroment register based on the current sequence
-        function void configure_vip_u (ref pcie_vip_config u_cfg, pcie_base_seq seq_u, pcie_base_seq seq_d);
+        function void configure_vip (ref pcie_vip_config cfg, string vip_mode);
 
-            if (seq_u == "pcie_feature_cap_off_seq") 
-                u_cfg.feature_exchange_cap = 0;
-            else if (seq_u == "pcie_feature_disabled_seq") begin
-                u_cfg.feature_exchange_cap = 1;
-                u_cfg.local_register_feature.feature_exchange_enable = 0;
-                u_cfg.local_register_feature.local_feature_supported = 1;
-                u_cfg.remote_register_feature.remote_feature_valid = 0;
-            end
+            if (vip_mode == "feature_cap_off") 
+                cfg.feature_exchange_cap = 0;
             else begin
-                u_cfg.feature_exchange_cap = 1;
-                u_cfg.local_register_feature.feature_exchange_enable = 1;
-                u_cfg.local_register_feature.local_feature_supported = 1;
-                u_cfg.remote_register_feature.remote_feature_valid = 0;
+                cfg.feature_exchange_cap = 1;
+                cfg.local_register_feature.local_feature_supported = 1;
+                cfg.remote_register_feature.remote_feature_valid = 0;
+                if (vip_mode == "feature_disabled") 
+                    cfg.local_register_feature.feature_exchange_enable = 0;
+                else 
+                    cfg.local_register_feature.feature_exchange_enable = 1;
             end
 
+            if (vip_mode == "P_infinite_credits") 
+                cfg.randomize() with { fc_credits_register.hdr_credits[FC_POSTED] == 0;
+                                        fc_credits_register.data_credits[FC_POSTED] == 0; };
+            
+            else if (vip_mode == "NP_infinite_credits") 
+                cfg.randomize() with { fc_credits_register.hdr_credits[FC_NON_POSTED] == 0;
+                                        fc_credits_register.data_credits[FC_NON_POSTED] == 0; };
+            
+            else if (vip_mode == "CPL_infinite_credits") 
+                cfg.randomize() with { fc_credits_register.hdr_credits[FC_COMPLETION] == 0;
+                                        fc_credits_register.data_credits[FC_COMPLETION] == 0; };
 
-            if (seq_u == "pcie_crc_err_seq") begin
-             set_type_override_by_type ( "top_env.u_vip.*", pcie_vip_driver::get_type(),
-                                        pcie_vip_err_driver::get_type());
-            end
+            else if (vip_mode == "scaledFC_not_supported") 
+                cfg.randomize() with { fc_credits_register.hdr_scale[FC_COMPLETION] == '{default:0};
+                                        fc_credits_register.data_scale[FC_COMPLETION] == '{default:0};};
+            else
+                assret(cfg.randomize());
                        
-        endfunction 
-
-        function void configure_vip_d (ref pcie_vip_config d_cfg, pcie_base_seq seq_u, pcie_base_seq seq_d);
-              
-            if (seq_d == "pcie_feature_cap_off_seq") 
-                d_cfg.feature_exchange_cap = 0;
-            else if (seq_u == "pcie_feature_disabled_seq") begin
-                d_cfg.feature_exchange_cap = 1;
-                d_cfg.local_register_feature.feature_exchange_enable = 0;
-                d_cfg.local_register_feature.local_feature_supported = 1;
-                d_cfg.remote_register_feature.remote_feature_valid = 0;
-            end
-            else begin
-                d_cfg.feature_exchange_cap = 1;
-                d_cfg.local_register_feature.feature_exchange_enable = 1;
-                d_cfg.local_register_feature.local_feature_supported = 1;
-                d_cfg.remote_register_feature.remote_feature_valid = 0;
-            end
-
-
-
-              if (seq_d == "pcie_crc_err_seq") begin
-                 set_type_override_by_type ( "top_env.d_vip.*", pcie_vip_driver::get_type(),
-                                            pcie_vip_err_driver::get_type());
-             end      
         endfunction 
 
 
@@ -113,6 +94,14 @@
 
             // Get command line processor
             clp = uvm_cmdline_processor::get_inst();
+
+            // Read test type from the cmd line
+            if (clp.get_arg_value("+U_VIP_MODE=", up_vip_mode)) begin
+                `uvm_info("TEST_CFG", $sformatf("Setting upper vip mode to: %s", up_vip_mode), UVM_LOW)
+            end
+            if (clp.get_arg_value("+D_VIP_MODE=", down_vip_mode)) begin
+                `uvm_info("TEST_CFG", $sformatf("Setting down vip mode to: %s", down_vip_mode), UVM_LOW)
+            end
 
             // Read sequence of the upper stream VIP
             if (clp.get_arg_value("+SEQ_U=", seq_name_u)) begin
@@ -140,10 +129,22 @@
             if (!(uvm_config_db#(virtual lpif_if)::get(this, "", "d_lpif", d_cfg.lpif_vif))) 
                 `uvm_fatal("build_phase", "unable to get lower vitual interface from top module");
 
+
+
             // Call configure functions 
-            configure_vip_u (u_cfg, seq_u, seq_d);
-            configure_vip_d (d_cfg, seq_u, seq_d);
-            configure_top (top_cfg, seq_u, seq_d, u_cfg, d_cfg);
+            configure_vip_u (u_cfg, up_vip_mode);
+            configure_vip_d (d_cfg, down_vip_mode);
+            configure_top (top_cfg, up_vip_mode, down_vip_mode, u_cfg, d_cfg);
+
+            if (up_vip_mode == "crc_err_inj") begin
+                set_type_override_by_type ( "top_env.u_vip.*", pcie_vip_driver::get_type(),
+                                        pcie_vip_err_driver::get_type());
+            end
+
+            if (up_vip_mode == "down_vip_mode") begin
+                set_type_override_by_type ( "top_env.d_vip.*", pcie_vip_driver::get_type(),
+                                        pcie_vip_err_driver::get_type());
+            end
 
             // Set the CFGs to the corresponding enviroments 
             uvm_config_db#(pcie_top_cfg)::set(this, "*", "top_cfg", top_cfg);

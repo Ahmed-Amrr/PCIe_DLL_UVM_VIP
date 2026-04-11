@@ -1,26 +1,26 @@
-class pcie_fc_init1_seq extends pcie_base_seq;
-    `uvm_object_utils(pcie_fc_init1_seq)
+class pcie_fc_init2_seq extends pcie_base_seq;
+    `uvm_object_utils(pcie_fc_init2_seq)
 
     pcie_dllp_seq_item item;
 
-    function new(string name = "pcie_fc_init1_seq");
+    function new(string name = "pcie_fc_init2_seq");
         super.new(name);
     endfunction
 
     virtual task body();
 
         // Move state machine up to INIT1
-        super.start_from_INIT1(item);
+        super.start_from_INIT2(item);
 
         int i = 0;
         // Drive INITFC1 triplets while SM stays in DL_INIT1
-       while (p_sequencer.state == DL_INIT1) begin
-            send_fc_dllp(INITFC1_P,   FC_POSTED);
-            send_fc_dllp(INITFC1_NP,  FC_NON_POSTED);
-            send_fc_dllp(INITFC1_CPL, FC_COMPLETION);
+       while (p_sequencer.state == DL_INIT2) begin
+            send_fc_dllp(INITFC2_P,   FC_POSTED);
+            send_fc_dllp(INITFC2_NP,  FC_NON_POSTED);
+            send_fc_dllp(INITFC2_CPL, FC_COMPLETION);
             // Counter to count Timeout for each state in order not to stuck 
             if (i == 1000) begin
-              `uvm_error(get_type_name(), "Timeout for the seq in DL_INIT1 state")
+              `uvm_error(get_type_name(), "Timeout for the seq in DL_INIT2 state")
               break;
             end
        end

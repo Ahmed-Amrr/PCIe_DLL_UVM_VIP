@@ -7,18 +7,6 @@ class pcie_dropped_fc_seq extends pcie_base_seq;
 
     virtual task body();
 
-        // Randomize credits — same values used in INIT2 1 & INIT2 phases
-        if (!super.randomize())
-            `uvm_fatal(get_type_name(), "Randomization of FC credits failed")
-
-        // Push randomized values into cfg 
-        for (int fc = 0; fc < 3; fc++) begin
-            cfg.fc_credits_register.hdr_scale   [fc] = hdr_scale   [fc];
-            cfg.fc_credits_register.data_scale  [fc] = data_scale  [fc];
-            cfg.fc_credits_register.hdr_credits [fc] = hdr_credits [fc];
-            cfg.fc_credits_register.data_credits[fc] = data_credits[fc];
-        end
-
         // Move state machine up to INIT1
         super.start_from_INIT1(item);
 

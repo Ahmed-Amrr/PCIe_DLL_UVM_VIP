@@ -32,11 +32,11 @@
                 `uvm_fatal("build_phase","Top env unable to get configuration object")
 
 
-            u_vip = pcie_top_env::type_id::create("u_vip",this);
-            d_vip = pcie_top_env::type_id::create("d_vip",this);
-            gl_agt = pcie_top_env::type_id::create("gl_agt",this);
-            shared_sb = pcie_top_env::type_id::create("shared_sb",this);
-            vsqr = pcie_top_env::type_id::create("vsqr",this); 
+            u_vip = pcie_vip_env::type_id::create("u_vip",this);
+            d_vip = pcie_vip_env::type_id::create("d_vip",this);
+            gl_agt = glue_logic_agent::type_id::create("gl_agt",this);
+            shared_sb = pcie_shared_scoreboard::type_id::create("shared_sb",this);
+            vsqr = v_sequencer::type_id::create("vsqr",this); 
 
         endfunction : build_phase
 
