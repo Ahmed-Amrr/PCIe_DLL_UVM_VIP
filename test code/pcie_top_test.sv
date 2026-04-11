@@ -25,6 +25,7 @@
         // Virtual sequence
         vseq_base vseq;
 
+        // top environment 
         pcie_top_env top_env;
 
         // Constructor
@@ -35,9 +36,11 @@
         // Function to configure the top cfg testcases based of the sequences
         function void configure_top (ref pcie_top_cfg top_cfg, string up_vip_mode, string down_vip_mode, pcie_vip_config u_cfg, pcie_vip_config d_cfg);
             
+            // Control nop for the link_up signal
             if (up_vip_mode == "link_down_test" || down_vip_mode == "link_down_test") 
                 top_cfg.randomize() with {link_down_test == 1;};
 
+            // Control nop for the valid signal in interface
             else if (up_vip_mode == "valid_off_test" || down_vip_mode == "valid_off_test") 
                 top_cfg.randomize() with {pl_valid_off == 1;};
             else
@@ -52,6 +55,7 @@
         // Functions to configure each enviroment register based on the current sequence
         function void configure_vip (ref pcie_vip_config cfg, string vip_mode);
 
+            // Control nops to initialize the feature registers
             if (vip_mode == "feature_cap_off") 
                 cfg.feature_exchange_cap = 0;
             else begin
@@ -64,12 +68,13 @@
                     cfg.local_register_feature.feature_exchange_enable = 1;
             end
 
+            // Control nop for surprise_down_capability
             if (vip_mode == "surprise_down_capable_off") 
                 surprise_down_capable = 0;
             else
                surprise_down_capable = 1;
-           
 
+           // Control nops for the control credits and scale
             if (vip_mode == "P_infinite_credits") 
                 cfg.randomize() with { fc_credits_register.hdr_credits[FC_POSTED] == 0;
                                         fc_credits_register.data_credits[FC_POSTED] == 0; };
@@ -125,6 +130,7 @@
                 seq_d = pcie_base_seq::type_id::create("seq_d");
             end
       
+            // Create configuration objects
             top_cfg = pcie_top_cfg::type_id::create("top_cfg");  
             u_cfg = pcie_vip_config::type_id::create("u_cfg");
             d_cfg = pcie_vip_config::type_id::create("d_cfg");  
@@ -142,6 +148,8 @@
             configure_vip_d (d_cfg, down_vip_mode);
             configure_top (top_cfg, up_vip_mode, down_vip_mode, u_cfg, d_cfg);
 
+
+            // Use an CRC error injection driver in this mode
             if (up_vip_mode == "crc_err_inj") begin
                 set_type_override_by_type ( "top_env.u_vip.*", pcie_vip_driver::get_type(),
                                         pcie_vip_err_driver::get_type());
@@ -159,11 +167,6 @@
 
         endfunction : build_phase
 
-        function void connect_phase(uvm_phase phase);
-            super.connect_phase(phase);
-
-
-        endfunction : connect_phase
 
         task run_phase(uvm_phase phase);
             super.run_phase(phase);
