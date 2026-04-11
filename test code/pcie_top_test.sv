@@ -68,11 +68,13 @@
                     cfg.local_register_feature.feature_exchange_enable = 1;
             end
 
+
             // Control nop for surprise_down_capability
             if (vip_mode == "surprise_down_capable_off") 
                 surprise_down_capable = 0;
             else
-               surprise_down_capable = 1;
+                surprise_down_capable = 1;
+
 
            // Control nops for the control credits and scale
             if (vip_mode == "P_infinite_credits") 
@@ -97,11 +99,7 @@
 
 
         function void build_phase(uvm_phase phase);
-            super.build_phase(phase);
-
-            top_env = pcie_top_env::type_id::create("top_env",this); 
-            vseq = vseq_base::type_id::create("vseq"); 
-
+            super.build_phase(phase); 
 
             // Get command line processor
             clp = uvm_cmdline_processor::get_inst();
@@ -115,21 +113,29 @@
             end
 
             // Read sequence of the upper stream VIP
+            // 1. Setup Upstream
             if (clp.get_arg_value("+SEQ_U=", seq_name_u)) begin
-                uvm_factory::get().set_type_override_by_name(
-                  "pcie_base_seq", seq_name_u);
-
-                seq_u = pcie_base_seq::type_id::create("seq_u");
+                // Override ONLY for the instance named "seq_u"
+                uvm_factory::get().set_inst_override_by_name(
+                    "pcie_base_seq", seq_name_u, "uvm_test_top.seq_u" 
+                );
             end
 
-            // Read sequence of the Down stream VIP
+            // 2. Setup Downstream
             if (clp.get_arg_value("+SEQ_D=", seq_name_d)) begin
-                uvm_factory::get().set_type_override_by_name(
-                  "pcie_base_seq", seq_name_d);
-
-                seq_d = pcie_base_seq::type_id::create("seq_d");
+                // Override ONLY for the instance named "seq_d"
+                uvm_factory::get().set_inst_override_by_name(
+                    "pcie_base_seq", seq_name_d, "uvm_test_top.seq_d"
+                );
             end
-      
+
+            top_env = pcie_top_env::type_id::create("top_env",this); 
+            vseq = vseq_base::type_id::create("vseq");
+
+            // Create sequences - The factory chooses based on the name argument
+            seq_u = pcie_base_seq::type_id::create("seq_u"); // Becomes SEQ_U type
+            seq_d = pcie_base_seq::type_id::create("seq_d"); // Becomes SEQ_D type
+
             // Create configuration objects
             top_cfg = pcie_top_cfg::type_id::create("top_cfg");  
             u_cfg = pcie_vip_config::type_id::create("u_cfg");
@@ -155,7 +161,7 @@
                                         pcie_vip_err_driver::get_type());
             end
 
-            if (up_vip_mode == "down_vip_mode") begin
+            if (down_vip_mode == "crc_err_inj") begin
                 set_type_override_by_type ( "top_env.d_vip.*", pcie_vip_driver::get_type(),
                                         pcie_vip_err_driver::get_type());
             end
