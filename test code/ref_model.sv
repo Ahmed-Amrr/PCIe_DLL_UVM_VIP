@@ -11,6 +11,8 @@ class dll_ref_model #(
     parameter int PAYLOAD_IN_BYTES = PAYLOAD_WIDTH / BYTE
 );
 
+    pcie_vip_config cfg;
+
     bit [CRC_WIDTH-1:0] generator_polynomial;
     bit [CRC_WIDTH-1:0] initial_seed        ;
 
@@ -19,13 +21,13 @@ class dll_ref_model #(
     bit          FI1, FI2;
     bit          fi1_p, fi1_np, fi1_cpl;   // per-type trackers for FI1
     bit          scaled_fc_active;
-    bit dl_feat_extended_capability;
+    // ......bit dl_feat_extended_capability;
     fc_credits_t local_fc ;           // credits advertised by this VIP
     fc_credits_t remote_fc;           // credits received from peer
     bit hdr_infinite [3];   // infinite credits from initialization
     bit data_infinite[3];
-    dl_feature_cap_reg_t feature_cap_reg;
-    dl_feature_status_reg_t  feature_status_reg;
+   //..... dl_feature_cap_reg_t feature_cap_reg;
+   //..... dl_feature_status_reg_t  feature_status_reg;
     
     bit [1:0] local_hdr_scale;    // scaling factor for header credits
     bit [1:0] local_data_scale;   // scaling factor for data credits
@@ -44,14 +46,15 @@ class dll_ref_model #(
         this.local_data_scale = 2'b01; 
         this.initfc1_tx_count = 0;
         this.initfc2_tx_count = 0;
+        this.cfg              = null;  //  set by scoreboard 
     endfunction : new
 
     function void rx_path;
         input  bit [DLLP_WIDTH-1:0] _rx_item  ;
         input  bit                  _pl_lnk_up;
         input  bit                  _dl_reset ;
-        input  bit                 _link_not_disabled                    ; 
-        input  bit                 _surprise_down_Error_Reporting_capable;
+       // input  bit                 _link_not_disabled                    ; 
+       // input  bit                 _surprise_down_Error_Reporting_capable;
         output bit                 _DL_Down            ;
         output bit                 _DL_Up              ;
         output bit                 _surprise_down_event;
@@ -63,6 +66,11 @@ class dll_ref_model #(
         logic      is_legal      ;
         dl_state_t next_state    ;
         logic      state_changed ;
+        //now
+        if (cfg == null) begin
+            `uvm_fatal("DLL_RM", "[rx_path] cfg handle is null — set ref_model.cfg before calling rx_path")
+            return;
+        end
 
         dllp_type = get_dllp_type(._rx_item(_rx_item));
         vc_num    = get_vc_num(._rx_item(_rx_item));
@@ -76,8 +84,11 @@ class dll_ref_model #(
                 process_rx_dllp(._dllp_type(dllp_type), ._dllp(_rx_item));
                 update_sm_on_rx(._dllp_type(dllp_type), ._dllp(_rx_item), ._current_state(this.current_state),
                                 .pl_lnk_up(_pl_lnk_up), .dl_reset(_dl_reset), .FI1(this.FI1), .FI2(this.FI2), 
-                                .surprise_down_Error_Reporting_capable(_surprise_down_Error_Reporting_capable),
-                                .link_not_disabled(_link_not_disabled), .next_state(next_state), .state_changed(state_changed),
+                                // NOW read from cfg instead of function input:
+                                .surprise_down_Error_Reporting_capable(cfg.surprise_down_capable),
+                                .link_not_disabled(cfg.link_not_disabled),
+                                .next_state(next_state),
+                                .state_changed(state_changed),
                                 .surprise_down_event(_surprise_down_event));
                 this.current_state = next_state;
                 get_dl_status(._state(this.current_state), ._DL_Down(_DL_Down), ._DL_Up(_DL_Up));
@@ -213,9 +224,10 @@ class dll_ref_model #(
             end
             DL_FEATURE : begin 
                 if (this.current_state == DL_FEATURE ) begin
-                    if (feature_status_reg.remote_feature_valid == 1'b0) begin
-                    record_Feature_Supported_field(_dllp);
-                    feature_status_reg.remote_feature_valid = 1'b1;
+                     // now cfg.remote_register_feature
+                    if (cfg.remote_register_feature.remote_feature_valid == 1'b0) begin
+                        record_Feature_Supported_field(_dllp);
+                        cfg.remote_register_feature.remote_feature_valid = 1'b1;
                     end else activate_dl_feature;
                 end
             end
@@ -239,13 +251,16 @@ class dll_ref_model #(
 
     function void record_Feature_Supported_field;
         input bit [DLLP_WIDTH-1:0] _dllp;
-        feature_status_reg.remote_feature_supported = _dllp[38:16]; 
+        // now cfg.remote_register_feature
+        cfg.remote_register_feature.remote_feature_supported = _dllp[38:16]; 
     endfunction
 
     // Activate Data Link feature negotiated through the DL_FEATURE DLLP
     // Enable Scaled Flow Control (bit 0) only if it is supported by both the local port and the remote port
     function void activate_dl_feature;
-        scaled_fc_active = feature_status_reg.remote_feature_supported[0] & feature_cap_reg.local_feature_supported[0];
+        // now cfg fields
+        scaled_fc_active = cfg.remote_register_feature.remote_feature_supported[0]
+                         & cfg.local_register_feature.local_feature_supported[0];
     endfunction
   
     function void record_fc_values;
@@ -324,9 +339,10 @@ class dll_ref_model #(
     end
     // Scaled flow control rule : HdrScale and DataScale fields in the UpdateFCs must match initialized values
     if (scaled_fc_active) begin
-        if (remote_fc.hdr_scale[fc] != _dllp[39:38] || remote_fc.data_scale[fc] != _dllp[29:28])
-             `uvm_error("DLL_RM", "FCPE: Scale mismatch in UpdateFC")
-              fcpe_detected = 1;
+        if (remote_fc.hdr_scale[fc] != _dllp[39:38] || remote_fc.data_scale[fc] != _dllp[29:28]) begin
+            `uvm_error("DLL_RM", "FCPE: Scale mismatch in UpdateFC")
+              fcpe_detected = 1; 
+        end
 
     end
     return fcpe_detected;
@@ -389,6 +405,7 @@ class dll_ref_model #(
         input bit                    dl_reset;
         //Flags
         input  bit                   FI1, FI2  ;
+        //it receives them from rx_path which reads cfg.
         input  bit                   surprise_down_Error_Reporting_capable; 
         input  bit                   link_not_disabled; 
         //OUTPUT
@@ -405,10 +422,11 @@ class dll_ref_model #(
             next_state = DL_INACTIVE;
             if (_current_state != DL_INACTIVE) begin
                 state_changed = 1'b1;
-                if (feature_cap_reg.feature_exchange_enable) begin
-                        feature_status_reg.remote_feature_supported = '0;
-                        feature_status_reg.remote_feature_valid     = 1'b0;
-                        `uvm_info("DLL_RM", "[update_sm_on_rx] reset: feature regs cleared", UVM_MEDIUM) 
+                // now cfg fields
+                if (cfg.local_register_feature.feature_exchange_enable) begin
+                    cfg.remote_register_feature.remote_feature_supported = '0;
+                    cfg.remote_register_feature.remote_feature_valid     = 1'b0;
+                    `uvm_info("DLL_RM", "[update_sm_on_rx] reset: feature regs cleared", UVM_MEDIUM) 
                 end
             end
             else
@@ -426,9 +444,10 @@ class dll_ref_model #(
                 end
                 next_state    = DL_INACTIVE;
                 state_changed = 1'b1;
-                if (feature_cap_reg.feature_exchange_enable) begin
-                        feature_status_reg.remote_feature_supported = '0;
-                        feature_status_reg.remote_feature_valid     = 1'b0;
+                // now cfg fields
+                if (cfg.local_register_feature.feature_exchange_enable) begin
+                    cfg.remote_register_feature.remote_feature_supported = '0;
+                    cfg.remote_register_feature.remote_feature_valid     = 1'b0;
                         `uvm_info("DLL_RM", "[update_sm_on_rx] reset: feature regs cleared", UVM_MEDIUM) 
                 end
             end
@@ -444,14 +463,13 @@ class dll_ref_model #(
                 //   OR feature exchange enable bit is Clear,
                 //   link not disabled, PhysicalLinkUp=1
 
-                if (link_not_disabled) begin
-
-                    if (dl_feat_extended_capability && feature_cap_reg.feature_exchange_enable) begin
+               if (link_not_disabled) begin
+                    //  now cfg.feature_exchange_cap / cfg.local_register_feature
+                    if (cfg.feature_exchange_cap && cfg.local_register_feature.feature_exchange_enable) begin
                         next_state = DL_FEATURE;
-                        // clear on entry to DL_FEATURE
-                        feature_status_reg.remote_feature_supported = '0;
-                        feature_status_reg.remote_feature_valid     = 1'b0;
-                    end 
+                        cfg.remote_register_feature.remote_feature_supported = '0;
+                        cfg.remote_register_feature.remote_feature_valid     = 1'b0;
+                    end
                     else begin
                         next_state = DL_INIT1;
                     end
@@ -545,11 +563,12 @@ class dll_ref_model #(
             // DL_FEATURE : transmit DL_FEATURE DLLP
             DL_FEATURE: begin
                 expected_type = FEATURE;
-                `uvm_info("DLL_RM",
-                $sformatf("[predict_expected_tx_response] TX DL_FEATURE: supported=0x%0h ack=%0b",
-                    feature_cap_reg.local_feature_supported,
-                    feature_status_reg.remote_feature_valid),
-                UVM_MEDIUM)
+                  `uvm_info("DLL_RM",
+                    //  now cfg fields
+                    $sformatf("[predict_expected_tx_response] TX DL_FEATURE: supported=0x%0h ack=%0b",
+                        cfg.local_register_feature.local_feature_supported,
+                        cfg.remote_register_feature.remote_feature_valid),
+                    UVM_MEDIUM)
             end
         
             // DL_INIT1 : send InitFC1 sequence
