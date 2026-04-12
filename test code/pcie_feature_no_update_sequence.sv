@@ -30,7 +30,7 @@ class pcie_feature_no_update_sequence extends pcie_base_seq;
         while (p_sequencer.state == DL_FEATURE) begin
         // DLLP 1: correct value from local register
         // Remote captures this and sets Valid=1
-            send_feat_dllp(FEATURE);
+            send_feat_dllp(FEATURE, item);
         // DLLP 2: different value — remote must NOT update its field
             item = pcie_dllp_seq_item::type_id::create("item");
             start_item(item);

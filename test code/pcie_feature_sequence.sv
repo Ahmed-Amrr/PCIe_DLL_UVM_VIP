@@ -17,7 +17,7 @@
 
           start_from_Feature(item);
           while (p_sequencer.state == DL_FEATURE) begin
-            send_feat_dllp(FEATURE);
+            send_feat_dllp(FEATURE, item);
             i++;
             // Counter to count Timeout for each state in order not to stuck 
             if (i == 1000) begin

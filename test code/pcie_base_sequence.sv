@@ -7,6 +7,7 @@
     `uvm_declare_p_sequencer(pcie_vip_tx_sequencer)
 
     pcie_vip_config cfg;
+    pcie_dllp_seq_item item;
 
     // Tasks to walk through the states
     extern virtual task start_from_INACTIVE(pcie_dllp_seq_item item);
@@ -14,8 +15,8 @@
     extern virtual task start_from_INIT1(pcie_dllp_seq_item item);
     extern virtual task start_from_INIT2(pcie_dllp_seq_item item);
     extern virtual task start_from_ACTIVE(pcie_dllp_seq_item item);
-    extern virtual task send_feat_dllp (input dllp_type_t pkt_type);
-    extern virtual task send_fc_dllp(dllp_type_t pkt_type, fc_type_t fc_type);
+    extern virtual task send_feat_dllp (input dllp_type_t pkt_type, pcie_dllp_seq_item item);
+    extern virtual task send_fc_dllp(dllp_type_t pkt_type, fc_type_t fc_type, pcie_dllp_seq_item item);
 
     function new(string name = "pcie_base_seq");
         super.new(name);
@@ -180,7 +181,7 @@
   endtask : start_from_ACTIVE
 
     // send_fc_dllp
-  task send_feat_dllp (input dllp_type_t pkt_type);
+  task send_feat_dllp (input dllp_type_t pkt_type, pcie_dllp_seq_item item);
       item = pcie_dllp_seq_item::type_id::create("item");
       start_item(item);
       item.dllp[47:40] = pkt_type; 
@@ -191,7 +192,7 @@
   endtask : send_feat_dllp
 
     // send_fc_dllp
-  task send_fc_dllp(dllp_type_t pkt_type, fc_type_t fc_type);
+  task send_fc_dllp(dllp_type_t pkt_type, fc_type_t fc_type, pcie_dllp_seq_item item);
       item = pcie_dllp_seq_item::type_id::create("item");
 
       start_item(item);

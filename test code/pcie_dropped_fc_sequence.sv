@@ -11,25 +11,25 @@ class pcie_dropped_fc_seq extends pcie_base_seq;
         super.start_from_INIT1(item);
 
         repeat (1000) begin
-            send_fc_dllp(INITFC1_P,   FC_POSTED);
-            send_fc_dllp(INITFC1_CPL, FC_COMPLETION);
+            send_fc_dllp(INITFC1_P,   FC_POSTED, item);
+            send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
         end
         repeat (1000) begin
-            send_fc_dllp(INITFC1_P,   FC_POSTED);
-            send_fc_dllp(INITFC1_NP,  FC_NON_POSTED);
+            send_fc_dllp(INITFC1_P,   FC_POSTED, item);
+            send_fc_dllp(INITFC1_NP,  FC_NON_POSTED, item);
         end
         repeat (1000) begin
-            send_fc_dllp(INITFC1_NP,  FC_NON_POSTED);
-            send_fc_dllp(INITFC1_CPL, FC_COMPLETION);
+            send_fc_dllp(INITFC1_NP,  FC_NON_POSTED, item);
+            send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
         end
         repeat (1000) begin
-            send_fc_dllp(INITFC1_P,   FC_POSTED);
+            send_fc_dllp(INITFC1_P,   FC_POSTED, item);
         end
         repeat (1000) begin
-            send_fc_dllp(INITFC1_NP,   FC_NON_POSTED);
+            send_fc_dllp(INITFC1_NP,   FC_NON_POSTED, item);
         end
         repeat (1000) begin
-            send_fc_dllp(INITFC1_CPL, FC_COMPLETION);
+            send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
         end
 
         `uvm_info(get_type_name(), "Full FC initialization complete", UVM_LOW)
