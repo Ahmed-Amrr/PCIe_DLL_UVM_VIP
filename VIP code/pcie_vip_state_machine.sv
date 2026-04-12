@@ -20,7 +20,6 @@ class pcie_vip_state_machine extends uvm_component;
 	uvm_analysis_port #(pcie_state_seq_item) sm_ap; //sending data to the shared scoreboard and local scoreboard and sequencer
 	pcie_state_seq_item state_seq_item;
 
-
 	uvm_analysis_export #(pcie_dllp_seq_item) sm_export_tx;		//getting the data from tx monitor
 	uvm_tlm_analysis_fifo #(pcie_dllp_seq_item) sm_fifo_tx;
 
@@ -100,7 +99,7 @@ class pcie_vip_state_machine extends uvm_component;
 			received_crc = seq_item_rx.dllp[CRC_WIDTH-1:0];
 			get_type_sm(.received_rx(seq_item_rx.dllp), .type_rx(received_type));	//get type
 
-			CRC_generation(received_dllp_payload,crc_expected);						//calculate the expected crc
+			CRC_generation(.dllp_before_crc(received_dllp_payload), .crc(crc_expected));	//calculate the expected crc
 
 			if (received_crc == crc_expected) begin 								//check on crc before state transition
 				state_transition();
@@ -373,9 +372,9 @@ class pcie_vip_state_machine extends uvm_component;
 			end
 	endfunction : check_conf_credits_reg
 
-	function void CRC_generation(input bit[PAYLOAD_WIDTH-1:0] dllp_before_crc,	//the default is {Byte 0, Byte 1, Byte 2, Byte 3}
-							output bit[CRC_WIDTH-1:0] crc				//each byte (7,6,5,4,3,2,1,0)
-	);
+	function void CRC_generation();
+		input bit[PAYLOAD_WIDTH-1:0] dllp_before_crc;	//the default is {Byte 0, Byte 1, Byte 2, Byte 3}
+		output bit[CRC_WIDTH-1:0] crc;				//each byte (7,6,5,4,3,2,1,0)
 
 		bit [CRC_WIDTH-1:0]		crc_calc = 16'hFFFF;		//initial value
 		bit	[PAYLOAD_WIDTH-1:0] dllp_before_crc_rearanged;	//rearrange each byte to be (0,1,2,3,4,5,6,7)

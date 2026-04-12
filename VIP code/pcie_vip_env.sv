@@ -54,6 +54,7 @@ class pcie_vip_env extends  uvm_env;
 		rx_agent.rx_agent_ap.connect(coverage.cov_export_rx);	
 		rx_agent.rx_agent_ap.connect(scoreboard.rx_mon_export);	
 		rx_agent.rx_agent_ap.connect(state_machine.sm_export_rx);
+		state_machine.sm_ap.connect(coverage.cov_export_sm);
 		state_machine.sm_ap.connect(scoreboard.sm_mon_export);
 		state_machine.sm_ap.connect(tx_agent.sqr.sqr_export);
 
@@ -62,8 +63,6 @@ class pcie_vip_env extends  uvm_env;
 		tx_agent.tx_mon.lpif_vif=cfg.lpif_vif;
 		rx_agent.rx_mon.lpif_vif=cfg.lpif_vif;
 
-		//connecting configurations
-		cfg = state_machine.cfg;		//******************************
 	endfunction : connect_phase
 
 endclass : pcie_vip_env
