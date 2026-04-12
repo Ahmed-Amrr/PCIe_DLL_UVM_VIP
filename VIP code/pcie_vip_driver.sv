@@ -22,7 +22,7 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
     //count for the 34us period and check for the crc
     virtual task run_phase(uvm_phase phase);
         super.run_phase(phase);
-        seq_item_drv = pcie_dllp_seq_item::type_id::create("seq_item_drv", this);
+        seq_item_drv = pcie_dllp_seq_item::type_id::create("seq_item_drv");
         forever begin
             seq_item_port.get_next_item(seq_item_drv);
             CRC_generation(seq_item_drv.dllp[47:16], seq_item_drv.dllp[15:0]);

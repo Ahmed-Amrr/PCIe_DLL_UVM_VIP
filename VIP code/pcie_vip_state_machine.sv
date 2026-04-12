@@ -93,6 +93,7 @@ class pcie_vip_state_machine extends uvm_component;
 	task run_phase(uvm_phase phase);
 		super.run_phase(phase);
 		forever begin
+			state_seq_item = pcie_state_seq_item::type_id::create("state_seq_item");
 			// sm_fifo_tx.get(seq_item_tx);
 			sm_fifo_rx.get(seq_item_rx);
 			received_dllp_payload = seq_item_rx.dllp[DLLP_WIDTH-1:CRC_WIDTH];
@@ -103,6 +104,7 @@ class pcie_vip_state_machine extends uvm_component;
 
 			if (received_crc == crc_expected) begin 								//check on crc before state transition
 				state_transition();
+				state_seq_item.vip_state = current_state;
 			end
 		end
 	endtask : run_phase
@@ -153,7 +155,7 @@ class pcie_vip_state_machine extends uvm_component;
 		end else 
 		if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
 			next_state = DL_INACTIVE;
-		end else if (cfg.local_register_feature.feature_exchange_enable & & cfg.feature_exchange_cap) begin
+		end else if (cfg.local_register_feature.feature_exchange_enable && cfg.feature_exchange_cap) begin
 			next_state = DL_FEATURE;
 		end begin
 			next_state = DL_INIT1;			
@@ -178,6 +180,8 @@ class pcie_vip_state_machine extends uvm_component;
 			cfg.remote_register_feature.remote_feature_valid = 1;
 			cfg.remote_register_feature.remote_feature_supported = seq_item_rx.dllp[38:16];
 		end
+		state_seq_item.scaled_fc_active =  cfg.remote_register_feature.remote_feature_supported[0]
+                         				& cfg.local_register_feature.local_feature_supported[0];
 	endfunction : feature_state
 
 	function void init1_state ();
@@ -275,6 +279,9 @@ class pcie_vip_state_machine extends uvm_component;
 			next_state = DL_INACTIVE;
 		end else 
 		if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
+			if (cfg.surprise_down_capable) begin
+				state_seq_item.surprise_down_event = 1;
+			end
 			next_state = DL_INACTIVE;
 		end else if (received_type == UPDATEFC_P) begin
 			update_p_f = 1;
