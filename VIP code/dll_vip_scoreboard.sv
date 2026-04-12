@@ -29,6 +29,8 @@ class dll_vip_scoreboard extends uvm_scoreboard;
     // Reference Model Instance
     dll_ref_model ref_model;
 
+
+
     // Counters
     int error_count   = 0;
     int correct_count = 0;
@@ -41,10 +43,16 @@ class dll_vip_scoreboard extends uvm_scoreboard;
     
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
+        //
+        // now get cfg — same way state machine and sequencer get it 
+         if(!uvm_config_db #(pcie_vip_config)::get(this, "", "CFG_ENV", cfg))
+             `uvm_fatal("build_phase", "unable to get configuration object in scoreboard")
         rx_mon_export = new("rx_mon_export", this);
         tx_mon_export = new("tx_mon_export", this);
         sm_mon_export = new("sm_mon_export", this);
         ref_model = new();
+         //now
+        ref_model.cfg = cfg; 
     endfunction : build_phase
 
     // Function : write_rx_mon
@@ -69,14 +77,15 @@ class dll_vip_scoreboard extends uvm_scoreboard;
         // Model processes received DLLP and predicts:
         // 1. Expected state + DL_Up/Down for THIS cycle
         // 2. Expected tx response for NEXT cycle
+       
+
+        // now 
         ref_model.rx_path(
-            ._rx_item       (cloned_rx.dllp),
-            ._pl_lnk_up     (cloned_rx.pl_lnk_up),
-            ._dl_reset      (cloned_rx.reset),
-            ._link_not_disabled(cloned_rx.link_not_disabled),
-            ._surprise_down_Error_Reporting_capable(cloned_rx.surprise_down_capable),
-            ._DL_Down       (predicted_sm.DL_Down),
-            ._DL_Up         (predicted_sm.DL_Up),
+            ._rx_item(cloned_rx.dllp),
+            ._pl_lnk_up(cloned_rx.pl_lnk_up),
+            ._dl_reset(cloned_rx.reset),
+            ._DL_Down(predicted_sm.DL_Down),
+            ._DL_Up(predicted_sm.DL_Up),
             ._surprise_down_event(predicted_sm.surprise_down_event)
         );
         // get predicted state from model
