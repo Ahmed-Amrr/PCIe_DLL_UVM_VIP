@@ -10,6 +10,8 @@ package dll_pkg;
     
     import uvm_pkg::*;
     `include "uvm_macros.svh"
+
+
  
     // Data Link Layer state machine states
     typedef enum { 
@@ -86,9 +88,13 @@ package dll_pkg;
     // =======================
     `include "pcie_base_sequence.sv"
     `include "pcie_init_sequence.sv"
+    `include "pcie_fc_init2_sequence.sv"
     `include "pcie_active_sequence.sv"
     `include "pcie_inactive_sequence.sv"
     `include "pcie_feature_sequence.sv"
+    `include "pcie_feature_no_update_sequence.sv"
+    `include "pcie_feature_reserved_seq.sv"
+    `include "pcie_wrong_dllp_type_seq.sv"
     `include "pcie_dropped_fc_sequence.sv"
     `include "pcie_incorrect_dllp_type_sequence.sv"
     `include "virtual_sequence.sv"

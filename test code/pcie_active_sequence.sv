@@ -16,6 +16,7 @@ class pcie_active_seq extends pcie_base_seq;
     endfunction
 
     virtual task body();
+        int i = 0;
         super.start_from_ACTIVE(item);
 
         // Capture INIT behavior
@@ -24,7 +25,7 @@ class pcie_active_seq extends pcie_base_seq;
             data_infinite_init[i] = (cfg.fc_credits_register.data_credits[i] == 0);
          end   
 
-        int i = 0;
+        
         while (p_sequencer.state == DL_ACTIVE) begin
 
             // Randomize new credit values for this UpdateFC round

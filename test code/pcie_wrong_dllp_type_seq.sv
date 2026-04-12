@@ -6,7 +6,7 @@
 
       pcie_dllp_seq_item item;
 
-      dllp_type_t type;
+      dllp_type_t dllp_type;
      
       function new(string name = "pcie_wrong_dllp_type_seq");
           super.new(name);
@@ -19,16 +19,16 @@
           super.start_from_INIT2(item);
 
           for (int i = 0; i < 100; i++) begin
-            send_fc_dllp(INITFC1_P,   FC_POSTED);
-            send_fc_dllp(INITFC1_NP,  FC_NON_POSTED);
-            send_fc_dllp(INITFC1_CPL, FC_COMPLETION);
+            send_fc_dllp(INITFC1_P,   FC_POSTED, item);
+            send_fc_dllp(INITFC1_NP,  FC_NON_POSTED, item);
+            send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
           end
 
           super.start_from_Feature(item);
 
           while (p_sequencer.state == DL_FEATURE) begin
-            type = $random();
-            send_feat_dllp(type);
+            dllp_type = $random();
+            send_feat_dllp(dllp_type, item);
             i++;
             // Counter to count Timeout for each state in order not to stuck 
             if (i == 100) begin

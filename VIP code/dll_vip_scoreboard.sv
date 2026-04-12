@@ -28,6 +28,7 @@ class dll_vip_scoreboard extends uvm_scoreboard;
 
     // Reference Model Instance
     dll_ref_model ref_model;
+    pcie_vip_config cfg;
 
 
 

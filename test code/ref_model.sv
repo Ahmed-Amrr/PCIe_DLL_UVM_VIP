@@ -26,8 +26,8 @@ class dll_ref_model #(
     fc_credits_t remote_fc;           // credits received from peer
     bit hdr_infinite [3];   // infinite credits from initialization
     bit data_infinite[3];
-    dl_feature_cap_reg_t feature_cap_reg;
-    dl_feature_status_reg_t  feature_status_reg;
+   //..... dl_feature_cap_reg_t feature_cap_reg;
+   //..... dl_feature_status_reg_t  feature_status_reg;
     
     bit [1:0] local_hdr_scale;    // scaling factor for header credits
     bit [1:0] local_data_scale;   // scaling factor for data credits
@@ -225,9 +225,9 @@ class dll_ref_model #(
             DL_FEATURE : begin 
                 if (this.current_state == DL_FEATURE ) begin
                      // now cfg.remote_register_feature
-                    if (feature_status_reg.remote_feature_valid == 1'b0) begin
-                    record_Feature_Supported_field(_dllp);
-                    feature_status_reg.remote_feature_valid = 1'b1;
+                    if (cfg.remote_register_feature.remote_feature_valid == 1'b0) begin
+                        record_Feature_Supported_field(_dllp);
+                        cfg.remote_register_feature.remote_feature_valid = 1'b1;
                     end else activate_dl_feature;
                 end
             end
@@ -252,14 +252,15 @@ class dll_ref_model #(
     function void record_Feature_Supported_field;
         input bit [DLLP_WIDTH-1:0] _dllp;
         // now cfg.remote_register_feature
-        feature_status_reg.remote_feature_supported = _dllp[38:16]; 
+        cfg.remote_register_feature.remote_feature_supported = _dllp[38:16]; 
     endfunction
 
     // Activate Data Link feature negotiated through the DL_FEATURE DLLP
     // Enable Scaled Flow Control (bit 0) only if it is supported by both the local port and the remote port
     function void activate_dl_feature;
         // now cfg fields
-        scaled_fc_active = feature_status_reg.remote_feature_supported[0] & cfg.local_register_feature.local_feature_supported[0];
+        scaled_fc_active = cfg.remote_register_feature.remote_feature_supported[0]
+                         & cfg.local_register_feature.local_feature_supported[0];
     endfunction
   
     function void record_fc_values;
@@ -423,8 +424,8 @@ class dll_ref_model #(
                 state_changed = 1'b1;
                 // now cfg fields
                 if (cfg.local_register_feature.feature_exchange_enable) begin
-                    feature_status_reg.remote_feature_supported = '0;
-                    feature_status_reg.remote_feature_valid     = 1'b0;
+                    cfg.remote_register_feature.remote_feature_supported = '0;
+                    cfg.remote_register_feature.remote_feature_valid     = 1'b0;
                     `uvm_info("DLL_RM", "[update_sm_on_rx] reset: feature regs cleared", UVM_MEDIUM) 
                 end
             end
@@ -445,8 +446,8 @@ class dll_ref_model #(
                 state_changed = 1'b1;
                 // now cfg fields
                 if (cfg.local_register_feature.feature_exchange_enable) begin
-                    feature_status_reg.remote_feature_supported = '0;
-                    feature_status_reg.remote_feature_valid     = 1'b0;
+                    cfg.remote_register_feature.remote_feature_supported = '0;
+                    cfg.remote_register_feature.remote_feature_valid     = 1'b0;
                         `uvm_info("DLL_RM", "[update_sm_on_rx] reset: feature regs cleared", UVM_MEDIUM) 
                 end
             end
@@ -466,8 +467,8 @@ class dll_ref_model #(
                     //  now cfg.feature_exchange_cap / cfg.local_register_feature
                     if (cfg.feature_exchange_cap && cfg.local_register_feature.feature_exchange_enable) begin
                         next_state = DL_FEATURE;
-                        feature_status_reg.remote_feature_supported = '0;
-                        feature_status_reg.remote_feature_valid     = 1'b0;
+                        cfg.remote_register_feature.remote_feature_supported = '0;
+                        cfg.remote_register_feature.remote_feature_valid     = 1'b0;
                     end
                     else begin
                         next_state = DL_INIT1;
@@ -566,7 +567,7 @@ class dll_ref_model #(
                     //  now cfg fields
                     $sformatf("[predict_expected_tx_response] TX DL_FEATURE: supported=0x%0h ack=%0b",
                         cfg.local_register_feature.local_feature_supported,
-                        feature_status_reg.remote_feature_valid),
+                        cfg.remote_register_feature.remote_feature_valid),
                     UVM_MEDIUM)
             end
         

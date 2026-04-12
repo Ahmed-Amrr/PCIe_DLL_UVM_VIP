@@ -1,7 +1,7 @@
 `ifndef PCIE_BASE_SEQ
 `define PCIE_BASE_SEQ 
 
-  class pcie_base_seq extends uvm_sequence #(pcie_dllp_seq_item);
+  class pcie_base_seq extends uvm_sequence#(pcie_dllp_seq_item);
     `uvm_object_utils(pcie_base_seq)
 
     `uvm_declare_p_sequencer(pcie_vip_tx_sequencer)
@@ -181,18 +181,20 @@
   endtask : start_from_ACTIVE
 
     // send_fc_dllp
-  task send_feat_dllp (input dllp_type_t pkt_type, pcie_dllp_seq_item item);
+  task pcie_base_seq::send_feat_dllp (input dllp_type_t pkt_type, pcie_dllp_seq_item item);
       item = pcie_dllp_seq_item::type_id::create("item");
+
       start_item(item);
       item.dllp[47:40] = pkt_type; 
       item.dllp[38:16] = cfg.local_register_feature.local_feature_supported;
       // We mirror the remote valid bit back as our Ack
       item.dllp[39]    = cfg.remote_register_feature.remote_feature_valid;
       finish_item(item);
+      
   endtask : send_feat_dllp
 
     // send_fc_dllp
-  task send_fc_dllp(dllp_type_t pkt_type, fc_type_t fc_type, pcie_dllp_seq_item item);
+  task pcie_base_seq::send_fc_dllp(dllp_type_t pkt_type, fc_type_t fc_type, pcie_dllp_seq_item item);
       item = pcie_dllp_seq_item::type_id::create("item");
 
       start_item(item);

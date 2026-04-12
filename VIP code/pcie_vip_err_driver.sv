@@ -27,7 +27,7 @@ class pcie_vip_err_driver extends pcie_vip_driver;
         end
     endtask
 
-    function CRC_generation(input bit[31:0] dllp_before_crc, output bit[15:0] crc);
+    function void CRC_generation(input bit[31:0] dllp_before_crc, output bit[15:0] crc);
         // tie the crc to all-zero value regardless the value of the dllp
         crc = '0;
     endfunction : CRC_generation

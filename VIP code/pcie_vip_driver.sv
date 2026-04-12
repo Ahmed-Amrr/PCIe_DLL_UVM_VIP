@@ -33,7 +33,7 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
         end
     endtask
 
-    virtual function CRC_generation(input bit[PAYLOAD_WIDTH-1:0] dllp_before_crc,   //the default is {Byte 0, Byte 1, Byte 2, Byte 3}
+    virtual function void CRC_generation(input bit[PAYLOAD_WIDTH-1:0] dllp_before_crc,   //the default is {Byte 0, Byte 1, Byte 2, Byte 3}
                             output bit[CRC_WIDTH-1:0] crc               //each byte (7,6,5,4,3,2,1,0)
     );
 

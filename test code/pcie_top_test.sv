@@ -38,13 +38,13 @@
             
             // Control nop for the link_up signal
             if (up_vip_mode == "link_down_test" || down_vip_mode == "link_down_test") 
-                top_cfg.randomize() with {link_down_test == 1;};
+                assert(top_cfg.randomize() with {link_down_test == 1;});
 
             // Control nop for the valid signal in interface
             else if (up_vip_mode == "valid_off_test" || down_vip_mode == "valid_off_test") 
-                top_cfg.randomize() with {pl_valid_off == 1;};
+                assert(top_cfg.randomize() with {pl_valid_off == 1;});
             else
-                assret(top_cfg.randomize());
+                assert(top_cfg.randomize());
 
             // Getting the upper and lower interfaces from each environment cfg
             top_cfg.u_lpif_vif = u_cfg.lpif_vif;
@@ -71,29 +71,29 @@
 
             // Control nop for surprise_down_capability
             if (vip_mode == "surprise_down_capable_off") 
-                surprise_down_capable = 0;
+                cfg.surprise_down_capable = 0;
             else
-                surprise_down_capable = 1;
+                cfg.surprise_down_capable = 1;
 
 
            // Control nops for the control credits and scale
             if (vip_mode == "P_infinite_credits") 
-                cfg.randomize() with { fc_credits_register.hdr_credits[FC_POSTED] == 0;
-                                        fc_credits_register.data_credits[FC_POSTED] == 0; };
+                assert(cfg.randomize() with { fc_credits_register.hdr_credits[FC_POSTED] == 0;
+                                        fc_credits_register.data_credits[FC_POSTED] == 0; });
             
             else if (vip_mode == "NP_infinite_credits") 
-                cfg.randomize() with { fc_credits_register.hdr_credits[FC_NON_POSTED] == 0;
-                                        fc_credits_register.data_credits[FC_NON_POSTED] == 0; };
+                assert(cfg.randomize() with { fc_credits_register.hdr_credits[FC_NON_POSTED] == 0;
+                                        fc_credits_register.data_credits[FC_NON_POSTED] == 0; });
             
             else if (vip_mode == "CPL_infinite_credits") 
-                cfg.randomize() with { fc_credits_register.hdr_credits[FC_COMPLETION] == 0;
-                                        fc_credits_register.data_credits[FC_COMPLETION] == 0; };
+                assert(cfg.randomize() with { fc_credits_register.hdr_credits[FC_COMPLETION] == 0;
+                                        fc_credits_register.data_credits[FC_COMPLETION] == 0; });
 
             else if (vip_mode == "scaledFC_not_supported") 
-                cfg.randomize() with { fc_credits_register.hdr_scale[FC_COMPLETION] == '{default:0};
-                                        fc_credits_register.data_scale[FC_COMPLETION] == '{default:0};};
+                assert(cfg.randomize() with { fc_credits_register.hdr_scale[FC_COMPLETION] == '{default:0};
+                                        fc_credits_register.data_scale[FC_COMPLETION] == '{default:0};});
             else
-                assret(cfg.randomize());
+                assert(cfg.randomize());
                        
         endfunction 
 
@@ -150,21 +150,29 @@
 
 
             // Call configure functions 
-            configure_vip_u (u_cfg, up_vip_mode);
-            configure_vip_d (d_cfg, down_vip_mode);
+            configure_vip (u_cfg, up_vip_mode);
+            configure_vip (d_cfg, down_vip_mode);
             configure_top (top_cfg, up_vip_mode, down_vip_mode, u_cfg, d_cfg);
 
 
             // Use an CRC error injection driver in this mode
             if (up_vip_mode == "crc_err_inj") begin
-                set_type_override_by_type ( "top_env.u_vip.*", pcie_vip_driver::get_type(),
-                                        pcie_vip_err_driver::get_type());
+                set_inst_override_by_type(
+                    "top_env.u_vip.*",
+                    pcie_vip_driver::get_type(),
+                    pcie_vip_err_driver::get_type()
+                );
             end
 
             if (down_vip_mode == "crc_err_inj") begin
-                set_type_override_by_type ( "top_env.d_vip.*", pcie_vip_driver::get_type(),
-                                        pcie_vip_err_driver::get_type());
+                set_inst_override_by_type(
+                    "top_env.d_vip.*",
+                    pcie_vip_driver::get_type(),
+                    pcie_vip_err_driver::get_type()
+                );
             end
+
+
 
             // Set the CFGs to the corresponding enviroments 
             uvm_config_db#(pcie_top_cfg)::set(this, "*", "top_cfg", top_cfg);
