@@ -104,6 +104,8 @@ class pcie_vip_state_machine extends uvm_component;
 			if (received_crc == crc_expected) begin 								//check on crc before state transition
 				state_transition();
 				state_seq_item.vip_state = current_state;
+				state_seq_item.FI1 = FI1;
+				state_seq_item.FI2 = FI2;
 			end
 		end
 	endtask : run_phase

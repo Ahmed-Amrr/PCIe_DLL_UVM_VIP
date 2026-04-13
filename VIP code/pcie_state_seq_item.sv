@@ -11,6 +11,9 @@ class pcie_state_seq_item extends uvm_sequence_item;
 	logic surprise_down_event;
 	bit scaled_fc_active;
 
+	bit FI1;
+	bit FI2;
+
 	// Constructor
 	function new(string name = "pcie_state_seq_item");
 		super.new(name);
