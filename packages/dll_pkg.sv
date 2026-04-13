@@ -80,7 +80,7 @@ package dll_pkg;
   `include "pcie_vip_config.sv"
 
   // Coverage 
-  `include "pcie_vip_coverage.sv"
+ // `include "pcie_vip_coverage.sv"
 
   // Scoreboard 
   `include "dll_vip_scoreboard.sv"
@@ -104,10 +104,6 @@ package dll_pkg;
   // VIP Environment 
   `include "pcie_vip_env.sv"
 
-  // Interfaces
-  `include "ipif_if.sv"
-  `include "passive_interface.sv"
-
   // Glue logic
   `include "glue_logic_monitor.sv"
   `include "glue_logic_driver.sv"
@@ -121,7 +117,7 @@ package dll_pkg;
   `include "pcie_top_cfg.sv"
   `include "virtual_sequencer.sv"
 
-  // Sequences (base → derived)
+  // Sequences
   `include "pcie_base_sequence.sv"
   `include "pcie_active_sequence.sv"
   `include "pcie_inactive_sequence.sv"
