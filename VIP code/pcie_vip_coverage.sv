@@ -69,6 +69,7 @@ class pcie_vip_coverage extends uvm_component;
 			cov_fifo_rx.get(seq_item_rx);
 			cov_fifo_sm.get(state_seq_item);
 			CovGp.sample();
+		end
 	endtask : run_phase
 
 	covergroup CovGp ();
