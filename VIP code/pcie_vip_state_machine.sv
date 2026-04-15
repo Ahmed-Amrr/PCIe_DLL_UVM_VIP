@@ -81,6 +81,8 @@ class pcie_vip_state_machine extends uvm_component;
 		sm_export_rx=new("sm_export_rx",this);
 		sm_fifo_rx=new("sm_fifo_rx",this);
 
+		sm_ap=new("sm_ap",this);
+
 	endfunction : build_phase
 
 	function void connect_phase(uvm_phase phase);

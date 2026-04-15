@@ -8,6 +8,10 @@ class pcie_vip_tx_sequencer extends uvm_sequencer #(pcie_dllp_seq_item);
     uvm_tlm_analysis_fifo #(pcie_state_seq_item) sqr_fifo;
     pcie_vip_config cfg;
 
+    dl_state_t state;
+
+    pcie_state_seq_item state_seq_item;
+
     function new(string name = "pcie_vip_tx_sequencer", uvm_component parent = null);
         super.new(name,parent);
     endfunction //new()
@@ -28,6 +32,15 @@ class pcie_vip_tx_sequencer extends uvm_sequencer #(pcie_dllp_seq_item);
         super.connect_phase(phase);
         sqr_export.connect(sqr_fifo.analysis_export);
     endfunction : connect_phase
+
+
+    task run_phase(uvm_phase phase);
+        super.run_phase(phase);
+        forever begin
+            sqr_fifo.get(state_seq_item);
+            state = state_seq_item.vip_state;
+        end
+    endtask : run_phase
 
 
 endclass //pcie_vip_tx_sequencer extends uvm_sequencer

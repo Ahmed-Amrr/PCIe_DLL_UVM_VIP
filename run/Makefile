@@ -1,7 +1,7 @@
 # ==============================================================================
 # Default Configuration
 # ==============================================================================
-test         ?= pcie_top_test
+test         ?= pcie_top_test_base
 seq_u        ?= pcie_inactive_seq 
 seq_d        ?= pcie_inactive_seq 
 u_vip_mode   ?=
@@ -18,7 +18,7 @@ uvm_ver       = uvm-1.2
 package_path   = ../packages
 vip_path       = ../VIP_code
 test_code_path = ../test_code
-run_base_path  = 
+run_base_path  = .
 FILELIST = $(run_base_path)/src_files.f
 
 TOP_MODULE   ?= ${test_code_path}/pcie_top.sv

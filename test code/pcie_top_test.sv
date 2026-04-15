@@ -90,8 +90,12 @@
                                         fc_credits_register.data_credits[FC_COMPLETION] == 0; });
 
             else if (vip_mode == "scaledFC_not_supported") 
-                assert(cfg.randomize() with { fc_credits_register.hdr_scale[FC_COMPLETION] == '{default:0};
-                                        fc_credits_register.data_scale[FC_COMPLETION] == '{default:0};});
+                assert(cfg.randomize() with { fc_credits_register.hdr_scale[FC_POSTED] == 0;
+                                        fc_credits_register.data_scale[FC_POSTED] == 0;
+                                        fc_credits_register.hdr_scale[FC_NON_POSTED] == 0;
+                                        fc_credits_register.data_scale[FC_NON_POSTED] == 0;
+                                        fc_credits_register.hdr_scale[FC_COMPLETION] == 0;
+                                        fc_credits_register.data_scale[FC_COMPLETION] == 0;});
             else
                 assert(cfg.randomize());
                        
@@ -176,8 +180,8 @@
 
             // Set the CFGs to the corresponding enviroments 
             uvm_config_db#(pcie_top_cfg)::set(this, "*", "top_cfg", top_cfg);
-            uvm_config_db#(pcie_vip_config)::set(this, "top_env.u_vip.*", "vip_cfg", u_cfg);
-            uvm_config_db#(pcie_vip_config)::set(this, "top_env.d_vip.*", "vip_cfg", d_cfg);
+            uvm_config_db#(pcie_vip_config)::set(this, "top_env.u_vip*", "vip_cfg", u_cfg);
+            uvm_config_db#(pcie_vip_config)::set(this, "top_env.d_vip*", "vip_cfg", d_cfg);
 
         endfunction : build_phase
 

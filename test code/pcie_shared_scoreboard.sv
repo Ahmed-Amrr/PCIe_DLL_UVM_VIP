@@ -158,7 +158,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
         time start_time = tx_u_time;
         forever begin
             // Try to get RX with small step
-            if(lower_rx_fifo.try_get(rx_txn, 1ns)) begin
+            if(lower_rx_fifo.try_get(rx_txn)) begin
                 rx_l_time = $time; // store RX arrival time
                 `uvm_info(get_type_name(),
                     $sformatf("[U2L-RX] Received Lower RX: %s at time %0t", rx_txn.convert2string(), rx_l_time),
@@ -218,7 +218,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
         time start_time = tx_l_time;
         forever begin
             // Try to get RX with small step
-            if(upper_rx_fifo.try_get(rx_txn, 1ns)) begin
+            if(upper_rx_fifo.try_get(rx_txn)) begin
                 rx_l_time = $time; // store RX arrival time
                 `uvm_info(get_type_name(), $sformatf("[L2U-RX] Received UPPER RX: %s at time %0t", rx_txn.convert2string(), rx_l_time),UVM_HIGH);
                 match_l2u(rx_txn); // process RX
