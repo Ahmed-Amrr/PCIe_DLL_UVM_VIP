@@ -68,34 +68,40 @@
                     cfg.local_register_feature.feature_exchange_enable = 1;
             end
 
-
             // Control nop for surprise_down_capability
             if (vip_mode == "surprise_down_capable_off") 
                 cfg.surprise_down_capable = 0;
             else
                 cfg.surprise_down_capable = 1;
 
-
            // Control nops for the control credits and scale
             if (vip_mode == "P_infinite_credits") 
-                assert(cfg.randomize() with { fc_credits_register.hdr_credits[FC_POSTED] == 0;
-                                        fc_credits_register.data_credits[FC_POSTED] == 0; });
+                assert(cfg.randomize() with { 
+                    fc_credits_register.hdr_credits[FC_POSTED] == 0;
+                    fc_credits_register.data_credits[FC_POSTED] == 0; 
+                });
             
             else if (vip_mode == "NP_infinite_credits") 
-                assert(cfg.randomize() with { fc_credits_register.hdr_credits[FC_NON_POSTED] == 0;
-                                        fc_credits_register.data_credits[FC_NON_POSTED] == 0; });
+                assert(cfg.randomize() with { 
+                    fc_credits_register.hdr_credits[FC_NON_POSTED] == 0;
+                    fc_credits_register.data_credits[FC_NON_POSTED] == 0; 
+                });
             
             else if (vip_mode == "CPL_infinite_credits") 
-                assert(cfg.randomize() with { fc_credits_register.hdr_credits[FC_COMPLETION] == 0;
-                                        fc_credits_register.data_credits[FC_COMPLETION] == 0; });
+                assert(cfg.randomize() with { 
+                    fc_credits_register.hdr_credits[FC_COMPLETION] == 0;
+                    fc_credits_register.data_credits[FC_COMPLETION] == 0; 
+                });
 
             else if (vip_mode == "scaledFC_not_supported") 
-                assert(cfg.randomize() with { fc_credits_register.hdr_scale[FC_COMPLETION] == '{default:0};
-                                        fc_credits_register.data_scale[FC_COMPLETION] == '{default:0};});
+                assert(cfg.randomize() with { 
+                    fc_credits_register.hdr_scale[FC_COMPLETION] == '{default:0};
+                    fc_credits_register.data_scale[FC_COMPLETION] == '{default:0};
+                });
             else
                 assert(cfg.randomize());
                        
-        endfunction 
+        endfunction : configure_vip
 
 
         function void build_phase(uvm_phase phase);
@@ -132,9 +138,10 @@
             top_env = pcie_top_env::type_id::create("top_env",this); 
             vseq = vseq_base::type_id::create("vseq");
 
+            // we already created them in the sqr
             // Create sequences - The factory chooses based on the name argument
-            seq_u = pcie_base_seq::type_id::create("seq_u"); // Becomes SEQ_U type
-            seq_d = pcie_base_seq::type_id::create("seq_d"); // Becomes SEQ_D type
+            // seq_u = pcie_base_seq::type_id::create("seq_u"); // Becomes SEQ_U type
+            // seq_d = pcie_base_seq::type_id::create("seq_d"); // Becomes SEQ_D type
 
             // Create configuration objects
             top_cfg = pcie_top_cfg::type_id::create("top_cfg");  
@@ -187,11 +194,12 @@
 
             phase.raise_objection(this);
 
-              vseq.us_seq = seq_u;
-              vseq.ds_seq = seq_d;
+            fork
+                wait(top_env.u_vip.tx_agent.sqr.state == DL_ACTIVE);
+                wait(top_env.u_vip.tx_agent.sqr.state == DL_ACTIVE);
+            join
 
-              vseq.start(top_env.vsqr);  
-
+            #10000
             phase.drop_objection(this);
 
         endtask : run_phase

@@ -13,14 +13,8 @@
     task body();
 
       fork
-        begin
-          if (us_seq != null)
-            us_seq.start(p_sequencer.tx_us_sqr);
-        end
-        begin
-          if (ds_seq != null)
-            ds_seq.start(p_sequencer.tx_ds_sqr);
-        end
+        if (us_seq != null) us_seq.start(p_sequencer.tx_us_sqr);
+        if (ds_seq != null) ds_seq.start(p_sequencer.tx_ds_sqr);
       join
 
     endtask

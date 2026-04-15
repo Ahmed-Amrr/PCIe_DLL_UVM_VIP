@@ -8,15 +8,19 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
     parameter int PAYLOAD_WIDTH = 32;
     parameter int CRC_WIDTH     = 16;
     parameter int BYTE 			= 8;
-    virtual lpif_if lpif_vif;
-    pcie_dllp_seq_item   seq_item_drv;
+
+    virtual lpif_if    lpif_vif;
+    pcie_vip_config    cfg;
+    pcie_dllp_seq_item seq_item_drv;
 
     function new(string name = "pcie_vip_driver", uvm_component parent = null);
         super.new(name, parent);
-    endfunction //new()
+    endfunction : new
 
     virtual function void build_phase (uvm_phase phase);
         super.build_phase(phase);
+        // read crc_err_inj flag. we have not decided yet where to put this flag!!
+        
     endfunction
 
     //count for the 34us period and check for the crc
@@ -26,8 +30,15 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
         forever begin
             seq_item_port.get_next_item(seq_item_drv);
             CRC_generation(seq_item_drv.dllp[47:16], seq_item_drv.dllp[15:0]);
-            lpif_vif.lp_data = seq_item_drv.dllp;
-            lpif_vif.lp_valid = seq_item_drv.lp_valid;
+            if (cfg.crc_err_inj) begin
+                seq_item_drv.dllp[15:0] = '0;
+                `uvm_info("DRV", "CRC error injected", UVM_MEDIUM)
+            end else if (cfg.xxxx)
+                //
+            else begin
+                lpif_vif.lp_data = seq_item_drv.dllp;
+                lpif_vif.lp_valid = seq_item_drv.lp_valid;
+            end
             @(lpif_vif.drv_cb);
             seq_item_port.item_done();
         end
@@ -74,3 +85,5 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
 endclass //pcie_vip_driver extends uvm_driver
 
 `endif 
+
+
