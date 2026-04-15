@@ -79,14 +79,20 @@ package dll_pkg;
   // Config Object
   `include "pcie_vip_config.sv"
 
+    // Top config 
+  `include "pcie_top_cfg.sv"
+  
+
   // Coverage 
  // `include "pcie_vip_coverage.sv"
 
   // Scoreboard 
+  `include "ref_model.sv"
   `include "dll_vip_scoreboard.sv"
 
   // Sequencers 
   `include "pcie_vip_sequencer.sv"
+  `include "virtual_sequencer.sv"
 
   // Drivers & Monitors 
   `include "pcie_vip_driver.sv"
@@ -113,9 +119,6 @@ package dll_pkg;
   `include "pcie_shared_scoreboard.sv"
   `include "ref_model.sv"
 
-  // Top config & sequencer
-  `include "pcie_top_cfg.sv"
-  `include "virtual_sequencer.sv"
 
   // Sequences
   `include "pcie_base_sequence.sv"

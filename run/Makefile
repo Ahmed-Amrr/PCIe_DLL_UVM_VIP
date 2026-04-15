@@ -15,11 +15,11 @@ uvm_ver       = uvm-1.2
 # Paths
 # ==============================================================================
 
-package_path   = ./../packages
-vip_path       = ./../VIP_code
-test_code_path = ./../test_code
-run_base_path  = ./
-FILELIST = $(run_base_path)/src_file.list
+package_path   = ../packages
+vip_path       = ../VIP_code
+test_code_path = ../test_code
+run_base_path  = 
+FILELIST = $(run_base_path)/src_files.f
 
 TOP_MODULE   ?= ${test_code_path}/pcie_top.sv
 
@@ -28,6 +28,8 @@ uvm_defines = UVM_NO_DEPRECATED+UVM_OBJECT_MUST_HAVE_CONSTRUCTOR
 # ==============================================================================
 # Run Name  
 # =============================================================================
+
+RUN_NAME_BASE = ${seq_u}_up_${seq_d}_down
 
 # Append VIP modes only if defined
 ifneq ($(u_vip_mode),)
@@ -53,7 +55,7 @@ RUN_DIR      = ${run_base_path}/runs/${RUN_NAME}
 LOG_FILE     = ${RUN_DIR}/simv.log
 COV_DIR      = ${RUN_DIR}/coverage
 
-RUN_NAME_BASE = ${seq_u}_up_${seq_d}_down
+
 
 
 # ==============================================================================
@@ -120,8 +122,7 @@ compile:
     @echo " Compiling phase"
     @echo "========================================"
 
-        vcs $(COMPILE_OPTS) -f $(FILELIST)
-
+        vcs $(COMPILE_OPTS) -f $(FILELIST) > /dev/null 2>&1
     @echo "Compilation complete."
 
 run: setup check_simv
@@ -135,7 +136,7 @@ run: setup check_simv
     @echo " D_MODE   : ${d_vip_mode}"
     @echo " Log      : ${LOG_FILE}"
     @echo "========================================"
-        ${run_base_path}/simv +ntb_random_seed=${seed} ${RUN_OPTS}
+        ${run_base_path}/simv +ntb_random_seed=${seed} ${RUN_OPTS}  > /dev/null 2>&1
     @echo "======================================================"
     @echo " DONE — check log: ${LOG_FILE}"
     @echo "======================================================"
@@ -148,7 +149,7 @@ run_random: setup check_simv
     @echo " SEQ_D    : ${seq_d}"
     @echo " Log      : ${LOG_FILE}"
     @echo "========================================"
-        ${run_base_path}/simv +ntb_random_seed_automatic ${RUN_OPTS}
+        ${run_base_path}/simv +ntb_random_seed_automatic ${RUN_OPTS}  > /dev/null 2>&1
     @echo "========================================"
     @echo " DONE — check log: ${LOG_FILE}"
     @echo "========================================"
