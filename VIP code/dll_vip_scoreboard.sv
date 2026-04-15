@@ -12,6 +12,19 @@ class dll_vip_scoreboard extends uvm_scoreboard;
     parameter int PAYLOAD_WIDTH = 32;
     parameter int CRC_WIDTH     = 16;
 
+    parameter time FC_UPDATE_TIMEOUT = 34us;
+
+    time last_fc1_p   = 0;
+    time last_fc1_np  = 0;
+    time last_fc1_cpl = 0;
+    time last_fc2_p   = 0;
+    time last_fc2_np  = 0;
+    time last_fc2_cpl = 0;
+    time last_upfc_p  = 0;
+    time last_upfc_np = 0;
+    time last_upfc_cpl= 0;
+    time last_dlf     = 0;
+
     `uvm_component_utils(dll_vip_scoreboard)
 
     uvm_analysis_imp_rx_mon #(pcie_dllp_seq_item, dll_vip_scoreboard) rx_mon_export;
@@ -71,6 +84,9 @@ class dll_vip_scoreboard extends uvm_scoreboard;
         // clone transaction
         $cast(cloned_rx, trans.clone());
         rx_queue.push_back(cloned_rx);
+
+        // Run timing check on received DLLP
+        timing_check(cloned_rx);
 
         `uvm_info("DLL_SB", $sformatf("RX Monitor transaction received: %s", cloned_rx.convert2string()), UVM_HIGH)
 
@@ -236,6 +252,76 @@ class dll_vip_scoreboard extends uvm_scoreboard;
         end
 
     endfunction : compare_tx_transactions
+
+    //==========================================================
+    // Timing Check
+    //==========================================================
+    protected virtual function void timing_check(pcie_dllp_seq_item txn);
+        case(txn.dllp[47:40])
+            INITFC1_P: begin
+                if(last_fc1_p != 0 && ($time - last_fc1_p) > FC_UPDATE_TIMEOUT)
+                    `uvm_error("FC_TIMEOUT", $sformatf("InitFC1-P timeout: %0t", $time - last_fc1_p))
+                last_fc1_p = $time;
+            end
+            INITFC1_NP: begin
+                if(last_fc1_np != 0 && ($time - last_fc1_np) > FC_UPDATE_TIMEOUT)
+                    `uvm_error("FC_TIMEOUT", $sformatf("InitFC1-NP timeout: %0t", $time - last_fc1_np))
+                last_fc1_np = $time;
+            end
+            INITFC1_CPL: begin
+                if(last_fc1_cpl != 0 && ($time - last_fc1_cpl) > FC_UPDATE_TIMEOUT)
+                    `uvm_error("FC_TIMEOUT", $sformatf("InitFC1-CPL timeout: %0t", $time - last_fc1_cpl))
+                last_fc1_cpl = $time;
+            end
+            INITFC2_P: begin
+                if(last_fc2_p != 0 && ($time - last_fc2_p) > FC_UPDATE_TIMEOUT)
+                    `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-P timeout: %0t", $time - last_fc2_p))
+                last_fc2_p = $time;
+            end
+            INITFC2_NP: begin
+                if(last_fc2_np != 0 && ($time - last_fc2_np) > FC_UPDATE_TIMEOUT)  // BUG FIX: was last_fc1_np
+                    `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-NP timeout: %0t", $time - last_fc2_np))
+                last_fc2_np = $time;
+            end
+            INITFC2_CPL: begin
+                if(last_fc2_cpl != 0 && ($time - last_fc2_cpl) > FC_UPDATE_TIMEOUT)
+                    `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-CPL timeout: %0t", $time - last_fc2_cpl))
+                last_fc2_cpl = $time;
+            end
+            UPDATEFC_P: begin
+                if(last_upfc_p != 0 && ($time - last_upfc_p) > FC_UPDATE_TIMEOUT)
+                    `uvm_error("FC_TIMEOUT", $sformatf("UpdateFC-P timeout: %0t", $time - last_upfc_p))  // BUG FIX: message was "InitFC2-CPL"
+                last_upfc_p = $time;
+            end
+            UPDATEFC_NP: begin
+                if(last_upfc_np != 0 && ($time - last_upfc_np) > FC_UPDATE_TIMEOUT)
+                    `uvm_error("FC_TIMEOUT", $sformatf("UpdateFC-NP timeout: %0t", $time - last_upfc_np))  // BUG FIX: message was "InitFC2-CPL"
+                last_upfc_np = $time;
+            end
+            UPDATEFC_CPL: begin
+                if(last_upfc_cpl != 0 && ($time - last_upfc_cpl) > FC_UPDATE_TIMEOUT)
+                    `uvm_error("FC_TIMEOUT", $sformatf("UpdateFC-CPL timeout: %0t", $time - last_upfc_cpl))  // BUG FIX: message was "InitFC2-CPL"
+                last_upfc_cpl = $time;
+            end
+            DL_FEATURE: begin
+                if(last_dlf != 0 && ($time - last_dlf) > FC_UPDATE_TIMEOUT)
+                    `uvm_error("DLF_TIMEOUT", $sformatf("DL Feature DLLP interval exceeded: %0t", $time - last_dlf))
+                last_dlf = $time;
+            end
+            default: begin
+                last_fc1_p    = 0;
+                last_fc1_np   = 0;
+                last_fc1_cpl  = 0;
+                last_fc2_p    = 0;
+                last_fc2_np   = 0;
+                last_fc2_cpl  = 0;
+                last_upfc_p   = 0;
+                last_upfc_np  = 0;
+                last_upfc_cpl = 0;
+                last_dlf      = 0;
+            end
+        endcase
+    endfunction : timing_check
 
     //==========================================================
     // Check Phase
