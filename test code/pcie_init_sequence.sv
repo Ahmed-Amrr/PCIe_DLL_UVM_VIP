@@ -22,7 +22,7 @@ class pcie_fc_init1_seq extends pcie_base_seq;
         if(cb_override) begin
             // let the callback run its own pattern instead
             `uvm_do_callbacks(pcie_fc_init1_seq, pcie_seq_callbacks,
-                              do_send_pattern(this))
+                              do_send_pattern(this, p_sequencer.state))
         end
         else begin
             // normal pattern
