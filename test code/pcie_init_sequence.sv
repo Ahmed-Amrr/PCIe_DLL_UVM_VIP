@@ -9,19 +9,32 @@ class pcie_fc_init1_seq extends pcie_base_seq;
 
     virtual task body();
 
-        // Move state machine up to INIT1
+        pcie_dllp_seq_item item;
         int i = 0;
-        super.start_from_INIT1(item);
-        // Drive INITFC1 triplets while SM stays in DL_INIT1
-        while(p_sequencer.state == DL_INIT1) begin
-            send_fc_dllp(INITFC1_P,   FC_POSTED, item);
-            send_fc_dllp(INITFC1_NP,  FC_NON_POSTED, item);
-            send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
-            i++;
-            // Counter to count Timeout for each state in order not to stuck 
-            if (i == 1000) begin
-              `uvm_error(get_type_name(), "Timeout for the seq in DL_INIT1 state")
-              break;
+        bit cb_override = 0;
+
+        item = pcie_dllp_seq_item::type_id::create("item");
+
+        // check if any callback wants to override the pattern
+        `uvm_do_callbacks_exit_on(pcie_fc_init1_seq, pcie_seq_callbacks,
+                                  override_pattern(), 1, cb_override)
+
+        if(cb_override) begin
+            // let the callback run its own pattern instead
+            `uvm_do_callbacks(pcie_fc_init1_seq, pcie_seq_callbacks,
+                              do_send_pattern(this))
+        end
+        else begin
+            // normal pattern
+            while(p_sequencer.state == DL_INIT1) begin
+                send_fc_dllp(INITFC1_P,   FC_POSTED,      item);
+                send_fc_dllp(INITFC1_NP,  FC_NON_POSTED,  item);
+                send_fc_dllp(INITFC1_CPL, FC_COMPLETION,  item);
+                i++;
+                if(i == 1000) begin
+                    `uvm_error(get_type_name(), "Timeout in DL_INIT1")
+                    break;
+                end
             end
         end
 

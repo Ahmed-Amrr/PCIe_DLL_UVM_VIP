@@ -22,7 +22,6 @@ class pcie_feature_no_update_sequence extends pcie_base_seq;
 
         `uvm_info(get_type_name(), "Starting Feature No-Update Sequence", UVM_LOW)
 
-        super.start_from_Feature(item);
 
         if (!this.randomize(different_feature_value))
             `uvm_fatal(get_type_name(), "Randomization failed")

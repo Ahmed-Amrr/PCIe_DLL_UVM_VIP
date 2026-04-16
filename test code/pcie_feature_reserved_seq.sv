@@ -14,8 +14,6 @@
         int i = 0 ;
           `uvm_info(get_type_name(), "Starting Feature Exchange Sequence", UVM_LOW)
 
-          super.start_from_Feature(item);
-
           while (p_sequencer.state == DL_FEATURE) begin
             item = pcie_dllp_seq_item::type_id::create("item");
             start_item(item);

@@ -15,7 +15,6 @@
         int i = 0;
           `uvm_info(get_type_name(), "Starting Feature Exchange Sequence", UVM_LOW)
 
-          start_from_Feature(item);
           while (p_sequencer.state == DL_FEATURE) begin
             send_feat_dllp(FEATURE, item);
             i++;

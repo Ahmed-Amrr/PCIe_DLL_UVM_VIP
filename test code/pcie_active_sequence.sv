@@ -17,7 +17,6 @@ class pcie_active_seq extends pcie_base_seq;
 
     virtual task body();
         int i = 0;
-        super.start_from_ACTIVE(item);
 
         // Capture INIT behavior
         foreach (hdr_infinite_init[i]) begin
@@ -54,27 +53,6 @@ class pcie_active_seq extends pcie_base_seq;
 
         `uvm_info(get_type_name(), "Active seq complete", UVM_LOW)
     endtask
-
-    // // --------------------------------------------------------
-    // // update_credits_in_cfg
-    // // Writes new randomized credit values into cfg
-    // // Infinite fields from init are forced to stay 0
-    // // --------------------------------------------------------
-    // function void update_credits_in_cfg();
-    //     for (int fc = 0; fc < 3; fc++) begin
-    //         // Infinite hdr — must stay 0, no new value written
-    //         if (hdr_infinite_init[fc])
-    //             cfg.fc_credits_register.hdr_credits[fc] = 0;
-    //         else
-    //             cfg.fc_credits_register.hdr_credits[fc] = upd_hdr_credits[fc];
-
-    //         // Infinite data — must stay 0, no new value written
-    //         if (data_infinite_init[fc])
-    //             cfg.fc_credits_register.data_credits[fc] = 0;
-    //         else
-    //             cfg.fc_credits_register.data_credits[fc] = upd_data_credits[fc];
-    //     end
-    // endfunction
 
 
     // --------------------------------------------------------
