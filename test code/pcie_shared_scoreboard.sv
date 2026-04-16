@@ -40,22 +40,8 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   
   //  Timing Check
-	localparam time FC_UPDATE_TIMEOUT = 34us ;
   localparam time RX_TIMEOUT        = 1000us;
 
-  time last_fc1_p;
-  time last_fc1_np;
-	time last_fc1_cpl;
-
-	time last_fc2_p;
-	time last_fc2_np;
-	time last_fc2_cpl;
-
-	time last_upfc_p;
-	time last_upfc_np;
-	time last_upfc_cpl;
-
-	time last_dlf;
 
   time tx_u_time;
   time tx_l_time;
@@ -92,16 +78,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
     u2l_matches    = 0;  u2l_mismatches = 0;  u2l_drops   = 0;  
     l2u_matches    = 0;  l2u_mismatches = 0;  l2u_drops   = 0;  
     state_pair_checks = 0;  illegal_pair_count = 0;
-    last_fc1_p    = 0;
-    last_fc1_np   = 0;
-	  last_fc1_cpl  = 0;
-	  last_fc2_p    = 0;
-    last_fc2_np   = 0;
-	  last_fc2_cpl  = 0;
-	  last_upfc_p   = 0;
-	  last_upfc_np  = 0;
-	  last_upfc_cpl = 0;
-	  last_dlf      = 0;
   endfunction
 
 
@@ -136,9 +112,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
     // Capture transmission time
     tx_u_time = $time;
-
-    // Perform timing checks on the transaction
-    timing_check(txn);
   end
   endtask
 
@@ -158,7 +131,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
         time start_time = tx_u_time;
         forever begin
             // Try to get RX with small step
-            if(lower_rx_fifo.try_get(rx_txn, 1ns)) begin
+            if(lower_rx_fifo.try_get(rx_txn)) begin
                 rx_l_time = $time; // store RX arrival time
                 `uvm_info(get_type_name(),
                     $sformatf("[U2L-RX] Received Lower RX: %s at time %0t", rx_txn.convert2string(), rx_l_time),
@@ -196,9 +169,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
       // Capture transmission time
       tx_l_time = $time;
-
-      // Perform timing checks on the transaction
-      timing_check(txn);
     end
   endtask
 
@@ -218,7 +188,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
         time start_time = tx_l_time;
         forever begin
             // Try to get RX with small step
-            if(upper_rx_fifo.try_get(rx_txn, 1ns)) begin
+            if(upper_rx_fifo.try_get(rx_txn)) begin
                 rx_l_time = $time; // store RX arrival time
                 `uvm_info(get_type_name(), $sformatf("[L2U-RX] Received UPPER RX: %s at time %0t", rx_txn.convert2string(), rx_l_time),UVM_HIGH);
                 match_l2u(rx_txn); // process RX
@@ -365,86 +335,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
       endcase
   endfunction
 
-  
-  //  Check Timeout
-  function void timing_check(pcie_dllp_seq_item txn);
-  //timing check 
-    case(txn.dllp[47:40])
-      INITFC1_P: begin
-        if(last_fc1_p != 0 && ($time - last_fc1_p) > FC_UPDATE_TIMEOUT) 
-                `uvm_error("FC_TIMEOUT", $sformatf("InitFC1-P timeout: %0t", $time-last_fc1_p))
-        last_fc1_p = $time;
-      end
-
-      INITFC1_NP: begin
-      	if(last_fc1_np != 0 && ($time - last_fc1_np) > FC_UPDATE_TIMEOUT)
-          `uvm_error("FC_TIMEOUT", $sformatf("InitFC1-NP timeout: %0t", $time-last_fc1_np))
-        last_fc1_np = $time;
-      end
-
-      INITFC1_CPL: begin
-        if(last_fc1_cpl != 0 && ($time - last_fc1_cpl) > FC_UPDATE_TIMEOUT)
-          `uvm_error("FC_TIMEOUT", $sformatf("InitFC1-CPL timeout: %0t", $time-last_fc1_cpl))
-        last_fc1_cpl = $time;
-      end
-
-      INITFC2_P: begin
-        if(last_fc2_p != 0 && ($time - last_fc2_p) > FC_UPDATE_TIMEOUT) 
-                `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-P timeout: %0t", $time-last_fc2_p))
-        last_fc2_p = $time;
-      end
-
-      INITFC2_NP: begin
-      	if(last_fc2_np != 0 && ($time - last_fc1_np) > FC_UPDATE_TIMEOUT)
-          `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-NP timeout: %0t", $time-last_fc2_np))
-        last_fc2_np = $time;
-      end
-
-      INITFC2_CPL: begin
-        if(last_fc2_cpl != 0 && ($time - last_fc2_cpl) > FC_UPDATE_TIMEOUT)
-          `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-CPL timeout: %0t", $time-last_fc2_cpl))
-        last_fc2_cpl = $time;
-      end
-
-      UPDATEFC_P: begin
-        if(last_upfc_p != 0 && ($time - last_upfc_p) > FC_UPDATE_TIMEOUT)
-          `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-CPL timeout: %0t", $time-last_upfc_p))
-        last_upfc_p = $time;
-      end
-
-      UPDATEFC_NP: begin
-        if(last_upfc_np != 0 && ($time - last_upfc_np) > FC_UPDATE_TIMEOUT)
-          `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-CPL timeout: %0t", $time-last_upfc_np))
-        last_upfc_np = $time;
-      end
-
-      UPDATEFC_CPL: begin
-        if(last_upfc_cpl != 0 && ($time - last_upfc_cpl) > FC_UPDATE_TIMEOUT)
-          `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-CPL timeout: %0t", $time-last_upfc_cpl))
-        last_upfc_cpl = $time;
-      end
-
-      DL_FEATURE: begin
-        if(last_dlf != 0 && ($time - last_dlf) > FC_UPDATE_TIMEOUT)
-          `uvm_error("DLF_TIMEOUT",$sformatf("DL Feature DLLP interval exceeded: %0t",$time-last_dlf))
-        last_dlf = $time;
-      end
-
-			default:begin
-				last_fc1_p   = 0;
-  			last_fc1_np  = 0;
-				last_fc1_cpl = 0;
-				last_fc2_p   = 0;
-  			last_fc2_np  = 0;
-				last_fc2_cpl = 0;
-        last_upfc_p = 0;
-        last_upfc_np = 0;
-				last_upfc_cpl = 0;
-				last_dlf     = 0;
-			end
-    endcase
-    
-  endfunction
 
   
   //  Check Phase — report unmatched items

@@ -52,11 +52,11 @@ package dll_pkg;
         FC_COMPLETION
     } fc_type_t;
 
-    typedef struct packed {
-        logic [7:0]  [2:0] hdr_credits;   // [FC_POSTED], [FC_NON_POSTED], [FC_COMPLETION]
-        logic [11:0] [2:0] data_credits;
-        logic [1:0]  [2:0] hdr_scale;
-        logic [1:0]  [2:0] data_scale;
+   typedef struct packed {
+    logic [2:0] [7:0]  hdr_credits;   // [FC_POSTED]=0, [FC_NON_POSTED]=1, [FC_COMPLETION]=2
+    logic [2:0] [11:0] data_credits;
+    logic [2:0] [1:0]  hdr_scale;
+    logic [2:0] [1:0]  data_scale;
     } fc_credits_t;
 
     typedef struct packed {
@@ -131,7 +131,6 @@ package dll_pkg;
   `include "pcie_feature_reserved_seq.sv"
   `include "pcie_dropped_fc_sequence.sv"
   `include "pcie_out_of_order_fc_sequence.sv"
-  `include "pcie_incorrect_dllp_type_sequence.sv"
   `include "pcie_wrong_dllp_type_seq.sv"
   `include "virtual_sequence.sv"
 

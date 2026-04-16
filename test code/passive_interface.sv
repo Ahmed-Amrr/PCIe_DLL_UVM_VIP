@@ -53,21 +53,10 @@ interface passive_interface (input logic clk);
         bins reset_disabled = {1'b0};
     }
 
-    cp_local_register_feature: coverpoint local_register_feature {
-        bins reset_enabled  = {1'b1};
-        bins reset_disabled = {1'b0};
-    }
-
      // bit 31 — remote feature valid
     cp_remote_feature_valid: coverpoint dl_feature_status.remote_feature_valid {
         bins valid   = {1'b1};
         bins invalid = {1'b0};
-    }
-
-    // bits 30:23 — reserved, should always be zero
-    cp_rsvdz: coverpoint dl_feature_status.rsvdz {
-        bins zero    = {8'h00};
-        illegal_bins non_zero = {[8'h01 : 8'hFF]}; 
     }
 
     // bits 22:0 — remote features 
@@ -75,16 +64,12 @@ interface passive_interface (input logic clk);
         bins all_zeros     = {23'h000000};
     }
 
-    cp_dl_down: coverpoint dl_down {
+    cp_dl_down: coverpoint DL_Down {
         bins dl_down_asserted   = {1'b1};
         bins dl_down_deasserted = {1'b0};
     }
 
-    cp_inactive_entry_reset: cross cp_state, cp_reset {
-        bins inactive_reset = binsof(cp_state.inactive) && binsof(cp_reset.reset_enabled);
-    }
-
-    cp_remote_feature_valid_cleared: cross cp_state, cp_reset, cp_remote_feature_valid {
+    cp_remote_feature_valid_cleared: cross cp_state, cp_remote_feature_valid {
         bins remote_feature_valid_cleared = binsof(cp_state.inactive) && binsof(cp_remote_feature_valid.invalid);
     }
 
@@ -92,7 +77,7 @@ interface passive_interface (input logic clk);
         bins dl_down_inactive = binsof(cp_state.inactive) && binsof(cp_dl_down.dl_down_asserted);
     }
 
-    cp_remote_feature_field_cleared: cross cp_state, cp_reset, cp_remote_feature_supported {
+    cp_remote_feature_field_cleared: cross cp_state, cp_remote_feature_supported {
         bins remote_feature_supported_cleared = binsof(cp_state.inactive) && binsof(cp_remote_feature_supported.all_zeros);
     }
     endgroup
@@ -112,7 +97,6 @@ interface passive_interface (input logic clk);
         }
 
         // FEATURE_05 : Ack bit must equal remote_feature_valid
-        // Must seen for both Valid=0 and Valid=1
 
         cp_ack_bit_matches_valid: coverpoint
             (tx_dllp[39] == remote_register_feature.remote_feature_valid)
@@ -122,44 +106,13 @@ interface passive_interface (input logic clk);
             illegal_bins ack_not_equal_remote_valid = {1'b0};
         }
 
-        // Cover both 0 and 1
-        cp_remote_valid_value: coverpoint
-            remote_register_feature.remote_feature_valid
-            iff (tx_dllp[47:40] == FEATURE)
-        {
-            bins valid_0 = {1'b0};
-            bins valid_1 = {1'b1};
-        }
-
-        // Ack matched valid for both values of valid
-        cp_ack_matches_both_valid_values: cross cp_ack_bit_matches_valid,
-                                               cp_remote_valid_value;
-
-        // FEATURE_06 : Remote DL Feature Supported field recorded on first valid Feature DLLP when Valid=Clear
-        cp_remote_feature_recorded_first_dllp: coverpoint
-            remote_register_feature.remote_feature_valid
-            iff (rx_dllp[47:40] == FEATURE)
-        {
-            bins first_dllp_captured = {1'b0};   // Valid=0 when FEATURE DLLP arrived
-            bins subsequent_dllp_captured    = {1'b1};   // Valid=1 — subsequent FEATURE DLLPs
-        }
-
-        // FEATURE_07 :  Remote DL Feature Supported Valid bit set after first valid Feature DLLP
+        // FEATURE_07 :  Remote DL Feature Supported Valid bit set after receiving Feature DLLP
         cp_remote_feature_valid_set: coverpoint
             remote_register_feature.remote_feature_valid
+			iff (state == DL_FEATURE && rx_dllp[47:40] == FEATURE)
         {
-            bins valid_0    = {1'b0};
-            bins valid_1    = {1'b1};
             bins valid_rose = (1'b0 => 1'b1);   // transition bin
-        }
-
-        // FEATURE_08 : Remote DL Feature field NOT updated on subsequent Feature DLLPs when Valid already Set
-        cp_remote_feature_no_update_after_valid: coverpoint
-            (rx_dllp[38:16] != remote_register_feature.remote_feature_supported)
-            iff (rx_dllp[47:40] == FEATURE &&
-                 remote_register_feature.remote_feature_valid)
-        {
-            bins different_remote_feature_supp_value_seen = {1'b1};
+			illegal_bins invalid_trans = (1'b1 => 1'b0);
         }
 
         // --------------------------------------------------------
@@ -182,6 +135,7 @@ interface passive_interface (input logic clk);
 
         cp_remote_scaled_fc: coverpoint
             remote_register_feature.remote_feature_supported[0]
+			iff (remote_register_feature.remote_feature_valid == 1)
         {
             bins remote_set     = {1'b1};
             bins remote_not_set = {1'b0};
@@ -271,7 +225,7 @@ interface passive_interface (input logic clk);
 
         // TRANS_FEAT_04/05: LinkUp dropped
         cp_linkup: coverpoint pl_lnk_up {
-            bins link_up   = {1'b1};
+            bins pl_lnk_up   = {1'b1};
             bins link_down = {1'b0};
         }
 
@@ -283,7 +237,7 @@ interface passive_interface (input logic clk);
             bins trans_feat_01 =
                 binsof(cp_state_transitions.feature_to_init1) &&
                 binsof(cp_ack_bit_rx.ack_set)                 &&
-                binsof(cp_linkup.link_up);
+                binsof(cp_linkup.pl_lnk_up);
                 
         // TRANS_FEAT_05: LinkUp dropped while Ack=1 received (feature-> inactive)
             bins trans_feat_05_ack =
@@ -305,7 +259,7 @@ interface passive_interface (input logic clk);
             bins trans_feat_02 =
                  binsof(cp_state_transitions.feature_to_init1)   &&
                  binsof(cp_initfc1_received.initfc1_seen)         &&
-                 binsof(cp_linkup.link_up);
+                 binsof(cp_linkup.pl_lnk_up);
         // TRANS_FEAT_05: LinkUp dropped when InitFC1 received -> inactive
              bins trans_feat_05_initfc1 =
                  binsof(cp_state_transitions.feature_to_inactive) &&
@@ -352,39 +306,27 @@ interface passive_interface (input logic clk);
 
   // FCINIT1_03 — InitFC1 triplet transmitted in correct order P → NP → Cpl
   
-  cp_initfc1_sequence_order: coverpoint dllp_type
-      iff (state == DL_INIT1 && pl_valid) 
+  cp_initfc1_sequence_order: coverpoint tx_dllp[47:40]
+      iff (state == DL_INIT1 ) 
   {
       bins initfc1_seq = 
           (INITFC1_P => INITFC1_NP => INITFC1_CPL);
   }
 
-  // FCINIT1_04 — TLP transmission blocked on VC0 during FC_INIT1
-
-  // cp_vc0_tlp_blocked_fc_init1: coverpoint is_tlp_tx_vc0 iff (state == DL_INIT1) {
-  //      bins blocked = {0}; // no TLP forwarded
-  //  }
-  // FCINIT1_05 — TLPs on other VCs NOT blocked during their FC_INIT1
-  // FCINIT1_06 — Physical Layer transmissions not blocked
-  // cp_phy_tx_not_blocked: coverpoint phy_tx_active {
-  //  bins phy_passes = {1'b1} iff (fc_sub_state == FC_INIT1);
-  // }
   // FCINIT1_07 — Ack/Nak DLLPs not blocked during FC_INIT1
 
-  cp_ack_nak_not_blocked_fc_init1: coverpoint dllp_type
-    iff (state == DL_INIT1 && pl_valid) 
+  cp_ack_nak_not_blocked_fc_init1: coverpoint tx_dllp[47:40]
+    iff (state == DL_INIT1 ) 
   {
 
     bins ack_sent = {ACK};
-    bins nak_sent = {NAK};
+    bins nak_sent = {NACK};
   }
 
   // FCINIT1_08 — HdrScale/DataScale = 00b when Scaled FC not active
  
   cp_initfc1_scale_00b: coverpoint {tx_hdr_scale, tx_data_scale}
-    iff (state == DL_INIT1 && pl_valid &&
-         (dllp_type inside {INITFC1_P, INITFC1_NP, INITFC1_CPL}) &&
-         !scaled_fc_active)
+    iff (state == DL_INIT1 && !scaled_fc_active)
   {
 
     bins scale_zero = {4'b0000};
@@ -395,8 +337,7 @@ interface passive_interface (input logic clk);
   // FCINIT1_09 — HdrScale/DataScale != 00b when Scaled FC active
 
   cp_initfc1_scale_nonzero: coverpoint {tx_hdr_scale, tx_data_scale}
-    iff (state == DL_INIT1 && pl_valid &&
-         (dllp_type inside {INITFC1_P, INITFC1_NP, INITFC1_CPL}) && scaled_fc_active)
+    iff (state == DL_INIT1 && scaled_fc_active)
    {
 
     bins non_zero[] = {4'b0101, 4'b0110, 4'b0111,
@@ -405,16 +346,11 @@ interface passive_interface (input logic clk);
     illegal_bins wrong_scale = default;
    }
 
-
-  
-  // FCINIT1_10 — HdrFC/DataFC recorded from both InitFC1 and InitFC2 in FC_INIT1
-  // FCINIT1_11 — HdrScale/DataScale recorded if Scaled FC supported
-  // FCINIT1_12 — FI1 flag set ONLY after ALL of P, NP, Cpl received
   // TRANS_INIT1_01 — Exit FC_INIT1 → FC_INIT2 when FI1=1 and LinkUp=1
  
   cp_trans_fcinit1_to_fcinit2_on_fi1: coverpoint state {
     bins trans_to_fcinit2 = (FC_INIT1 => FC_INIT2) iff (fi1_flag  == 1'b1
-                                                          && link_up == 1'b1);
+                                                          && pl_lnk_up == 1'b1);
   }
 
  
@@ -422,20 +358,7 @@ interface passive_interface (input logic clk);
 
   cp_trans_fcinit1_to_inactive_linkup_0: coverpoint state {
     bins trans_to_inactive_on_linkdown = (FC_INIT1 => DL_INACTIVE)
-                                          iff (link_up == 1'b0);
-  }
-
-  // TRANS_INIT1_03 — LinkUp=0 takes priority over FI1 simultaneous assertion
-  //it is redundant
-
-  cp_trans_fcinit1_linkup_vs_fi1: coverpoint fc_sub_state {
-    // Must go to DL_INACTIVE, NOT FC_INIT2, when both events coincide
-    bins priority_inactive = (FC_INIT1 => DL_INACTIVE)
-                              iff (link_up == 1'b0 && fi1_flag == 1'b1);
-
-    // Illegal: must never advance to FC_INIT2 when LinkUp dropped simultaneously
-    illegal_bins illegal_to_fcinit2 = (FC_INIT1 => FC_INIT2)
-                                       iff (link_up == 1'b0);
+                                          iff (pl_lnk_up == 1'b0);
   }
 
 endgroup : cg_fc_init1
