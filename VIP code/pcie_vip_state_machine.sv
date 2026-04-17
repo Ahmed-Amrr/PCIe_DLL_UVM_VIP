@@ -107,7 +107,7 @@ class pcie_vip_state_machine extends uvm_component;
 			CRC_generation(.dllp_before_crc(received_dllp_payload), .crc(crc_expected));	//calculate the expected crc
 
 			if (received_crc == crc_expected) begin 								//check on crc before state transition
-				type_legal_check(.current_state(current_state), .type_rx(received_type), .illegal_type(illegal_type_bit));					
+				type_legal_check(.current_state_r(current_state), .type_rx_r(received_type), .illegal_type_r(illegal_type_bit));					
 				if (!illegal_type_bit) begin
 					state_transition();
 					state_seq_item.vip_state = current_state;
@@ -336,9 +336,9 @@ class pcie_vip_state_machine extends uvm_component;
 	endfunction : active_state
 
 	function void type_legal_check();		//check if the types received is legal
-		input dl_state_t current_state;
-		input dllp_type_t type_rx;
-		output bit illegal_type;
+		input dl_state_t current_state_r;
+		input dllp_type_t type_rx_r;
+		output bit illegal_type_r;
 		illegal_type = 0;
 		case (current_state)
 			DL_INACTIVE: begin
