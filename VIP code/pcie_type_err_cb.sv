@@ -4,15 +4,19 @@
 class pcie_dllp_type_err_cb extends pcie_vip_driver_cb;
     `uvm_object_utils(pcie_dllp_type_err_cb)
 
-    pcie_vip_tx_sequencer sqr;
 
     function new(string name = "pcie_dllp_type_err_cb");
         super.new(name);
     endfunction : new
 
-    virtual task pre_drive(pcie_dllp_seq_item item);
+    virtual task pre_drive(pcie_dllp_seq_item item, pcie_vip_tx_sequencer sqr);
 
         dllp_type_t wrong_type;
+
+        if (sqr = null) begin
+            `uvm_warning("CB_DLLP_TYPE", "sqr is null")
+            return;
+        end
 
         case (sqr.state)
             DL_FEATURE : begin
