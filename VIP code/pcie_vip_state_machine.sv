@@ -58,6 +58,8 @@ class pcie_vip_state_machine extends uvm_component;
 
 	bit illegal_type_bit;		//check on the type received depending on current state
 
+	dl_state_t prev_state;		//for reporting the transitions between states
+
 /*-------------------------------------------------------------------------------
 -- Functions
 -------------------------------------------------------------------------------*/
@@ -109,7 +111,11 @@ class pcie_vip_state_machine extends uvm_component;
 			if (received_crc == crc_expected) begin 								//check on crc before state transition
 				type_legal_check(.current_state_r(current_state), .type_rx_r(received_type), .illegal_type_r(illegal_type_bit));					
 				if (!illegal_type_bit) begin
+					prev_state = current_state; 
 					state_transition();
+                    if (prev_state != current_state) begin //check on transitions
+                        `uvm_info("STATE_TRANS", $sformatf("Transition: %s -> %s", prev_state.name(), current_state.name()), UVM_NONE)
+                    end
 					state_seq_item.vip_state = current_state;
 					state_seq_item.FI1 = FI1;
 					state_seq_item.FI2 = FI2;
@@ -118,6 +124,10 @@ class pcie_vip_state_machine extends uvm_component;
 					`uvm_error("State_Machine rx_type error (Illegal DLLP received)",
        				$sformatf("received type is : %s",type_rx))
 				end
+			end
+			else begin
+				`uvm_error("State_Machine rx_crc error (Illegal DLLP received)",
+       			$sformatf("received crc is : %s, expected crc : %s",received_crc, crc_expected))
 			end
 			sm_ap.write(state_seq_item);
 		end
@@ -166,9 +176,11 @@ class pcie_vip_state_machine extends uvm_component;
 		reset_conf_regs();								//resets configuration regesters
 		if (seq_item_rx.reset) begin 					//requirs modeling for the reset logic
 			next_state = DL_INACTIVE;
+			`uvm_info("SM_STATUS", "asserted reset", UVM_MEDIUM)
 		end else 
 		if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
 			next_state = DL_INACTIVE;
+			`uvm_info("SM_STATUS", "Waiting for Physical Layer (pl_lnk_up)", UVM_HIGH)
 		end else if (cfg.local_register_feature.feature_exchange_enable && cfg.feature_exchange_cap) begin
 			next_state = DL_FEATURE;
 		end begin
@@ -179,9 +191,11 @@ class pcie_vip_state_machine extends uvm_component;
 	function void feature_state ();
 		if (seq_item_rx.reset) begin 					//requirs modeling for the reset logic
 			next_state = DL_INACTIVE;
+			`uvm_info("SM_STATUS", "asserted reset", UVM_MEDIUM)
 		end else 
 		if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
 			next_state = DL_INACTIVE;
+			`uvm_info("SM_STATUS", "Waiting for Physical Layer (pl_lnk_up)", UVM_HIGH)
 		end else if ((received_type == INITFC1_P) || (received_type == INITFC1_NP) || (received_type == INITFC1_CPL)) begin
 			next_state = DL_INIT1;
 		end else if ((received_type == DL_FEATURE) && (seq_item_rx.dllp[39] == 1)) begin
@@ -201,9 +215,11 @@ class pcie_vip_state_machine extends uvm_component;
 	function void init1_state ();
 		if (seq_item_rx.reset) begin 					//requirs modeling for the reset logic
 			next_state = DL_INACTIVE;
+			`uvm_info("SM_STATUS", "asserted reset", UVM_MEDIUM)
 		end else 
 		if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
 			next_state = DL_INACTIVE;
+			`uvm_info("SM_STATUS", "Waiting for Physical Layer (pl_lnk_up)", UVM_HIGH)
 		end else if (received_type == INITFC1_P) begin 	//raise init1_p_f
 			init1_p_f = 1;
 			init1_np_f = 0;
@@ -246,9 +262,11 @@ class pcie_vip_state_machine extends uvm_component;
 	function void init2_state ();						//should be checking on regs and report error if exist
 		if (seq_item_rx.reset) begin 					//requirs modeling for the reset logic
 			next_state = DL_INACTIVE;
+			`uvm_info("SM_STATUS", "asserted reset", UVM_MEDIUM)
 		end else 
 		if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
 			next_state = DL_INACTIVE;
+			`uvm_info("SM_STATUS", "Waiting for Physical Layer (pl_lnk_up)", UVM_HIGH)
 		end else if (received_type == INITFC2_P) begin
 			init2_p_f = 1;
 			init2_np_f = 0;
@@ -291,12 +309,14 @@ class pcie_vip_state_machine extends uvm_component;
 	function void active_state ();
 		if (seq_item_rx.reset) begin 					//requirs modeling for the reset logic
 			next_state = DL_INACTIVE;
+			`uvm_info("SM_STATUS", "asserted reset", UVM_MEDIUM)
 		end else 
 		if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
 			if (cfg.surprise_down_capable) begin
 				state_seq_item.surprise_down_event = 1;
 			end
 			next_state = DL_INACTIVE;
+			`uvm_info("SM_STATUS", "Waiting for Physical Layer (pl_lnk_up)", UVM_HIGH)
 		end else if (received_type == UPDATEFC_P) begin
 			update_p_f = 1;
 			update_np_f = 0;
