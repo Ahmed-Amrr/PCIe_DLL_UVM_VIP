@@ -9,12 +9,6 @@
     pcie_vip_config cfg;
     pcie_dllp_seq_item item;
 
-    // Tasks to walk through the states
-    extern virtual task start_from_INACTIVE(pcie_dllp_seq_item item);
-    extern virtual task start_from_Feature(pcie_dllp_seq_item item);
-    extern virtual task start_from_INIT1(pcie_dllp_seq_item item);
-    extern virtual task start_from_INIT2(pcie_dllp_seq_item item);
-    extern virtual task start_from_ACTIVE(pcie_dllp_seq_item item);
     extern virtual task send_feat_dllp (input dllp_type_t pkt_type, pcie_dllp_seq_item item);
     extern virtual task send_fc_dllp(dllp_type_t pkt_type, fc_type_t fc_type, pcie_dllp_seq_item item);
 
