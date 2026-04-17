@@ -4,8 +4,7 @@
 class pcie_vip_tx_sequencer extends uvm_sequencer #(pcie_dllp_seq_item);
     `uvm_component_utils(pcie_vip_tx_sequencer)
     
-    uvm_analysis_export #(pcie_state_seq_item) sqr_export;     //getting the data from tx monitor ???
-    uvm_tlm_analysis_fifo #(pcie_state_seq_item) sqr_fifo;
+    uvm_analysis_imp #(pcie_state_seq_item, pcie_vip_tx_sequencer) sqr_export;     
     pcie_vip_config cfg;
     dl_state_t state;
 
@@ -21,22 +20,15 @@ class pcie_vip_tx_sequencer extends uvm_sequencer #(pcie_dllp_seq_item);
           `uvm_fatal("build_phase","unable to get configuration object in sb")
 
         sqr_export = new("sqr_export",this);
-        sqr_fifo   = new("sqr_fifo",this);
 
     endfunction : build_phase
 
-    function void connect_phase(uvm_phase phase);
-        super.connect_phase(phase);
-        sqr_export.connect(sqr_fifo.analysis_export);
-    endfunction : connect_phase
     
     task run_phase(uvm_phase phase);
-        pcie_state_seq_item state_item;
+
         pcie_base_seq       seq       ;
         forever begin
-            // wait until the state changes
-            sqr_fifo.get(state_item);       
-            state = state_item.state;        
+            // wait until the state changes      
             case (state)
                 DL_INACTIVE : seq = pcie_inactive_sequence::type_id::create("seq");
                 DL_FEATURE  : seq = pcie_feature_sequence::type_id::create("seq");
@@ -49,6 +41,10 @@ class pcie_vip_tx_sequencer extends uvm_sequencer #(pcie_dllp_seq_item);
         end
 
     endtask : run_phase
+
+    function void write (pcie_state_seq_item item);
+        state = item.state;
+    endfunction
 
 endclass : pcie_vip_tx_sequencer 
 

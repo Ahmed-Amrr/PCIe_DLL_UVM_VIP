@@ -11,15 +11,10 @@ class pcie_fc_init1_seq extends pcie_base_seq;
 
         pcie_dllp_seq_item item;
         int i = 0;
-        bit cb_override = 0;
 
         item = pcie_dllp_seq_item::type_id::create("item");
 
-        // check if any callback wants to override the pattern
-        `uvm_do_callbacks_exit_on(pcie_fc_init1_seq, pcie_seq_callbacks,
-                                  override_pattern(), 1, cb_override)
-
-        if(cb_override) begin
+        if(cfg.dropped_fc || cfg.out_of_order_fc) begin
             // let the callback run its own pattern instead
             `uvm_do_callbacks(pcie_fc_init1_seq, pcie_seq_callbacks,
                               do_send_pattern(this, p_sequencer.state))

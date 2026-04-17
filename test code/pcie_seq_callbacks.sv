@@ -34,6 +34,9 @@
         endfunction
 
         virtual task do_send_pattern(pcie_fc_init1_seq seq, dl_state_t state);
+
+            int i = 0;
+
             pcie_dllp_seq_item item;
             item = pcie_dllp_seq_item::type_id::create("item");
 
@@ -72,6 +75,11 @@
                             seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
                         end
                 endcase
+                i++;
+                if(i == 1000) begin
+                    `uvm_error(get_type_name(), "Timeout in DL_INIT1")
+                    break;
+                end
             end
             
         endtask
@@ -90,6 +98,9 @@
         endfunction
 
         virtual task do_send_pattern(pcie_fc_init1_seq seq, dl_state_t state);
+
+            int i = 0;
+
             pcie_dllp_seq_item item;
             item = pcie_dllp_seq_item::type_id::create("item");
 
@@ -132,6 +143,11 @@
                             seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
                         end
                 endcase
+                i++;
+                if(i == 1000) begin
+                    `uvm_error(get_type_name(), "Timeout in DL_INIT1")
+                    break;
+                end
             end
             
         endtask
