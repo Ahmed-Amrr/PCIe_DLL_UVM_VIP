@@ -1,13 +1,13 @@
 `ifndef OUT_ORDER_FC
 `define OUT_ORDER_FC
 
-    class out_of_order_fc_cb extends pcie_seq_cb;
-        `uvm_object_utils(out_of_order_fc_cb)
+    class pcie_out_of_order_fc_cb extends pcie_seq_cb;
+        `uvm_object_utils(pcie_out_of_order_fc_cb)
 
         int unsigned active_cycles   = 10;  // how many iterations use dropped pattern
         int unsigned current_cycle   = 0;   // internal counter
 
-        function new(string name = "out_of_order_fc_cb");
+        function new(string name = "pcie_out_of_order_fc_cb");
             super.new(name);
         endfunction
 

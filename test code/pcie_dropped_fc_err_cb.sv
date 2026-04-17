@@ -1,13 +1,13 @@
 `ifndef DROPPED_FC
 `define DROPPED_FC
 
-    class dropped_fc_cb extends pcie_seq_cb;
-        `uvm_object_utils(dropped_fc_cb)
+    class pcie_dropped_fc_cb extends pcie_seq_cb;
+        `uvm_object_utils(pcie_dropped_fc_cb)
 
         int unsigned active_cycles   = 10;  // how many iterations use dropped pattern
         int unsigned current_cycle   = 0;   // internal counter
 
-        function new(string name = "dropped_fc_cb");
+        function new(string name = "pcie_dropped_fc_cb");
             super.new(name);
         endfunction
 
@@ -65,6 +65,5 @@
         endtask
 
     endclass
-
 
 `endif
