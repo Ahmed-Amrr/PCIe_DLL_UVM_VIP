@@ -65,6 +65,7 @@ class pcie_vip_coverage extends uvm_component;
 	endtask : run_phase
 
 	covergroup CovGp ();
+	// State Coverage — all states and all legal transitions
 		cp_state : coverpoint state_seq_item.vip_state{
 			bins dl_inactive_b = DL_INACTIVE;
 			bins dl_feature_b = DL_FEATURE;
@@ -81,6 +82,7 @@ class pcie_vip_coverage extends uvm_component;
 			bins dl_init2_dl_inactive_t = (DL_INIT2 => DL_INACTIVE);
 			bins dl_active_dl_inactive_t = (DL_ACTIVE => DL_INACTIVE);
 		}
+		// RX and TX DLLP type coverage
 		rx_type_c : coverpoint seq_item_rx.dllp[47:40]{
 			bins ACK_b             = ACK;
         	bins NACK_b            = NACK;
@@ -113,29 +115,39 @@ class pcie_vip_coverage extends uvm_component;
         	bins UPDATEFC_NP_b     = UPDATEFC_NP;
         	bins UPDATEFC_CPL_b    = UPDATEFC_CPL;
 		}
+		// FI2 flag coverage
 		FI2_c : coverpoint state_seq_item.FI2 {
 			bins zero = {0};
 			bins one = {1};
 		}
+		// FI1 flag coverage
+		FI1_c : coverpoint state_seq_item.FI1 {
+			bins zero = {0};
+			bins one = {1};
+		}
+		// DL_Up / DL_Down status
 		cp_dl_up : coverpoint {state_seq_item.DL_Up, state_seq_item.DL_Down} {
 			bins dl_up   = {2'b10};
 			bins dl_down = {2'b01};
 		}
+		 // LinkUp signal from RX item 
 		cp_linkup: coverpoint seq_item_rx.pl_lnk_up {
             bins link_up   = {1'b1};
             bins link_down = {1'b0};
         }
+		// Link not disabled from cfg
 		cp_link_not_disable: coverpoint cfg.link_not_disabled {
 			bins not_disabled = {1};
 			bins disabled     = {0};
 		}
-		// el reset hena gaya mn el phi sah? rx or tx transaction?
+		// el reset hena gaya mn el phi sah? rx or tx transaction? rx inshallah
 		cp_multiple_resets : coverpoint seq_item_rx.reset {
 			bins reset_asserted   = {1};
         	bins reset_deasserted = {0};	
 			bins assert_reset     = {0 => 1};
             bins multiple_reset   = {0 => 1 => 1 => 1};
         }
+		// Feature exchange capability and enable from cfg
 		cp_feature_exchange_cap: coverpoint cfg.feature_exchange_cap {
             bins cap_supported     = {1};
             bins cap_not_supported = {0};
@@ -144,14 +156,22 @@ class pcie_vip_coverage extends uvm_component;
 			bins enabled  = {1};
             bins disabled = {0};
         }
+		// Scaled FC local bit[0] from cfg
 		cp_local_scaled_fc: coverpoint cfg.local_register_feature.local_feature_supported[0] {
             bins local_set     = {1};
             bins local_not_set = {0};
         }
+       	// Scaled FC remote bit[0] from cfg
 		cp_remote_scaled_fc: coverpoint cfg.remote_register_feature.remote_feature_supported[0] iff (remote_register_feature.remote_feature_valid == 1) {
             bins remote_set     = {1};
             bins remote_not_set = {0};
         }
+	    // Scaled FC active from cfg
+		cp_scaled_fc_active: coverpoint cfg.scaled_fc_active {
+            bins active     = {1};
+            bins not_active = {0};
+        }
+		// Remote feature register fields from cfg
 		cp_remote_feature_valid: coverpoint cfg.remote_register_feature.remote_feature_valid {
 			bins valid   = {1};
 			bins invalid = {0};
@@ -159,10 +179,12 @@ class pcie_vip_coverage extends uvm_component;
 		cp_remote_feature_supported: coverpoint cfg.remote_register_feature.remote_feature_supported {
 			bins all_zeros     = {23'h000000};
 		}
-
+        // DL_INACTIVE entry conditions
 		cp_remote_feature_valid_cleared: cross cp_state, cp_remote_feature_valid {
 			bins remote_feature_valid_cleared = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_valid.invalid);
-		}
+			// Illegal: valid=1 while in DL_INACTIVE
+            illegal_bins valid_set_while_inactive = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_valid.valid);
+        }
 
 		cp_dl_down_reported_inactive: cross cp_state, cp_dl_up {
 			bins dl_down_inactive = binsof(cp_state.dl_inactive_b) && binsof(cp_dl_up.dl_down);
@@ -170,8 +192,10 @@ class pcie_vip_coverage extends uvm_component;
 
 		cp_remote_feature_field_cleared: cross cp_state, cp_remote_feature_supported {
 			bins remote_feature_supported_cleared = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_supported.all_zeros);
+			// Illegal: non-zero feature field while inactive
+            illegal_bins field_set_while_inactive = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_supported.non_zero);
 		}
-		
+		// Transition from INACTIVE to FEATURE — all conditions must be met
 		cx_trans_inactive_to_feature_all_conditions : cross cp_state, cp_feature_exchange_cap, cp_feature_exchange_en, cp_link_not_disable, cp_linkup {
             bins TRANS_INACT = binsof(cp_state.dl_inactive_b) &&
 							binsof(cp_feature_exchange_cap.cap_supported) &&
@@ -180,15 +204,28 @@ class pcie_vip_coverage extends uvm_component;
 							binsof(cp_linkup.link_up);
         }
 
+        // FEATURE_01: DL_Down reported during DL_FEATURE
+		cp_dl_down_reported_feature: cross cp_state, cp_dl_up {
+			bins dl_down_feature = binsof(cp_state.dl_feature_b) && binsof(cp_dl_up.dl_down);
+		}
+        // FEATURE_03 : While in DL_FEATURE, received DLLPs must be of type (FEATURE,INITFC1_P,INITFC1_NP,INITFC1_CPL)
+        cp_feature_dllp_type: coverpoint seq_item_rx.dllp[47:40] iff (state_seq_item.vip_state == DL_FEATURE)
+        {
+           bins valid_dllp_in_feature = {FEATURE, INITFC1_P, INITFC1_NP, INITFC1_CPL};
+        // Illegal: any other DLLP type shouldn't be received in DL_FEATURE
+           illegal_bins invalid_dllp_in_feature = default;
+        }
 		// I think we don't need to do so, we already check them in fer model?
 		// FEATURE_04 : Transmitted Feature field must equal local register
-        cp_tx_feature_field_matches_local: coverpoint (seq_item_tx.dllp[38:16] == cfg.local_register_feature.local_feature_supported) iff (state_seq_item.vip_state == FEATURE) {
+        cp_tx_feature_field_matches_local: coverpoint (seq_item_tx.dllp[38:16] == cfg.local_register_feature.local_feature_supported) iff (state_seq_item.vip_state == FEATURE
+		&& seq_item_tx.dllp[47:40] == FEATURE) {
             bins         feature_field_matches_local       = {1};
             illegal_bins feature_field_mismatch_with_local = {0};
         }
 
         // FEATURE_05 : Ack bit must equal remote_feature_valid
-        cp_ack_bit_matches_valid: coverpoint (seq_item_rx.dllp[39] == cfg.remote_register_feature.remote_feature_valid) iff (state_seq_item.vip_state == FEATURE){
+        cp_ack_bit_matches_valid: coverpoint (seq_item_rx.dllp[39] == cfg.remote_register_feature.remote_feature_valid) iff (state_seq_item.vip_state == FEATURE 
+		&& seq_item_tx.dllp[47:40] == FEATURE){
             bins         ack_equals_remote_valid    = {1};
             illegal_bins ack_not_equal_remote_valid = {0};
         }
@@ -197,8 +234,166 @@ class pcie_vip_coverage extends uvm_component;
             bins valid_rose = (1'b0 => 1'b1);   // transition bin
 			illegal_bins invalid_trans = (1'b1 => 1'b0);
         }
+        // FEATURE_11: scaled_fc_active ONLY when all three conditions met
+        cp_feature_activated_both_sides_only: cross cp_scaled_fc_active,cp_feature_exchange_cap,cp_local_scaled_fc,cp_remote_scaled_fc
+        {
+            bins all_set_active =
+                binsof(cp_scaled_fc_active.active)            &&
+                binsof(cp_feature_exchange_cap.cap_supported) &&
+                binsof(cp_local_scaled_fc.local_set)          &&
+                binsof(cp_remote_scaled_fc.remote_set);
 
+            bins cap_not_supported_not_active =
+                binsof(cp_scaled_fc_active.not_active)        &&
+                binsof(cp_feature_exchange_cap.cap_not_supported);
 
+            bins local_not_set_not_active =
+                binsof(cp_scaled_fc_active.not_active)        &&
+                binsof(cp_feature_exchange_cap.cap_supported) &&
+                binsof(cp_local_scaled_fc.local_not_set);
+
+            bins remote_not_set_not_active =
+                binsof(cp_scaled_fc_active.not_active)        &&
+                binsof(cp_feature_exchange_cap.cap_supported) &&
+                binsof(cp_remote_scaled_fc.remote_not_set);
+
+            illegal_bins active_without_cap =
+                binsof(cp_scaled_fc_active.active)            &&
+                binsof(cp_feature_exchange_cap.cap_not_supported);
+
+            illegal_bins active_without_local =
+                binsof(cp_scaled_fc_active.active)            &&
+                binsof(cp_feature_exchange_cap.cap_supported) &&
+                binsof(cp_local_scaled_fc.local_not_set);
+
+            illegal_bins active_without_remote =
+                binsof(cp_scaled_fc_active.active)            &&
+                binsof(cp_feature_exchange_cap.cap_supported) &&
+                binsof(cp_remote_scaled_fc.remote_not_set);
+        }
+
+        // TRANS_FEAT_01 : Exit DL_Feature → DL_Init when Feature Exchange completes (Ack=Set) + LinkUp=1
+		// TRANS_FEAT_02 : Exit DL_Feature → DL_Init on receipt of InitFC1 DLLP + LinkUp=1
+        // Cause of feature->init1 transition coverpoints 
+        cp_ack_bit_rx: coverpoint seq_item_rx.dllp[39]
+            iff (state_seq_item.vip_state == DL_FEATURE && seq_item_rx.dllp[47:40] == FEATURE)
+        {
+            bins ack_set     = {1'b1};
+            bins ack_not_set = {1'b0};
+        }
+
+        cp_initfc1_received: coverpoint
+            (seq_item_rx.dllp[47:40] inside {INITFC1_P, INITFC1_NP, INITFC1_CPL})
+            iff (state_seq_item.vip_state == DL_FEATURE)
+        {
+            bins initfc1_seen = {1'b1};
+            bins no_initfc1   = {1'b0};
+        }
+
+        // TRANS_FEAT_01: feature->init1 on Ack=1 + LinkUp=1
+        // TRANS_FEAT_05: LinkUp=0 + Ack=1 -> inactive
+        cp_trans_feature_to_init_on_ack: cross cp_state, cp_ack_bit_rx, cp_linkup {
+            bins trans_feat_01 =
+                binsof(cp_state.dl_feature_dl_init1_t) &&
+                binsof(cp_ack_bit_rx.ack_set)          &&
+                binsof(cp_linkup.link_up);
+
+            bins trans_feat_05_ack =
+                binsof(cp_state.dl_feature_dl_inactive_t) &&
+                binsof(cp_ack_bit_rx.ack_set)             &&
+                binsof(cp_linkup.link_down);
+
+            illegal_bins init1_with_linkdown_on_ack =
+                binsof(cp_state.dl_feature_dl_init1_t) &&
+                binsof(cp_ack_bit_rx.ack_set)          &&
+                binsof(cp_linkup.link_down);
+        }
+
+        // TRANS_FEAT_02: feature->init1 on InitFC1 + LinkUp=1
+        // TRANS_FEAT_05: LinkUp=0 + InitFC1 -> inactive
+        cp_trans_feature_to_init_on_initfc1: cross cp_state, cp_initfc1_received, cp_linkup {
+            bins trans_feat_02 =
+                binsof(cp_state.dl_feature_dl_init1_t)    &&
+                binsof(cp_initfc1_received.initfc1_seen)   &&
+                binsof(cp_linkup.link_up);
+
+            bins trans_feat_05_initfc1 =
+                binsof(cp_state.dl_feature_dl_inactive_t) &&
+                binsof(cp_initfc1_received.initfc1_seen)   &&
+                binsof(cp_linkup.link_down);
+
+            illegal_bins init1_with_linkdown_on_initfc1 =
+                binsof(cp_state.dl_feature_dl_init1_t)    &&
+                binsof(cp_initfc1_received.initfc1_seen)   &&
+                binsof(cp_linkup.link_down);
+        }
+
+        // TRANS_FEAT_04: feature->inactive on LinkUp=0
+        cp_trans_feature_to_inactive_linkup_0: cross cp_state, cp_linkup {
+            bins trans_feat_04 =
+                binsof(cp_state.dl_feature_dl_inactive_t) &&
+                binsof(cp_linkup.link_down);
+        }
+
+	    // FCINIT1_02: DL_Down reported during FC_INIT1
+		cp_dl_down_reported_fc_init1: cross cp_state, cp_dl_up {
+			bins dl_down_fc_init1 = binsof(cp_state.dl_init1_b) && binsof(cp_dl_up.dl_down);
+		}
+
+        // FCINIT1_03: InitFC1 triplet order P->NP->CPL
+        cp_initfc1_sequence_order: coverpoint seq_item_tx.dllp[47:40]
+            iff (state_seq_item.vip_state == DL_INIT1)
+        {
+            bins initfc1_seq = (INITFC1_P => INITFC1_NP => INITFC1_CPL);
+        }
+
+        // FCINIT1_07: ACK/NACK not blocked during FC_INIT1
+		// we don't send acks and nacks so it maybe not covered
+        cp_ack_nak_not_blocked_fc_init1: coverpoint seq_item_tx.dllp[47:40]
+            iff (state_seq_item.vip_state == DL_INIT1)
+        {
+            bins ack_sent  = {ACK};
+            bins nack_sent = {NACK};
+        }
+
+        // FCINIT1_08: Scale=00b when Scaled FC not active
+        cp_initfc1_scale_00b: coverpoint
+            {seq_item_tx.dllp[39:38], seq_item_tx.dllp[29:28]}
+            iff (state_seq_item.vip_state == DL_INIT1 &&
+                 seq_item_tx.dllp[47:40] inside {INITFC1_P, INITFC1_NP, INITFC1_CPL} &&
+                 !cfg.scaled_fc_active)
+        {
+            bins scale_zero = {4'b0000};
+            illegal_bins wrong_scale = default;
+        }
+
+        // FCINIT1_09: Scale!=00b when Scaled FC active
+        cp_initfc1_scale_nonzero: coverpoint
+            {seq_item_tx.dllp[39:38], seq_item_tx.dllp[29:28]}
+            iff (state_seq_item.vip_state == DL_INIT1 &&
+                 seq_item_tx.dllp[47:40] inside {INITFC1_P, INITFC1_NP, INITFC1_CPL} &&
+                 cfg.scaled_fc_active)
+        {
+            bins non_zero[] = {4'b0101, 4'b0110, 4'b0111,
+                               4'b1001, 4'b1010, 4'b1011,
+                               4'b1111, 4'b1101, 4'b1110};
+            illegal_bins wrong_scale = default;
+        }
+
+        // TRANS_INIT1_01: FC_INIT1->FC_INIT2 when FI1=1 + LinkUp=1
+        cp_trans_fcinit1_to_fcinit2_on_fi1: cross cp_state, FI2_c, cp_linkup {
+            bins trans_init1_01 =
+                binsof(cp_state.dl_init1_dl_init2_t) &&
+                binsof(FI1_c.one)                    &&
+                binsof(cp_linkup.link_up);
+        }
+
+        // TRANS_INIT1_02: FC_INIT1->DL_Inactive when LinkUp=0
+        cp_trans_fcinit1_to_inactive_linkup_0: cross cp_state, cp_linkup {
+            bins trans_init1_02 =
+                binsof(cp_state.dl_init1_dl_inactive_t) &&
+                binsof(cp_linkup.link_down);
+        }
 		// cp_dl_up_in_fc_init2 : cross cp_state.dl_init2_b, state_seq_item.DL_Up{
 		// ignore_bins init = binsof(cp_state.);
 		// }
