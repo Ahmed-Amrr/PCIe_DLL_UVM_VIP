@@ -109,6 +109,7 @@ class pcie_vip_state_machine extends uvm_component;
 				state_seq_item.FI1 = FI1;
 				state_seq_item.FI2 = FI2;
 			end
+			sm_ap.write(state_seq_item);
 		end
 	endtask : run_phase
 

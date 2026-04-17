@@ -1,25 +1,18 @@
-`ifndef PCIE_INACTIVE_SEQUENCE_SV
-`define PCIE_INACTIVE_SEQUENCE_SV
-
 class pcie_inactive_seq extends pcie_base_seq;
     `uvm_object_utils(pcie_inactive_seq)
 
-    pcie_dllp_seq_item item;
-    
     function new(string name = "pcie_inactive_seq");
         super.new(name);
-    endfunction
+    endfunction //new()
 
-    virtual task body();    
-        repeat (10) begin
+    task body();
+        for (int i = 0; i < 10; i++) begin
             item = pcie_dllp_seq_item::type_id::create("item");
+
             start_item(item);
-            assert (seq_item.randomize());
             item.rst_req = 1;
             finish_item(item);
-        end
-    endtask : body
+        end  
+    endtask
 
-endclass : pcie_inactive_seq
-
-`endif
+endclass //pcie_inactive_seq extends pcie_base_seq
