@@ -10,11 +10,11 @@ class pcie_vip_driver_cb extends uvm_callback;
 
     virtual task pre_drive(pcie_dllp_seq_item item, pcie_vip_tx_sequencer sqr);
         // do nothing
-    endtask : pre_drive
+    endtask 
 
     virtual task post_drive(pcie_dllp_seq_item item, pcie_vip_tx_sequencer sqr);
         //do nothing
-    endtask : pre_drive
+    endtask 
 endclass : pcie_vip_driver_cb  
 
 `endif

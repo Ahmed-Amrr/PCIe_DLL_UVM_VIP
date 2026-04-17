@@ -7,6 +7,8 @@ class pcie_vip_tx_sequencer extends uvm_sequencer #(pcie_dllp_seq_item);
     uvm_analysis_imp #(pcie_state_seq_item, pcie_vip_tx_sequencer) sqr_export;     
     pcie_vip_config cfg;
     dl_state_t state;
+    pcie_base_seq seq;
+
 
     function new(string name = "pcie_vip_tx_sequencer", uvm_component parent = null);
         super.new(name,parent);
@@ -26,7 +28,6 @@ class pcie_vip_tx_sequencer extends uvm_sequencer #(pcie_dllp_seq_item);
     
     task run_phase(uvm_phase phase);
 
-        pcie_base_seq       seq       ;
         forever begin
             // wait until the state changes 
             @(state) ;     

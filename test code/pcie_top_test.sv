@@ -23,8 +23,10 @@
         string down_vip_mode;
 
         // Callback instances
-        pcie_vip_driver_cb us_cb;
-        pcie_vip_driver_cb ds_cb;
+        pcie_vip_driver_cb us_drv_cb;
+        pcie_vip_driver_cb ds_drv_cb;
+        pcie_seq_cb us_seq_cb;
+        pcie_seq_cb ds_seq_cb;
 
         // Virtual sequence
         vseq_base vseq;
@@ -49,6 +51,27 @@
 
                 "dllp_type_err" : begin
                     pcie_dllp_type_err_cb cb = pcie_dllp_type_err_cb::type_id::create(name);
+                    `uvm_info("TEST_CFG",
+                        $sformatf("Creating DLLP type error callback: %s", name), UVM_LOW)
+                    return cb;
+                end
+
+                "feature_reserved_err" : begin
+                    pcie_dllp_type_err_cb cb = pcie_dllp_type_err_cb::type_id::create(name);
+                    `uvm_info("TEST_CFG",
+                        $sformatf("Creating DLLP type error callback: %s", name), UVM_LOW)
+                    return cb;
+                end
+
+                "dropped_fc_err" : begin
+                    pcie_dllp_type_err_cb cb = pcie_seq_cb::type_id::create(name);
+                    `uvm_info("TEST_CFG",
+                        $sformatf("Creating DLLP type error callback: %s", name), UVM_LOW)
+                    return cb;
+                end
+
+                "out_of_order_fc_err" : begin
+                    pcie_dllp_type_err_cb cb = pcie_seq_cb::type_id::create(name);
                     `uvm_info("TEST_CFG",
                         $sformatf("Creating DLLP type error callback: %s", name), UVM_LOW)
                     return cb;
@@ -150,23 +173,6 @@
                 `uvm_info("TEST_CFG", $sformatf("Setting down vip mode to: %s", down_vip_mode), UVM_LOW)
             end
 
-            // Read sequence of the upper stream VIP
-            // 1. Setup Upstream
-            if (clp.get_arg_value("+SEQ_U=", seq_name_u)) begin
-                // Override ONLY for the instance named "seq_u"
-                uvm_factory::get().set_inst_override_by_name(
-                    "pcie_base_seq", seq_name_u, "uvm_test_top.seq_u" 
-                );
-            end
-
-            // 2. Setup Downstream
-            if (clp.get_arg_value("+SEQ_D=", seq_name_d)) begin
-                // Override ONLY for the instance named "seq_d"
-                uvm_factory::get().set_inst_override_by_name(
-                    "pcie_base_seq", seq_name_d, "uvm_test_top.seq_d"
-                );
-            end
-
             // Read error modes
             if (clp.get_arg_value("+U_ERR_MODE=", up_err_mode))
                 `uvm_info("TEST_CFG",
@@ -176,16 +182,20 @@
                     $sformatf("Down error mode: %s", down_err_mode), UVM_LOW)
 
             // Create callbacks based on err_mode
-            us_cb = create_callback(up_err_mode,   "us_cb");
-            ds_cb = create_callback(down_err_mode, "ds_cb");
+            if (up_err_mode == "crc_err" | up_err_mode =="dllp_type_err") begin
+                us_drv_cb = create_callback(up_err_mode,   "us_drv_cb");
+            end else begin
+                us_seq_cb = create_callback(up_err_mode,   "us_seq_cb");                
+            end
+
+            if (down_err_mode == "crc_err" | down_err_mode =="dllp_type_err") begin
+                ds_drv_cb = create_callback(down_err_mode,   "us_drv_cb");
+            end else begin
+                ds_seq_cb = create_callback(down_err_mode,   "us_seq_cb");                
+            end
 
             top_env = pcie_top_env::type_id::create("top_env",this); 
             vseq = vseq_base::type_id::create("vseq");
-
-            // we already created them in the sqr
-            // Create sequences - The factory chooses based on the name argument
-            // seq_u = pcie_base_seq::type_id::create("seq_u"); // Becomes SEQ_U type
-            // seq_d = pcie_base_seq::type_id::create("seq_d"); // Becomes SEQ_D type
 
             // Create configuration objects
             top_cfg = pcie_top_cfg::type_id::create("top_cfg");  
@@ -199,12 +209,10 @@
                 `uvm_fatal("build_phase", "unable to get lower vitual interface from top module");
 
 
-
             // Call configure functions 
             configure_vip (u_cfg, up_vip_mode);
             configure_vip (d_cfg, down_vip_mode);
             configure_top (top_cfg, up_vip_mode, down_vip_mode, u_cfg, d_cfg);
-
 
             // Set the CFGs to the corresponding enviroments 
             uvm_config_db#(pcie_top_cfg)::set(this, "*", "top_cfg", top_cfg);
@@ -220,14 +228,18 @@
             phase.raise_objection(this);
 
             // register callbacks on drivers if created, null check means no error injection for that side
-            if (us_cb != null) begin
-                uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.u_vip.tx_agent.drv, us_cb);
+            if (us_drv_cb != null) begin
+                uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.u_vip.tx_agent.drv, us_drv_cb);
+            end else if (us_seq_cb != null) begin
+                uvm_callbacks #(pcie_fc_init1_seq, pcie_seq_cb)::add(top_env.u_vip.tx_agent.sqr.seq , us_seq_cb);
             end
 
 
-            if (ds_cb != null) begin
-                uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.d_vip.tx_agent.drv, ds_cb);
-            end 
+            if (ds_drv_cb != null) begin
+                uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.u_vip.tx_agent.drv, ds_drv_cb);
+            end else if (ds_seq_cb != null) begin
+                uvm_callbacks #(pcie_fc_init1_seq, pcie_seq_cb)::add(top_env.u_vip.tx_agent.sqr.seq , ds_seq_cb);
+            end
 
             #10000;
             phase.drop_objection(this);
@@ -237,3 +249,28 @@
     endclass 
 
 `endif
+
+
+
+            // // Read sequence of the upper stream VIP
+            // // 1. Setup Upstream
+            // if (clp.get_arg_value("+SEQ_U=", seq_name_u)) begin
+            //     // Override ONLY for the instance named "seq_u"
+            //     uvm_factory::get().set_inst_override_by_name(
+            //         "pcie_base_seq", seq_name_u, "uvm_test_top.seq_u" 
+            //     );
+            // end
+
+            // // 2. Setup Downstream
+            // if (clp.get_arg_value("+SEQ_D=", seq_name_d)) begin
+            //     // Override ONLY for the instance named "seq_d"
+            //     uvm_factory::get().set_inst_override_by_name(
+            //         "pcie_base_seq", seq_name_d, "uvm_test_top.seq_d"
+            //     );
+            // end
+
+            // we already created them in the sqr
+            // Create sequences - The factory chooses based on the name argument
+            // seq_u = pcie_base_seq::type_id::create("seq_u"); // Becomes SEQ_U type
+            // seq_d = pcie_base_seq::type_id::create("seq_d"); // Becomes SEQ_D type
+
