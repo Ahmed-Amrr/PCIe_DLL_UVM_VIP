@@ -22,7 +22,10 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
     endfunction : new
 
     virtual function void build_phase (uvm_phase phase);
-        super.build_phase(phase);        
+        super.build_phase(phase);    
+        // Cast m_sequencer to our sequencer
+        if (!$cast(sqr, m_sequencer))
+        `uvm_fatal("CAST", "Failed to cast m_sequencer to my_sequencer")    
     endfunction
 
     //count for the 34us period and check for the crc
