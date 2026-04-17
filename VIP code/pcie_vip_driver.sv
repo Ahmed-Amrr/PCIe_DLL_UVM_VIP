@@ -15,6 +15,8 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
     pcie_vip_config    cfg;
     pcie_dllp_seq_item seq_item_drv;
 
+    pcie_vip_tx_sequencer sqr;
+
     function new(string name = "pcie_vip_driver", uvm_component parent = null);
         super.new(name, parent);
     endfunction : new
@@ -33,7 +35,7 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
             CRC_generation(seq_item_drv.dllp[47:16], seq_item_drv.dllp[15:0]);
 
             // pre drive callbakc hook to inject error before driving
-            `uvm_do_callbacks(pcie_vip_driver, pcie_vip_driver_cb, pre_drive(seq_item_drv))
+            `uvm_do_callbacks(pcie_vip_driver, pcie_vip_driver_cb, pre_drive(seq_item_drv, sqr))
 
             // drive the interface
             lpif_vif.lp_data = seq_item_drv.dllp;
@@ -41,7 +43,7 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
             @(lpif_vif.drv_cb);
 
             // post drive callback hook 
-            `uvm_do_callbacks(pcie_vip_driver, pcie_vip_driver_cb, post_drive())
+            `uvm_do_callbacks(pcie_vip_driver, pcie_vip_driver_cb, post_drive(seq_item_drv, sqr))
 
             seq_item_port.item_done();
         end

@@ -29,15 +29,15 @@
 			rx_mon_ap=new("rx_mon_ap", this);
 		endfunction : build_phase
 
-		task run_phase(uvm_phase phase);	//check the names for vif & seq_item & variables
+		task run_phase(uvm_phase phase);	
 			super.run_phase(phase);
 			forever begin
 				seq_item_rx_mon=pcie_dllp_seq_item::type_id::create("seq_item_rx_mon");
 	            @(lpif_vif.mon_cb);
-	            if (lpif_vif.pl_valid) begin //ask abedllatif
-					seq_item_rx_mon.dllp=lpif_vif.pl_data;
-					seq_item_rx_mon.pl_valid=lpif_vif.pl_valid;
-					seq_item_rx_mon.pl_lnk_up=lpif_vif.pl_lnk_up;
+	            if (lpif_vif.pl_valid) begin 
+					seq_item_rx_mon.dllp = lpif_vif.pl_data;
+					seq_item_rx_mon.pl_valid = lpif_vif.pl_valid;
+					seq_item_rx_mon.pl_lnk_up = lpif_vif.pl_lnk_up;
 					rx_mon_ap.write(seq_item_rx_mon);
 	            end
 				/*`uvm_info("run_phase", seq_item_rx_mon.convert2string(), UVM_HIGH)*/

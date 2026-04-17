@@ -1,4 +1,4 @@
-interface passive_interface (input logic clk);
+interface passive_interface (input logic lclk);
     import dll_pkg::*;
 
 	bit [47:0] tx_dllp;
@@ -17,6 +17,7 @@ interface passive_interface (input logic clk);
 	logic pl_lnk_up;
 
 	logic reset;
+    logic reset_req;
 
 	logic DL_Up;
 	logic DL_Down;
@@ -69,7 +70,8 @@ interface passive_interface (input logic clk);
     assign tx_is_initfc2 = (tx_dllp[47:40] inside {INITFC2_P,INITFC2_NP,INITFC2_CPL}); 
     assign rx_is_initfc1 = (rx_dllp[47:40] inside {INITFC1_P,INITFC1_NP,INITFC1_CPL});
     assign rx_is_initfc2 = (rx_dllp[47:40] inside {INITFC2_P,INITFC2_NP,INITFC2_CPL}); 
-	// PROPERTIES
+
+	
 	// check remote feature signals are cleared one cycle after reset
 	property p_reset_clears_remote_feature;
 		@(posedge lclk)
@@ -80,6 +82,7 @@ interface passive_interface (input logic clk);
 
 	assert property (p_reset_clears_remote_feature)
 		else `uvm_error("ASSERT_FAIL", "Remote feature signals not cleared after reset");
+        
 	// cover: reset occurred and remote feature signals were cleared next cycle
 	cover property (p_reset_clears_remote_feature);
 
@@ -107,7 +110,7 @@ interface passive_interface (input logic clk);
 
 	// when pl_link_up is low → state must be INACTIVE
 	property p_link_down_state_inactive;
-		@(posedge clk) disable iff (reset)
+		@(posedge lclk) disable iff (reset)
 		(!pl_lnk_up) |->
 		(state == DL_INACTIVE);
 	endproperty
@@ -118,7 +121,7 @@ interface passive_interface (input logic clk);
 
 	// when pl_link_up is high → state must be FEATURE, INIT, or ACTIVE
 	property p_link_up_state_valid;
-		@(posedge clk) disable iff (reset)
+		@(posedge lclk) disable iff (reset)
 		(pl_lnk_up) |->
 		(state inside {DL_FEATURE, DL_INIT1, DL_INIT2, DL_ACTIVE});
 	endproperty
@@ -129,7 +132,7 @@ interface passive_interface (input logic clk);
 
 	// if pl_link_up drops in any active state → must go to DL_INACTIVE next cycle
 	property p_link_drop_goes_inactive;
-		@(posedge clk)
+		@(posedge lclk)
 		(state inside {DL_FEATURE, DL_INIT1, DL_INIT2, DL_ACTIVE} && !pl_lnk_up) |=>
 		(state == DL_INACTIVE);
 	endproperty
@@ -192,7 +195,7 @@ interface passive_interface (input logic clk);
     // FEATURE_05 : Transmitted Feature Ack bit must equal Remote DL Feature Supported Valid bit 
     // ============================================================
     property p_ack_matches_valid;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         tx_is_feature |-> (tx_ack_bit == remote_register_feature.remote_feature_valid);
     endproperty
 
@@ -209,7 +212,7 @@ interface passive_interface (input logic clk);
     // FEATURE_07 : Remote DL Feature Supported Valid bit must be set after the first valid Feature DLLP is received
     // ============================================================
     property p_remote_field_recorded_on_first_dllp;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         // First Feature DLLP arrives when Valid is still 0
         (rx_is_feature && !remote_register_feature.remote_feature_valid)
         // Next cycle remote_feature_supported must equal the received feature field and valid asserted
@@ -230,7 +233,7 @@ interface passive_interface (input logic clk);
     // FEATURE_08 : Remote DL Feature field must NOT be updated on subsequent Feature DLLPs when Valid is already Set
     // ============================================================
     property p_no_update_after_valid_1;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         // Subsequent Feature DLLP arrives when Valid already=1
         (rx_is_feature && remote_register_feature.remote_feature_valid)
         // remote_feature_supported must remain unchanged next cycle
@@ -250,7 +253,7 @@ interface passive_interface (input logic clk);
     // FEATURE_09 : No ACK DLLPs must be transmitted while in DL_Feature
     // ============================================================
     property p_no_ack_in_dl_feature;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_FEATURE)
         |-> (tx_dllp[47:40] != ACK);
     endproperty
@@ -260,7 +263,7 @@ interface passive_interface (input logic clk);
             "FEATURE_09: ACK DLLP transmitted during DL_Feature state")
 
     cov_feature_09: cover property (p_no_ack_in_dl_feature);
-\
+
     // ============================================================
     // FEATURE_11
     // scaled_fc_active must be set ONLY when ALL THREE conditions:
@@ -269,7 +272,7 @@ interface passive_interface (input logic clk);
     //   remote_feature_supported[0] == 1
     // ============================================================
     property p_scaled_fc_active_when_all_set;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (feature_exchange_cap                                    &&
          local_register_feature.local_feature_supported[0]      &&
          remote_register_feature.remote_feature_supported[0])
@@ -285,7 +288,7 @@ interface passive_interface (input logic clk);
     // TRANS_FEAT_01 : Exit DL_Feature -> DL_Init when (Ack=1) + LinkUp=1
     // ============================================================
     property p_feature_to_init_on_ack;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         // Ack=1 received while in DL_Feature with LinkUp=1
         (state == DL_FEATURE   &&
          rx_is_feature         &&
@@ -305,7 +308,7 @@ interface passive_interface (input logic clk);
     // TRANS_FEAT_02 : Exit DL_Feature -> DL_Init on receipt of InitFC1 DLLP + LinkUp=1
     // ============================================================
     property p_feature_to_init_on_initfc1;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_FEATURE &&
          rx_dllp[47:40] inside {INITFC1_P, INITFC1_NP, INITFC1_CPL} &&
          pl_lnk_up == 1'b1)
@@ -322,7 +325,7 @@ interface passive_interface (input logic clk);
     // TRANS_FEAT_04 : Exit DL_Feature -> DL_Inactive when Physical LinkUp=0
     // ============================================================
     property p_feature_to_inactive_on_linkdown;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_FEATURE && !pl_lnk_up)
         |=> (state == DL_INACTIVE);
     endproperty
@@ -337,7 +340,7 @@ interface passive_interface (input logic clk);
     // FCINIT1_03 : InitFC1 triplet must be transmitted in strict order P->NP->CPL
     // ============================================================
     property p_InitFC1_triplet_correct_order;
-        @(posedge clk) disable iff (reset || !pl_lnk_up)
+        @(posedge lclk) disable iff (reset || !pl_lnk_up)
         (state == DL_INIT1 && tx_is_initfc1_p )
 		// After P is sent, NP must come next
         |=> (state == DL_INIT1 && tx_is_initfc1_np);
@@ -356,7 +359,7 @@ interface passive_interface (input logic clk);
     // FCINIT1_08 : HdrScale/DataScale must be 00b in InitFC1 when Scaled FC NOT active
     // ============================================================
     property p_scale_0_scaled_fc_not_active;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_INIT1 && tx_is_initfc1 && !scaled_fc_active)
         |-> (tx_hdr_scale == 2'b00 && tx_data_scale == 2'b00);
     endproperty
@@ -372,7 +375,7 @@ interface passive_interface (input logic clk);
     // FCINIT1_09 : HdrScale/DataScale must be != 00b in InitFC1 when Scaled FC active
     // ============================================================
     property p_scale_nonzero_when_active;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_INIT1 && tx_is_initfc1  && scaled_fc_active)
         |-> (tx_hdr_scale != 2'b00 || tx_data_scale != 2'b00);
     endproperty
@@ -389,7 +392,7 @@ interface passive_interface (input logic clk);
 
     // InitFC1_P or InitFC2_P received -> Posted credits recorded correctly
     property p_initfc_p_recorded;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_INIT1 && (rx_is_initfc1_p || rx_is_initfc2_p) )
         |=> (fc_credits_register.hdr_credits[FC_POSTED] == $past(rx_dllp[37:30]) &&
              fc_credits_register.data_credits[FC_POSTED] == $past(rx_dllp[27:16]));
@@ -397,7 +400,7 @@ interface passive_interface (input logic clk);
 
     // InitFC1_NP or InitFC2_NP received -> Non-Posted credits recorded correctly
     property p_initfc_np_recorded;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_INIT1 && (rx_is_initfc1_np || rx_is_initfc2_np) )
         |=> (fc_credits_register.hdr_credits[FC_NON_POSTED] == $past(rx_dllp[37:30]) &&
              fc_credits_register.data_credits[FC_NON_POSTED] == $past(rx_dllp[27:16]));
@@ -405,7 +408,7 @@ interface passive_interface (input logic clk);
 
     // InitFC1_CPL or InitFC2_CPL received -> Completion credits recorded correctly
     property p_initfc_cpl_recorded;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_INIT1 && (rx_is_initfc1_cpl || rx_is_initfc2_cpl) )
         |=> (fc_credits_register.hdr_credits[FC_COMPLETION]== $past(rx_dllp[37:30]) &&
              fc_credits_register.data_credits[FC_COMPLETION] == $past(rx_dllp[27:16]));
@@ -427,21 +430,21 @@ interface passive_interface (input logic clk);
     // FCINIT1_11 : HdrScale/DataScale must be recorded if Scaled FC supported
     // ============================================================
     property p_scale_recorded_p;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_INIT1 && (rx_is_initfc1_p || rx_is_initfc2_p )&& scaled_fc_active)
         |=> (fc_credits_register.hdr_scale [FC_POSTED] == $past(rx_dllp[39:38]) &&
              fc_credits_register.data_scale[FC_POSTED] == $past(rx_dllp[29:28]));
     endproperty
 
     property p_scale_recorded_np;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_INIT1 && (rx_is_initfc1_np || rx_is_initfc2_np )&& scaled_fc_active)
         |=> (fc_credits_register.hdr_scale [FC_NON_POSTED] == $past(rx_dllp[39:38]) &&
              fc_credits_register.data_scale[FC_NON_POSTED] == $past(rx_dllp[29:28]));
     endproperty
 
     property p_scale_recorded_cpl;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_INIT1 && (rx_is_initfc1_cpl || rx_is_initfc2_cpl)  && scaled_fc_active)
         |=> (fc_credits_register.hdr_scale [FC_COMPLETION] == $past(rx_dllp[39:38]) &&
              fc_credits_register.data_scale[FC_COMPLETION] == $past(rx_dllp[29:28]));
@@ -463,7 +466,7 @@ interface passive_interface (input logic clk);
     // FCINIT1_12 : FI1 flag set ONLY after ALL of P, NP, CPL received
     // ============================================================
     property p_fi1_set_after_P_NP_CPL;
-        @(posedge clk) disable iff (reset || !pl_link_up)
+        @(posedge lclk) disable iff (reset || !pl_link_up)
         (state == DL_INIT1 && rx_is_initfc1_p)
         |-> ##[1:$] (state == DL_INIT1 && rx_is_initfc1_np) 
 		|-> ##[1:$] (state == DL_INIT1 && rx_is_initfc1_cpl)
@@ -478,7 +481,7 @@ interface passive_interface (input logic clk);
     // TRANS_INIT1_01 : Exit FC_INIT1 -> FC_INIT2 when FI1=1 and LinkUp=1
     // ============================================================
     property p_trans_init1_to_init2_on_fi1;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_INIT1 && fi1_flag == 1'b1 && pl_lnk_up == 1'b1)
         |=> (state == DL_INIT2);
     endproperty
@@ -494,7 +497,7 @@ interface passive_interface (input logic clk);
     // ============================================================
     
     property p_initfc2_P_NP_CPL_in_order;
-        @(posedge clk) disable iff (reset || !pl_lnk_up)
+        @(posedge lclk) disable iff (reset || !pl_lnk_up)
         (state == DL_INIT2 && tx_is_initfc2_p )
 		// After P is sent, NP must come next
         |=> (state == DL_INIT2 && tx_is_initfc2_np);
@@ -514,27 +517,27 @@ interface passive_interface (input logic clk);
     // ============================================================
 
     property p_initfc_p_ignored;
-         @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
 
-    // Receiving InitFC1 or InitFC2 dllps in INIT2 state
-    (state == DL_INIT2 && (rx_is_initfc1 || rx_is_initfc2))
+        // Receiving InitFC1 or InitFC2 dllps in INIT2 state
+        (state == DL_INIT2 && (rx_is_initfc1 || rx_is_initfc2))
 
-    // Next cycle: values must remain unchanged
-    |=> (// Header credits unchanged
-        fc_credits_register.hdr_credits==
-        $past(fc_credits_register.hdr_credits) &&
-        // Data credits unchanged  
-        fc_credits_register.data_credits ==
-        $past(fc_credits_register.data_credits) &&
-        // Header scale unchanged
-        fc_credits_register.hdr_scale ==
-        $past(fc_credits_register.hdr_scale) &&
-        // Data scale unchanged
-        fc_credits_register.data_scale ==
-        $past(fc_credits_register.data_scale)
-    );
+        // Next cycle: values must remain unchanged
+        |=> (// Header credits unchanged
+            fc_credits_register.hdr_credits==
+            $past(fc_credits_register.hdr_credits) &&
+            // Data credits unchanged  
+            fc_credits_register.data_credits ==
+            $past(fc_credits_register.data_credits) &&
+            // Header scale unchanged
+            fc_credits_register.hdr_scale ==
+            $past(fc_credits_register.hdr_scale) &&
+            // Data scale unchanged
+            fc_credits_register.data_scale ==
+            $past(fc_credits_register.data_scale)
+        );
     endproperty
-    endproperty
+
     assert_fcinit2_04_p: assert property (p_initfc_p_ignored)
         else `uvm_error("ASSERT_FCINIT2_04",
             "FCINIT2_04: Local FC credits / scale changed on received posted initfc ")
@@ -545,7 +548,7 @@ interface passive_interface (input logic clk);
     // FCINIT2_06 : FI2 flag must be set on receipt of InitFC2 DLLP for VCx
     // ============================================================
     property p_fi2_set_on_initfc2;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_INIT2 && rx_is_initfc2)
         |=> fi2_flag;
     endproperty
@@ -560,7 +563,7 @@ interface passive_interface (input logic clk);
     // FCINIT2_08 : FI2 flag must be set when UpdateFC received
     // ============================================================
     property p_fi2_set_on_updatefc;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_INIT2  && tx_dllp[47:40] inside {UPDATEFC_P, UPDATEFC_NP, UPDATEFC_CPL} )
         |=> fi2_flag;
     endproperty
@@ -575,7 +578,7 @@ interface passive_interface (input logic clk);
     // FCINIT2_09 : HdrScale/DataScale must be 00b in InitFC2 when Scaled FC NOT active
     // ============================================================
     property p_scale_zero_when_not_active;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_INIT2  && tx_is_initfc2  && !scaled_fc_active)
         |-> (tx_hdr_scale == 2'b00 && tx_data_scale == 2'b00);
     endproperty
@@ -591,7 +594,7 @@ interface passive_interface (input logic clk);
     // FCINIT2_10 : HdrScale/DataScale must be != 00b in InitFC2 when Scaled FC active
     // ============================================================
     property p_scale_nonzero_when_active;
-        @(posedge clk) disable iff (reset) //tx or rx ??
+        @(posedge lclk) disable iff (reset) //tx or rx ??
         (state == DL_INIT2  && tx_is_initfc2  && scaled_fc_active)
         |-> (tx_hdr_scale != 2'b00 && tx_data_scale != 2'b00);
     endproperty
@@ -607,7 +610,7 @@ interface passive_interface (input logic clk);
 	// when Scaled FC active
     // ============================================================
     property p_updatefc_scale_matches_init_p;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_ACTIVE && tx_dllp[47:40] == UPDATEFC_P  && scaled_fc_active)
 		//right ? state machine doesn't change this values and ref model also so they are the same as init
         |-> (tx_hdr_scale  == fc_credits_register.hdr_scale [FC_POSTED] &&
@@ -615,14 +618,14 @@ interface passive_interface (input logic clk);
     endproperty
 
     property p_updatefc_scale_matches_init_np;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_ACTIVE  && tx_dllp[47:40] == UPDATEFC_NP  && scaled_fc_active)
         |-> (tx_hdr_scale  == fc_credits_register.hdr_scale [FC_NON_POSTED] &&
              tx_data_scale == fc_credits_register.data_scale[FC_NON_POSTED]);
     endproperty
 
     property p_updatefc_scale_matches_init_cpl;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_ACTIVE && tx_dllp[47:40] == UPDATEFC_CPL  && scaled_fc_active)
         |-> (tx_hdr_scale  == fc_credits_register.hdr_scale [FC_COMPLETION] &&
              tx_data_scale == fc_credits_register.data_scale[FC_COMPLETION]);
@@ -647,7 +650,7 @@ interface passive_interface (input logic clk);
     // TRANS_INIT2_01 : Exit FC_INIT2 -> DL_Active when FI2 set 
     // ============================================================
     property p_trans_init2_to_active;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state    == DL_INIT2  && fi2_flag == 1'b1 && pl_lnk_up == 1'b1)
         |=> (state == DL_ACTIVE);
     endproperty
@@ -662,7 +665,7 @@ interface passive_interface (input logic clk);
     // ACTIVE_14 : Surprise Down error must be reported on DL_Active->DL_Inactive
     // ============================================================
     property p_surprise_down_reported;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         (state == DL_ACTIVE  && !pl_lnk_up && surprise_down_capable)
         |=> surprise_down_event;
     endproperty
@@ -673,7 +676,56 @@ interface passive_interface (input logic clk);
 
     cov_active_14: cover property (p_surprise_down_reported);
 
-    
+    // ============================================================
+    // LPIF Interface Assertions
+    // ============================================================
+    // When link is down, TX/RX DLLP must not carry valid values (should be UNKNOWN)
+    property p_tx_rx_dllp_unknown_when_link_down;
+        @(posedge lclk) disable iff (reset)
+        (!pl_lnk_up) |-> ($isunknown(tx_dllp) && $isunknown(rx_dllp));
+    endproperty
 
+    assert property (p_tx_rx_dllp_unknown_when_link_down)
+    else `uvm_error("ASSERT_LPIF_01",
+    "LPIF_01: tx_dllp or rx_dllp is not UNKNOWN when pl_lnk_up is LOW");
+
+    cover property (p_tx_rx_dllp_unknown_when_link_down);
+
+
+    // When lp_valid is high, lp_data must be valid (no X/Z allowed)
+    property p_lp_valid_data_known;
+        @(posedge lclk) disable iff (reset)
+        (lp_valid) |-> !$isunknown(lp_data);
+    endproperty
+
+    assert property (p_lp_valid_data_known)
+    else `uvm_error("ASSERT_LPIF_02",
+    "LPIF_02: lp_valid is HIGH but lp_data contains X/Z");
+
+    cover property (p_lp_valid_data_known);
+
+
+    // When reset is requested, reset must be asserted
+    property p_reset_request_assert_reset;
+        @(posedge lclk)
+        (rst_req) |-> (reset);
+    endproperty
+
+    assert property (p_reset_request_assert_reset)
+    else `uvm_error("ASSERT_LPIF_03",
+    "LPIF_03: reset_req asserted but reset is NOT high");
+
+    cover property (p_reset_request_assert_reset);
+
+
+    // When pl_valid is high and link is up, rx_dllp must be valid 
+    property p_rx_dllp_known_when_valid;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up)
+        (pl_valid) |-> !$isunknown(rx_dllp);
+    endproperty
+
+    assert property (p_rx_dllp_known_when_valid)
+    else `uvm_error("ASSERT_LPIF_04",
+    "DLLP_LPIF_04: pl_valid = 1 but rx_dllp is unknown");
 
 endinterface : passive_interface

@@ -48,8 +48,7 @@
                 end
 
                 "dllp_type_err" : begin
-                    pcie_dllp_type_err_cb cb =
-                        pcie_dllp_type_err_cb::type_id::create(name);
+                    pcie_dllp_type_err_cb cb = pcie_dllp_type_err_cb::type_id::create(name);
                     `uvm_info("TEST_CFG",
                         $sformatf("Creating DLLP type error callback: %s", name), UVM_LOW)
                     return cb;
@@ -207,25 +206,6 @@
             configure_top (top_cfg, up_vip_mode, down_vip_mode, u_cfg, d_cfg);
 
 
-            // Use an CRC error injection driver in this mode
-            if (up_vip_mode == "crc_err_inj") begin
-                set_inst_override_by_type(
-                    "top_env.u_vip.*",
-                    pcie_vip_driver::get_type(),
-                    pcie_vip_err_driver::get_type()
-                );
-            end
-
-            if (down_vip_mode == "crc_err_inj") begin
-                set_inst_override_by_type(
-                    "top_env.d_vip.*",
-                    pcie_vip_driver::get_type(),
-                    pcie_vip_err_driver::get_type()
-                );
-            end
-
-
-
             // Set the CFGs to the corresponding enviroments 
             uvm_config_db#(pcie_top_cfg)::set(this, "*", "top_cfg", top_cfg);
             uvm_config_db#(pcie_vip_config)::set(this, "top_env.u_vip*", "vip_cfg", u_cfg);
@@ -241,23 +221,15 @@
 
             // register callbacks on drivers if created, null check means no error injection for that side
             if (us_cb != null) begin
-                pcie_dllp_type_err_cb type_cb;
-                if ($cast(type_cb, us_cb)) 
-                    type_cb.sqr = top_env.u_vip.tx_sqr;
-                
-                uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.u_vip.driver, us_cb);
+                uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.u_vip.tx_agent.drv, us_cb);
             end
 
 
             if (ds_cb != null) begin
-                pcie_dllp_type_err_cb type_cb;
-                if ($cast(type_cb, us_cb)) 
-                    type_cb.sqr = top_env.d_vip.tx_sqr;
-
-                uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.d_vip.driver, ds_cb);
+                uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.d_vip.tx_agent.drv, ds_cb);
             end 
 
-            #10000
+            #10000;
             phase.drop_objection(this);
 
         endtask : run_phase

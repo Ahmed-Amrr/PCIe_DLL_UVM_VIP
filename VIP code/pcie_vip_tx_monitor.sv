@@ -29,13 +29,13 @@ class pcie_vip_tx_monitor extends uvm_monitor;
 		tx_mon_ap=new("tx_mon_ap", this);
 	endfunction : build_phase
 
-	task run_phase(uvm_phase phase);	//check the names for vif & seq_item & variables
+	task run_phase(uvm_phase phase);	
 		super.run_phase(phase);
 		forever begin
 			seq_item_tx_mon=pcie_dllp_seq_item::type_id::create("seq_item_tx_mon");
             @(lpif_vif.mon_cb);
-			seq_item_tx_mon.dllp=lpif_vif.lp_data;
-			seq_item_tx_mon.lp_valid=lpif_vif.lp_valid;
+			seq_item_tx_mon.dllp = lpif_vif.lp_data;
+			seq_item_tx_mon.lp_valid = lpif_vif.lp_valid;
 			tx_mon_ap.write(seq_item_tx_mon);
 			/*`uvm_info("run_phase", seq_item_tx_mon.convert2string(), UVM_HIGH)*/
 		end

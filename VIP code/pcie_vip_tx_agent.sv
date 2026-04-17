@@ -45,6 +45,9 @@ class pcie_vip_tx_agent extends uvm_agent;
   function void connect_phase(uvm_phase phase);
     drv.seq_item_port.connect(sqr.seq_item_export); //sqr.seqitem_imp
     tx_mon.tx_mon_ap.connect(tx_agent_ap);
+
+    // give the driver acces to the sequencer fir callbacks
+    drv.sqr = sqr;
   endfunction : connect_phase
 
 endclass : pcie_vip_tx_agent
