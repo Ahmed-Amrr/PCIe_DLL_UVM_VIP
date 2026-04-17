@@ -56,6 +56,8 @@ class pcie_vip_state_machine extends uvm_component;
 
 	bit[CRC_WIDTH-1:0] crc_expected;							//used in crc_checking
 
+	bit illegal_type_bit;		//check on the type received depending on current state
+
 /*-------------------------------------------------------------------------------
 -- Functions
 -------------------------------------------------------------------------------*/
@@ -66,6 +68,7 @@ class pcie_vip_state_machine extends uvm_component;
 		current_state = DL_INACTIVE;		//initialize states and flags
 		FI1 = 0;
 		FI2 = 0;
+		illegal_type_bit = 0;
 	endfunction : new
 
 	function void build_phase(uvm_phase phase);
@@ -104,10 +107,17 @@ class pcie_vip_state_machine extends uvm_component;
 			CRC_generation(.dllp_before_crc(received_dllp_payload), .crc(crc_expected));	//calculate the expected crc
 
 			if (received_crc == crc_expected) begin 								//check on crc before state transition
-				state_transition();
-				state_seq_item.vip_state = current_state;
-				state_seq_item.FI1 = FI1;
-				state_seq_item.FI2 = FI2;
+				type_legal_check(.current_state(current_state), .type_rx(received_type), .illegal_type(illegal_type_bit));					
+				if (!illegal_type_bit) begin
+					state_transition();
+					state_seq_item.vip_state = current_state;
+					state_seq_item.FI1 = FI1;
+					state_seq_item.FI2 = FI2;
+				end
+				else begin
+					`uvm_error("State_Machine rx_type error (Illegal DLLP received)",
+       				$sformatf("received type is : %s",type_rx))
+				end
 			end
 			sm_ap.write(state_seq_item);
 		end
@@ -324,6 +334,47 @@ class pcie_vip_state_machine extends uvm_component;
 			next_state = DL_ACTIVE;
 		end
 	endfunction : active_state
+
+	function void type_legal_check();		//check if the types received is legal
+		input dl_state_t current_state;
+		input dllp_type_t type_rx;
+		output bit illegal_type;
+		illegal_type = 0;
+		case (current_state)
+			DL_INACTIVE: begin
+				illegal_type = 1;
+				`uvm_error("State_Machine rx_type error (Illegal DLLP receiving in state DL_INACTIVE)")
+			end
+	        DL_FEATURE: begin
+				if(!(type_rx inside {DL_FEATURE,INITFC1_P,INITFC1_NP,INITFC1_CPL})) begin
+					illegal_type = 1;
+					`uvm_error("State_Machine rx_type error (Illegal DLLP receiving in state DL_FEATURE)",
+       				$sformatf("received type is : %s",type_rx))
+				end
+			end
+	        DL_INIT1: begin
+				if(!(type_rx inside {DL_FEATURE, INITFC1_P, INITFC1_NP, INITFC1_CPL, INITFC2_P, INITFC2_NP, INITFC2_CPL})) begin
+					illegal_type = 1;
+					`uvm_error("State_Machine rx_type error (Illegal DLLP receiving in state DL_INIT1)",
+       				$sformatf("received type is : %s",type_rx))
+				end
+			end
+	        DL_INIT2: begin
+				if(type_rx inside {DL_FEATURE, ACK, NACK}) begin
+					illegal_type = 1;
+					`uvm_error("State_Machine rx_type error (Illegal DLLP receiving in state DL_INIT2)",
+       				$sformatf("received type is : %s",type_rx))
+				end
+			end
+	        DL_ACTIVE: begin
+				if(type_rx == DL_FEATURE) begin
+					illegal_type = 1;
+					`uvm_error("State_Machine rx_type error (Illegal DLLP receiving in state DL_ACTIVE)",
+       				$sformatf("received type is : %s",type_rx))
+				end
+			end
+		endcase	
+	endfunction : type_legal_check
 
 	function void reset_conf_regs();					//resets configuration regesters & Flags
 		
