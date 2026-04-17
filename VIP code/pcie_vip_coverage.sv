@@ -184,16 +184,19 @@ class pcie_vip_coverage extends uvm_component;
 			bins remote_feature_valid_cleared = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_valid.invalid);
 			// Illegal: valid=1 while in DL_INACTIVE
             illegal_bins valid_set_while_inactive = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_valid.valid);
+            option.cross_auto_bin_max = 0;
         }
 
 		cp_dl_down_reported_inactive: cross cp_state, cp_dl_up {
 			bins dl_down_inactive = binsof(cp_state.dl_inactive_b) && binsof(cp_dl_up.dl_down);
+			option.cross_auto_bin_max = 0;
 		}
 
 		cp_remote_feature_field_cleared: cross cp_state, cp_remote_feature_supported {
 			bins remote_feature_supported_cleared = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_supported.all_zeros);
 			// Illegal: non-zero feature field while inactive
             illegal_bins field_set_while_inactive = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_supported.non_zero);
+            option.cross_auto_bin_max = 0;
 		}
 		// Transition from INACTIVE to FEATURE — all conditions must be met
 		cx_trans_inactive_to_feature_all_conditions : cross cp_state, cp_feature_exchange_cap, cp_feature_exchange_en, cp_link_not_disable, cp_linkup {
@@ -202,11 +205,13 @@ class pcie_vip_coverage extends uvm_component;
 							binsof(cp_feature_exchange_en.enabled) &&
 							binsof(cp_link_not_disable.not_disabled) &&
 							binsof(cp_linkup.link_up);
+			option.cross_auto_bin_max = 0;
         }
 
         // FEATURE_01: DL_Down reported during DL_FEATURE
 		cp_dl_down_reported_feature: cross cp_state, cp_dl_up {
 			bins dl_down_feature = binsof(cp_state.dl_feature_b) && binsof(cp_dl_up.dl_down);
+			option.cross_auto_bin_max = 0;
 		}
         // FEATURE_03 : While in DL_FEATURE, received DLLPs must be of type (FEATURE,INITFC1_P,INITFC1_NP,INITFC1_CPL)
         cp_feature_dllp_type: coverpoint seq_item_rx.dllp[47:40] iff (state_seq_item.vip_state == DL_FEATURE)
@@ -270,6 +275,7 @@ class pcie_vip_coverage extends uvm_component;
                 binsof(cp_scaled_fc_active.active)            &&
                 binsof(cp_feature_exchange_cap.cap_supported) &&
                 binsof(cp_remote_scaled_fc.remote_not_set);
+            option.cross_auto_bin_max = 0;
         }
 
         // TRANS_FEAT_01 : Exit DL_Feature → DL_Init when Feature Exchange completes (Ack=Set) + LinkUp=1
@@ -307,6 +313,7 @@ class pcie_vip_coverage extends uvm_component;
                 binsof(cp_state.dl_feature_dl_init1_t) &&
                 binsof(cp_ack_bit_rx.ack_set)          &&
                 binsof(cp_linkup.link_down);
+            option.cross_auto_bin_max = 0;
         }
 
         // TRANS_FEAT_02: feature->init1 on InitFC1 + LinkUp=1
@@ -326,6 +333,7 @@ class pcie_vip_coverage extends uvm_component;
                 binsof(cp_state.dl_feature_dl_init1_t)    &&
                 binsof(cp_initfc1_received.initfc1_seen)   &&
                 binsof(cp_linkup.link_down);
+            option.cross_auto_bin_max = 0;
         }
 
         // TRANS_FEAT_04: feature->inactive on LinkUp=0
@@ -333,11 +341,13 @@ class pcie_vip_coverage extends uvm_component;
             bins trans_feat_04 =
                 binsof(cp_state.dl_feature_dl_inactive_t) &&
                 binsof(cp_linkup.link_down);
+            option.cross_auto_bin_max = 0;
         }
 
 	    // FCINIT1_02: DL_Down reported during FC_INIT1
 		cp_dl_down_reported_fc_init1: cross cp_state, cp_dl_up {
 			bins dl_down_fc_init1 = binsof(cp_state.dl_init1_b) && binsof(cp_dl_up.dl_down);
+			option.cross_auto_bin_max = 0;
 		}
 
         // FCINIT1_03: InitFC1 triplet order P->NP->CPL
@@ -381,11 +391,12 @@ class pcie_vip_coverage extends uvm_component;
         }
 
         // TRANS_INIT1_01: FC_INIT1->FC_INIT2 when FI1=1 + LinkUp=1
-        cp_trans_fcinit1_to_fcinit2_on_fi1: cross cp_state, FI2_c, cp_linkup {
+        cp_trans_fcinit1_to_fcinit2_on_fi1: cross cp_state, FI1_c, cp_linkup {
             bins trans_init1_01 =
                 binsof(cp_state.dl_init1_dl_init2_t) &&
                 binsof(FI1_c.one)                    &&
                 binsof(cp_linkup.link_up);
+            option.cross_auto_bin_max = 0;
         }
 
         // TRANS_INIT1_02: FC_INIT1->DL_Inactive when LinkUp=0
@@ -393,24 +404,54 @@ class pcie_vip_coverage extends uvm_component;
             bins trans_init1_02 =
                 binsof(cp_state.dl_init1_dl_inactive_t) &&
                 binsof(cp_linkup.link_down);
+            option.cross_auto_bin_max = 0;
         }
-		// cp_dl_up_in_fc_init2 : cross cp_state.dl_init2_b, state_seq_item.DL_Up{
-		// ignore_bins init = binsof(cp_state.);
-		// }
-		// //row 65 skipped (needs TLP)
-		// cp_initfc1_sequence_order : coverpoint rx_type_c iff(state_seq_item.vip_state==DL_FEATURE){
-		// 	bins seq_order = (binsof(rx_type_c.INITFC2_P_b) => binsof(rx_type_c.INITFC2_NP_b) => binsof(rx_type_c.INITFC2_CPL_b));
-		// } 
-		// //row 67 & 68
-		// cp_fi2_set_on_initfc2 : cross cp_initfc1_sequence_order.seq_order, FI2_c.one
-		// //row 70 skipped (needs TLP)
-		// //row 71 is it valid???
-		// //rows 72 & 73 needs assertions?
-		// //row 74///////////////
-		// cp_trans_fcinit2_to_active_on_initfc2 : cross cp_state.dl_init2_dl_active_t, FI2_c.one, DL_Up_c.one
-		// //row 76 skipped (needs TLP)
-		// //row 77 not sure
-		// cp_trans_fcinit2_to_inactive_linkup_0 : cross cp_state.dl_init2_dl_inactive_t, 
+
+        // FCINIT2_01
+		cp_dl_up_in_fc_init2 : cross cp_state, cp_dl_up{
+			bins init2_DL_up = binsof(cp_state.dl_init2_b) && binsof(cp_dl_up.dl_up);
+			option.cross_auto_bin_max = 0;
+		}
+
+		// FCINIT2_03
+		cp_initfc2_sequence_order : coverpoint rx_type_c iff(state_seq_item.vip_state==DL_INIT2){
+			bins seq_order_P_NP_CPL = (binsof(rx_type_c.INITFC2_P_b) => binsof(rx_type_c.INITFC2_NP_b) => binsof(rx_type_c.INITFC2_CPL_b));
+			option.cross_auto_bin_max = 0;
+		}
+
+		// FCINIT2_03 (For TX)
+		cp_initfc2_sequence_order_TX : coverpoint tx_type_c iff(state_seq_item.vip_state==DL_INIT2){
+			bins seq_order_P_NP_CPL = (binsof(tx_type_c.INITFC2_P_b) => binsof(tx_type_c.INITFC2_NP_b) => binsof(tx_type_c.INITFC2_CPL_b));
+			option.cross_auto_bin_max = 0;
+		}
+
+		// FCINIT2_06
+		cp_fi2_set_on_initfc2 : cross cp_initfc2_sequence_order.seq_order_P_NP_CPL, FI2_c{
+			bins right_seq_Fl2 = binsof(cp_initfc2_sequence_order.seq_order_P_NP_CPL) && binsof(FI2_c.one);
+			illegal_bins right_seq_no_Fl2 = binsof(cp_initfc2_sequence_order.seq_order_P_NP_CPL) && binsof(FI2_c.zero);
+			option.cross_auto_bin_max = 0;
+		}
+
+		// TRANS_INIT2_01
+		cp_trans_fcinit2_to_active_on_initfc2 : cross cp_state, FI2_c, cp_dl_up{
+			bins in2_active_Fl2_up = binsof(cp_state.dl_init2_dl_active_t) && binsof(FI2_c.one) && binsof(cp_dl_up.dl_up);
+			option.cross_auto_bin_max = 0;
+		}
+
+		// TRANS_INIT2_03
+		cp_trans_fcinit2_to_active_on_updatefc : cross cp_state, FI2_c, rx_type_c{
+			bins in2_active_Fl2_update = binsof(cp_state.dl_init2_dl_active_t) && binsof(FI2_c.one) &&
+										(binsof(rx_type_c.UPDATEFC_P_b)  ||
+										 binsof(rx_type_c.UPDATEFC_NP_b) ||
+										 binsof(rx_type_c.UPDATEFC_CPL_b));
+			option.cross_auto_bin_max = 0;
+		}
+
+		// TRANS_INIT2_04
+		cp_trans_fcinit2_to_inactive_linkup_0 : cross cp_state, cp_dl_up{
+			bins in2_inactive_down = binsof(cp_state.dl_init2_dl_inactive_t) && binsof(cp_dl_up.dl_down);
+			option.cross_auto_bin_max = 0;
+		}
 
 	endgroup : CovGp
 
