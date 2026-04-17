@@ -3,6 +3,8 @@
 
 class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
     `uvm_component_utils(pcie_vip_driver)
+    // register callback type with driver
+    `uvm_register_cb(pcie_vip_driver, pcie_vip_driver_cb)
 
     parameter int DLLP_WIDTH    = 48;
     parameter int PAYLOAD_WIDTH = 32;
@@ -18,9 +20,7 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
     endfunction : new
 
     virtual function void build_phase (uvm_phase phase);
-        super.build_phase(phase);
-        // read crc_err_inj flag. we have not decided yet where to put this flag!!
-        
+        super.build_phase(phase);        
     endfunction
 
     //count for the 34us period and check for the crc
@@ -29,17 +29,20 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
         seq_item_drv = pcie_dllp_seq_item::type_id::create("seq_item_drv");
         forever begin
             seq_item_port.get_next_item(seq_item_drv);
+            // crc generation
             CRC_generation(seq_item_drv.dllp[47:16], seq_item_drv.dllp[15:0]);
-            if (cfg.crc_err_inj) begin
-                seq_item_drv.dllp[15:0] = '0;
-                `uvm_info("DRV", "CRC error injected", UVM_MEDIUM)
-            end else if (cfg.xxxx)
-                //
-            else begin
-                lpif_vif.lp_data = seq_item_drv.dllp;
-                lpif_vif.lp_valid = seq_item_drv.lp_valid;
-            end
+
+            // pre drive callbakc hook to inject error before driving
+            `uvm_do_callbacks(pcie_vip_driver, pcie_vip_driver_cb, pre_drive(seq_item_drv))
+
+            // drive the interface
+            lpif_vif.lp_data = seq_item_drv.dllp;
+            lpif_vif.lp_valid = seq_item_drv.lp_valid;
             @(lpif_vif.drv_cb);
+
+            // post drive callback hook 
+            `uvm_do_callbacks(pcie_vip_driver, pcie_vip_driver_cb, post_drive())
+
             seq_item_port.item_done();
         end
     endtask

@@ -22,6 +22,10 @@
         string up_vip_mode;
         string down_vip_mode;
 
+        // Callback instances
+        pcie_vip_driver_cb us_cb;
+        pcie_vip_driver_cb ds_cb;
+
         // Virtual sequence
         vseq_base vseq;
 
@@ -32,6 +36,33 @@
         function new(string name = "PCIe_top_test_base", uvm_component parent=null);
             super.new(name, parent);
         endfunction : new
+
+        // Creates the correct callback based on err_mode string and returns null if no error injection needed
+        function pcie_vip_driver_cb create_callback(string err_mode, string name);
+            case (err_mode)
+                "crc_err" : begin
+                    pcie_crc_err_cb cb = pcie_crc_err_cb::type_id::create(name);
+                    `uvm_info("TEST_CFG",
+                        $sformatf("Creating CRC error callback: %s", name), UVM_LOW)
+                    return cb;
+                end
+
+                "dllp_type_err" : begin
+                    pcie_dllp_type_err_cb cb =
+                        pcie_dllp_type_err_cb::type_id::create(name);
+                    `uvm_info("TEST_CFG",
+                        $sformatf("Creating DLLP type error callback: %s", name), UVM_LOW)
+                    return cb;
+                end
+
+                default : begin
+                    `uvm_info("TEST_CFG",
+                        $sformatf("No error injection for mode: %s", err_mode), UVM_LOW)
+                    return null;   // no callback — normal operation
+                end
+            endcase
+        endfunction : create_callback
+
 
         // Function to configure the top cfg testcases based of the sequences
         function void configure_top (ref pcie_top_cfg top_cfg, string up_vip_mode, string down_vip_mode, pcie_vip_config u_cfg, pcie_vip_config d_cfg);
@@ -137,6 +168,18 @@
                 );
             end
 
+            // Read error modes
+            if (clp.get_arg_value("+U_ERR_MODE=", up_err_mode))
+                `uvm_info("TEST_CFG",
+                    $sformatf("Upper error mode: %s", up_err_mode), UVM_LOW)
+            if (clp.get_arg_value("+D_ERR_MODE=", down_err_mode))
+                `uvm_info("TEST_CFG",
+                    $sformatf("Down error mode: %s", down_err_mode), UVM_LOW)
+
+            // Create callbacks based on err_mode
+            us_cb = create_callback(up_err_mode,   "us_cb");
+            ds_cb = create_callback(down_err_mode, "ds_cb");
+
             top_env = pcie_top_env::type_id::create("top_env",this); 
             vseq = vseq_base::type_id::create("vseq");
 
@@ -196,10 +239,23 @@
 
             phase.raise_objection(this);
 
-            fork
-                wait(top_env.u_vip.tx_agent.sqr.state == DL_ACTIVE);
-                wait(top_env.u_vip.tx_agent.sqr.state == DL_ACTIVE);
-            join
+            // register callbacks on drivers if created, null check means no error injection for that side
+            if (us_cb != null) begin
+                pcie_dllp_type_err_cb type_cb;
+                if ($cast(type_cb, us_cb)) 
+                    type_cb.sqr = top_env.u_vip.tx_sqr;
+                
+                uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.u_vip.driver, us_cb);
+            end
+
+
+            if (ds_cb != null) begin
+                pcie_dllp_type_err_cb type_cb;
+                if ($cast(type_cb, us_cb)) 
+                    type_cb.sqr = top_env.d_vip.tx_sqr;
+
+                uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.d_vip.driver, ds_cb);
+            end 
 
             #10000
             phase.drop_objection(this);
