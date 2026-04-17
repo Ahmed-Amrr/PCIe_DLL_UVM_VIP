@@ -316,7 +316,7 @@ class dll_ref_model #(
     fc = decode_fc_type(get_dllp_type(_dllp));
     // extract UpdateFC values
     hdr  = _dllp[37:30] ;
-    data = _dllp[29:28];
+    data = _dllp[27:16];
     fcpe_detected = 0;
 
     // both header and data credits were infinite → both updates must be zero
