@@ -178,7 +178,7 @@ interface passive_interface (input logic lclk);
     // FEATURE_04 : Transmitted Feature Supported field must equal Local DL Feature Supported register
     // ============================================================
     property p_tx_field_matches_local;
-        @(posedge clk) disable iff (reset)
+        @(posedge lclk) disable iff (reset)
         // The feature field must match the local register whenever we transmit a Feature DLLP
         tx_is_feature |-> (tx_feature_field == local_register_feature.local_feature_supported);
     endproperty
@@ -708,7 +708,7 @@ interface passive_interface (input logic lclk);
     // When reset is requested, reset must be asserted
     property p_reset_request_assert_reset;
         @(posedge lclk)
-        (rst_req) |-> (reset);
+        (rst_req) |=> (reset);
     endproperty
 
     assert property (p_reset_request_assert_reset)
@@ -721,7 +721,7 @@ interface passive_interface (input logic lclk);
     // When pl_valid is high and link is up, rx_dllp must be valid 
     property p_rx_dllp_known_when_valid;
         @(posedge lclk) disable iff (reset || !pl_lnk_up)
-        (pl_valid) |-> !$isunknown(rx_dllp);
+        (pl_valid) |=> !$isunknown(rx_dllp);
     endproperty
 
     assert property (p_rx_dllp_known_when_valid)
