@@ -17,14 +17,11 @@ interface passive_interface (input logic lclk);
 	logic pl_lnk_up;
 
 	logic reset;
-    logic reset_req;
+    logic rst_req;
 
 	logic DL_Up;
 	logic DL_Down;
 
-	logic surprise_down_capable;
-	logic link_not_disabled;
-	logic surprise_down_event;
 	logic scaled_fc_active;
 
 	logic fi1_flag;
