@@ -20,7 +20,7 @@ class pcie_fc_init1_seq extends pcie_base_seq;
             if(uvm_callbacks#(pcie_fc_init1_seq, pcie_seq_cb)::get_first(cb) != null) begin
                 // callback registered — let it handle sending
                 `uvm_do_callbacks(pcie_fc_init1_seq, pcie_seq_cb,
-                                do_send_pattern(this))
+                                do_send_pattern(this, p_sequencer.state))
             end
             else begin
                 // no callback — normal pattern

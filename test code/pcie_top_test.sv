@@ -205,11 +205,11 @@
             if (up_err_mode inside {"updatefc_scale_err", "crc_err", "dllp_type_err",  "feature_reserved_err"}) begin
                 us_drv_cb = create_driver_callback(up_err_mode,   "us_drv_cb");
             end else if (up_err_mode inside {"dropped_fc_err", "out_of_order_fc_err"}) begin
-                us_seq_cb = create_driver_callback(up_err_mode,   "us_seq_cb");                
+                us_seq_cb = create_seq_callback(up_err_mode,   "us_seq_cb");                
             end
 
             if (down_err_mode inside {"updatefc_scale_err", "crc_err", "dllp_type_err",  "feature_reserved_err"}) begin
-                ds_drv_cb = create_seq_callback(down_err_mode,   "ds_drv_cb");
+                ds_drv_cb = create_driver_callback(down_err_mode,   "ds_drv_cb");
             end else if (down_err_mode inside {"dropped_fc_err", "out_of_order_fc_err"}) begin
                 ds_seq_cb = create_seq_callback(down_err_mode,   "ds_seq_cb");                
             end
