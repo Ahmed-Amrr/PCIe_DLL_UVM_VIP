@@ -43,7 +43,7 @@
         endfunction : new
 
         // Creates the correct callback based on err_mode string and returns null if no error injection needed
-        function pcie_vip_driver_cb create_callback(string err_mode, string name);
+        function pcie_vip_driver_cb create_driver_callback(string err_mode, string name);
             case (err_mode)
                 "crc_err" : begin
                     pcie_crc_err_cb cb = pcie_crc_err_cb::type_id::create(name);
@@ -73,6 +73,16 @@
                     return cb;
                 end
 
+                default : begin
+                    `uvm_info("TEST_CFG",
+                        $sformatf("No error injection for mode: %s", err_mode), UVM_LOW)
+                    return null;   // no callback — normal operation
+                end
+            endcase
+        endfunction : create_driver_callback
+
+        function pcie_seq_cb create_seq_callback(string err_mode, string name);
+            case (err_mode)
                 "dropped_fc_err" : begin
                     pcie_dropped_fc_cb cb = pcie_dropped_fc_cb::type_id::create(name);
                     `uvm_info("TEST_CFG",
@@ -93,7 +103,7 @@
                     return null;   // no callback — normal operation
                 end
             endcase
-        endfunction : create_callback
+        endfunction : create_seq_callback
 
 
         // Function to configure the top cfg testcases based of the sequences
@@ -193,15 +203,15 @@
 
             // Create callbacks based on err_mode
             if (up_err_mode inside {"updatefc_scale_err", "crc_err", "dllp_type_err",  "feature_reserved_err"}) begin
-                us_drv_cb = create_callback(up_err_mode,   "us_drv_cb");
+                us_drv_cb = create_driver_callback(up_err_mode,   "us_drv_cb");
             end else if (up_err_mode inside {"dropped_fc_err", "out_of_order_fc_err"}) begin
-                us_seq_cb = create_callback(up_err_mode,   "us_seq_cb");                
+                us_seq_cb = create_driver_callback(up_err_mode,   "us_seq_cb");                
             end
 
             if (down_err_mode inside {"updatefc_scale_err", "crc_err", "dllp_type_err",  "feature_reserved_err"}) begin
-                ds_drv_cb = create_callback(down_err_mode,   "ds_drv_cb");
+                ds_drv_cb = create_seq_callback(down_err_mode,   "ds_drv_cb");
             end else if (down_err_mode inside {"dropped_fc_err", "out_of_order_fc_err"}) begin
-                ds_seq_cb = create_callback(down_err_mode,   "ds_seq_cb");                
+                ds_seq_cb = create_seq_callback(down_err_mode,   "ds_seq_cb");                
             end
 
             top_env = pcie_top_env::type_id::create("top_env",this); 
