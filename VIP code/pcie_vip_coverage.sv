@@ -25,11 +25,11 @@ class pcie_vip_coverage extends uvm_component;
 	covergroup CovGp ();
 	// State Coverage — all states and all legal transitions
 		cp_state : coverpoint state_seq_item.vip_state{
-			bins dl_inactive_b = DL_INACTIVE;
-			bins dl_feature_b = DL_FEATURE;
-			bins dl_init1_b = DL_INIT1;
-			bins dl_init2_b = DL_INIT2;
-			bins dl_active_b = DL_ACTIVE;
+			bins dl_inactive_b = {DL_INACTIVE};
+			bins dl_feature_b = {DL_FEATURE};
+			bins dl_init1_b = {DL_INIT1};
+			bins dl_init2_b = {DL_INIT2};
+			bins dl_active_b = {DL_ACTIVE};
 			bins dl_inactive_dl_feature_t = (DL_INACTIVE => DL_FEATURE);
 			bins dl_inactive_dl_init1_t = (DL_INACTIVE => DL_INIT1);
 			bins dl_feature_dl_init1_t = (DL_FEATURE => DL_INIT1);
@@ -42,36 +42,36 @@ class pcie_vip_coverage extends uvm_component;
 		}
 		// RX and TX DLLP type coverage
 		rx_type_c : coverpoint seq_item_rx.dllp[47:40]{
-			bins ACK_b             = ACK;
-        	bins NACK_b            = NACK;
-        	bins NOP_b             = NOP;
-        	bins VENDOR_SPECIFIC_b = VENDOR_SPECIFIC;
-        	bins FEATURE_b         = FEATURE;
-        	bins INITFC1_P_b       = INITFC1_P;
-        	bins INITFC1_NP_b      = INITFC1_NP;
-        	bins INITFC1_CPL_b     = INITFC1_CPL;
-        	bins INITFC2_P_b       = INITFC2_P;
-        	bins INITFC2_NP_b      = INITFC2_NP;
-        	bins INITFC2_CPL_b     = INITFC2_CPL;
-        	bins UPDATEFC_P_b      = UPDATEFC_P;
-        	bins UPDATEFC_NP_b     = UPDATEFC_NP;
-        	bins UPDATEFC_CPL_b    = UPDATEFC_CPL;
+			bins ACK_b             = {ACK};
+        	bins NACK_b            = {NACK};
+        	bins NOP_b             = {NOP};
+        	bins VENDOR_SPECIFIC_b = {VENDOR_SPECIFIC};
+        	bins FEATURE_b         = {FEATURE};
+        	bins INITFC1_P_b       = {INITFC1_P};
+        	bins INITFC1_NP_b      = {INITFC1_NP};
+        	bins INITFC1_CPL_b     = {INITFC1_CPL};
+        	bins INITFC2_P_b       = {INITFC2_P};
+        	bins INITFC2_NP_b      = {INITFC2_NP};
+        	bins INITFC2_CPL_b     = {INITFC2_CPL};
+        	bins UPDATEFC_P_b      = {UPDATEFC_P};
+        	bins UPDATEFC_NP_b     = {UPDATEFC_NP};
+        	bins UPDATEFC_CPL_b    = {UPDATEFC_CPL};
 		}
 		tx_type_c : coverpoint seq_item_tx.dllp[47:40]{
-			bins ACK_b             = ACK;
-        	bins NACK_b            = NACK;
-        	bins NOP_b             = NOP;
-        	bins VENDOR_SPECIFIC_b = VENDOR_SPECIFIC;
-        	bins FEATURE_b         = FEATURE;
-        	bins INITFC1_P_b       = INITFC1_P;
-        	bins INITFC1_NP_b      = INITFC1_NP;
-        	bins INITFC1_CPL_b     = INITFC1_CPL;
-        	bins INITFC2_P_b       = INITFC2_P;
-        	bins INITFC2_NP_b      = INITFC2_NP;
-        	bins INITFC2_CPL_b     = INITFC2_CPL;
-        	bins UPDATEFC_P_b      = UPDATEFC_P;
-        	bins UPDATEFC_NP_b     = UPDATEFC_NP;
-        	bins UPDATEFC_CPL_b    = UPDATEFC_CPL;
+			bins ACK_b             = {ACK};
+        	bins NACK_b            = {NACK};
+        	bins NOP_b             = {NOP};
+        	bins VENDOR_SPECIFIC_b = {VENDOR_SPECIFIC};
+        	bins FEATURE_b         = {FEATURE};
+        	bins INITFC1_P_b       = {INITFC1_P};
+        	bins INITFC1_NP_b      = {INITFC1_NP};
+        	bins INITFC1_CPL_b     = {INITFC1_CPL};
+        	bins INITFC2_P_b       = {INITFC2_P};
+        	bins INITFC2_NP_b      = {INITFC2_NP};
+        	bins INITFC2_CPL_b     = {INITFC2_CPL};
+        	bins UPDATEFC_P_b      = {UPDATEFC_P};
+        	bins UPDATEFC_NP_b     = {UPDATEFC_NP};
+        	bins UPDATEFC_CPL_b    = {UPDATEFC_CPL};
 		}
 		// FI2 flag coverage
 		FI2_c : coverpoint state_seq_item.FI2 {
@@ -120,12 +120,12 @@ class pcie_vip_coverage extends uvm_component;
             bins local_not_set = {0};
         }
        	// Scaled FC remote bit[0] from cfg
-		cp_remote_scaled_fc: coverpoint cfg.remote_register_feature.remote_feature_supported[0] iff (remote_register_feature.remote_feature_valid == 1) {
+		cp_remote_scaled_fc: coverpoint cfg.remote_register_feature.remote_feature_supported[0] iff (cfg.remote_register_feature.remote_feature_valid == 1) {
             bins remote_set     = {1};
             bins remote_not_set = {0};
         }
 	    // Scaled FC active from cfg
-		cp_scaled_fc_active: coverpoint cfg.scaled_fc_active {
+		cp_scaled_fc_active: coverpoint state_seq_item.scaled_fc_active {
             bins active     = {1};
             bins not_active = {0};
         }
@@ -136,6 +136,7 @@ class pcie_vip_coverage extends uvm_component;
 		}
 		cp_remote_feature_supported: coverpoint cfg.remote_register_feature.remote_feature_supported {
 			bins all_zeros     = {23'h000000};
+			bins non_zero = default;
 		}
         // DL_INACTIVE entry conditions
 		cp_remote_feature_valid_cleared: cross cp_state, cp_remote_feature_valid {
@@ -329,7 +330,7 @@ class pcie_vip_coverage extends uvm_component;
             {seq_item_tx.dllp[39:38], seq_item_tx.dllp[29:28]}
             iff (state_seq_item.vip_state == DL_INIT1 &&
                  seq_item_tx.dllp[47:40] inside {INITFC1_P, INITFC1_NP, INITFC1_CPL} &&
-                 !cfg.scaled_fc_active)
+                 !state_seq_item.scaled_fc_active)
         {
             bins scale_zero = {4'b0000};
             illegal_bins wrong_scale = default;
@@ -340,7 +341,7 @@ class pcie_vip_coverage extends uvm_component;
             {seq_item_tx.dllp[39:38], seq_item_tx.dllp[29:28]}
             iff (state_seq_item.vip_state == DL_INIT1 &&
                  seq_item_tx.dllp[47:40] inside {INITFC1_P, INITFC1_NP, INITFC1_CPL} &&
-                 cfg.scaled_fc_active)
+                 state_seq_item.scaled_fc_active)
         {
             bins non_zero[] = {4'b0101, 4'b0110, 4'b0111,
                                4'b1001, 4'b1010, 4'b1011,
@@ -372,17 +373,17 @@ class pcie_vip_coverage extends uvm_component;
 		}
 
 		// FCINIT2_03
-		cp_initfc2_sequence_order : coverpoint rx_type_c iff(state_seq_item.vip_state == DL_INIT2) {
+		cp_initfc2_sequence_order : coverpoint seq_item_rx.dllp[47:40] iff(state_seq_item.vip_state == DL_INIT2) {
 			bins seq_order_P_NP_CPL = (INITFC2_P => INITFC2_NP => INITFC2_CPL);
 		}
 
 		// FCINIT2_03 (For TX)
-		cp_initfc2_sequence_order_TX : coverpoint tx_type_c iff(state_seq_item.vip_state == DL_INIT2) {
+		cp_initfc2_sequence_order_TX : coverpoint seq_item_tx.dllp[47:40] iff(state_seq_item.vip_state == DL_INIT2) {
 			bins seq_order_P_NP_CPL = (INITFC2_P => INITFC2_NP => INITFC2_CPL);
 		}
 
 		// FCINIT2_06
-		cp_fi2_set_on_initfc2 : cross cp_initfc2_sequence_order.seq_order_P_NP_CPL, FI2_c{
+		cp_fi2_set_on_initfc2 : cross cp_initfc2_sequence_order, FI2_c{
 			bins right_seq_Fl2 = binsof(cp_initfc2_sequence_order.seq_order_P_NP_CPL) && binsof(FI2_c.one);
 			illegal_bins right_seq_no_Fl2 = binsof(cp_initfc2_sequence_order.seq_order_P_NP_CPL) && binsof(FI2_c.zero);
 			option.cross_auto_bin_max = 0;
@@ -414,15 +415,15 @@ class pcie_vip_coverage extends uvm_component;
 		// Constructor
 	function new(string name = "pcie_vip_coverage", uvm_component parent=null);
 		super.new(name, parent);
+				// Get the configuration object to access the configuration registers
+	    if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG_ENV",cfg))
+	      `uvm_fatal("build_phase","unable to get configuration object in cov")
+
 		CovGp = new();
 	endfunction : new
 
 	function void build_phase(uvm_phase phase);
 		super.build_phase(phase);
-
-		// Get the configuration object to access the configuration registers
-	    if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG_ENV",cfg))
-	      `uvm_fatal("build_phase","unable to get configuration object in cov")
 
 	  	cov_export_tx=new("cov_export_tx",this);
 		cov_fifo_tx=new("cov_fifo_tx",this);

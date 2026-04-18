@@ -45,7 +45,7 @@ class pcie_vip_tx_sequencer extends uvm_sequencer #(pcie_dllp_seq_item);
     endtask : run_phase
 
     function void write (pcie_state_seq_item item);
-        state = item.state;
+        state = item.vip_state;
     endfunction
 
 endclass : pcie_vip_tx_sequencer 

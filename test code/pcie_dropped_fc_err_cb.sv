@@ -11,57 +11,45 @@
             super.new(name);
         endfunction
 
-        virtual function bit override_pattern();
-        // only override for the first 'active_cycles' iterations
-            if(current_cycle < active_cycles)
-                return 1;
-            else
-                return 0;  // ← after limit reached, go back to normal
-        endfunction
-
         virtual task do_send_pattern(pcie_fc_init1_seq seq, dl_state_t state);
-
-            current_cycle++;  // increment every time pattern is called
 
             pcie_dllp_seq_item item;
             item = pcie_dllp_seq_item::type_id::create("item");
 
-            
-            randcase
-                10: begin
-                    // dropped pattern — randomly pick which combination to drop
-                        randcase
-                            1: begin // DROP_NP
-                                seq.send_fc_dllp(INITFC1_P,   FC_POSTED,     item);
-                                seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
-                            end
-                            1: begin // DROP_CPL
-                                seq.send_fc_dllp(INITFC1_P,  FC_POSTED,     item);
-                                seq.send_fc_dllp(INITFC1_NP, FC_NON_POSTED, item);
-                            end
-                            1: begin // DROP_P
-                                seq.send_fc_dllp(INITFC1_NP,  FC_NON_POSTED, item);
-                                seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
-                            end
-                            1: begin // ONLY_P
-                                seq.send_fc_dllp(INITFC1_P, FC_POSTED, item);
-                            end
-                            1: begin // ONLY_NP
-                                seq.send_fc_dllp(INITFC1_NP, FC_NON_POSTED, item);
-                            end
-                            1: begin // ONLY_CPL
-                                seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
-                            end
-                        endcase
-                     end
-                1: begin
-                        // normal pattern
+           
+            if (current_cycle < active_cycles) begin
+                randcase
+                    1: begin // DROP_NP
                         seq.send_fc_dllp(INITFC1_P,   FC_POSTED,     item);
+                        seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
+                    end
+                    1: begin // DROP_CPL
+                        seq.send_fc_dllp(INITFC1_P,  FC_POSTED,     item);
+                        seq.send_fc_dllp(INITFC1_NP, FC_NON_POSTED, item);
+                    end
+                    1: begin // DROP_P
                         seq.send_fc_dllp(INITFC1_NP,  FC_NON_POSTED, item);
                         seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
                     end
-            endcase
-            
+                    1: begin // ONLY_P
+                        seq.send_fc_dllp(INITFC1_P, FC_POSTED, item);
+                    end
+                    1: begin // ONLY_NP
+                        seq.send_fc_dllp(INITFC1_NP, FC_NON_POSTED, item);
+                    end
+                    1: begin // ONLY_CPL
+                        seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
+                    end
+                endcase
+            end else begin
+                // normal pattern
+                seq.send_fc_dllp(INITFC1_P,   FC_POSTED,     item);
+                seq.send_fc_dllp(INITFC1_NP,  FC_NON_POSTED, item);
+                seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
+            end
+           
+            current_cycle++;  // increment every time pattern is called
+
         endtask
 
     endclass

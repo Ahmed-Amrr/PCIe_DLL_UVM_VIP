@@ -122,7 +122,7 @@ class pcie_vip_state_machine extends uvm_component;
 				end
 				else begin
 					`uvm_error("State_Machine rx_type error (Illegal DLLP received)",
-       				$sformatf("received type is : %s",type_rx))
+       				$sformatf("received type is : %s",received_type))
 				end
 			end
 			else begin

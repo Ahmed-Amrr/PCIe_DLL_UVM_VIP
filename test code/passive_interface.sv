@@ -1,6 +1,7 @@
 interface passive_interface (input logic lclk);
     import dll_pkg::*;
-
+	import uvm_pkg::*;
+    `include "uvm_macros.svh"
 	bit [47:0] tx_dllp;
 	bit [47:0] rx_dllp;
 
@@ -18,6 +19,10 @@ interface passive_interface (input logic lclk);
 
 	logic reset;
     logic rst_req;
+	logic pl_valid;
+	logic lp_valid;
+	logic lp_data;
+	logic pl_data;
 
 	logic DL_Up;
 	logic DL_Down;
@@ -42,6 +47,9 @@ interface passive_interface (input logic lclk);
 	logic rx_is_initfc2_p;
     logic rx_is_initfc2_np;
     logic rx_is_initfc2_cpl;
+	logic rx_is_initfc1_p;
+    logic rx_is_initfc1_np;
+    logic rx_is_initfc1_cpl;
 	logic        tx_is_feature;
     logic        rx_is_feature;
     logic [22:0] tx_feature_field;
@@ -60,13 +68,17 @@ interface passive_interface (input logic lclk);
     assign tx_is_initfc1_p   = (tx_dllp[47:40] == INITFC1_P);
     assign tx_is_initfc1_np  = (tx_dllp[47:40] == INITFC1_NP);
     assign tx_is_initfc1_cpl = (tx_dllp[47:40] == INITFC1_CPL);
-
     assign tx_is_initfc2_p   = (tx_dllp[47:40] == INITFC2_P);
     assign tx_is_initfc2_np  = (tx_dllp[47:40] == INITFC2_NP);
     assign tx_is_initfc2_cpl = (tx_dllp[47:40] == INITFC2_CPL);
+
+	assign rx_is_initfc1_p   = (rx_dllp[47:40] == INITFC1_P);
+    assign rx_is_initfc1_np  = (rx_dllp[47:40] == INITFC1_NP);
+    assign rx_is_initfc1_cpl = (rx_dllp[47:40] == INITFC1_CPL);
 	assign rx_is_initfc2_p   = (rx_dllp[47:40] == INITFC2_P);
     assign rx_is_initfc2_np  = (rx_dllp[47:40] == INITFC2_NP);
     assign rx_is_initfc2_cpl = (rx_dllp[47:40] == INITFC2_CPL);
+
 	assign tx_hdr_scale  = tx_dllp[39:38];
     assign tx_data_scale = tx_dllp[29:28];
 	assign tx_is_initfc1 = (tx_dllp[47:40] inside {INITFC1_P,INITFC1_NP,INITFC1_CPL});
@@ -92,7 +104,7 @@ interface passive_interface (input logic lclk);
 	// LINK_STATUS must be DL_UP when state is DL_ACTIVE or FC_INIT2
 	property p_link_up_in_active_states;
 		@(posedge lclk) disable iff (reset)
-		(state == DL_ACTIVE || state == FC_INIT2) |->
+		(state == DL_ACTIVE || state == DL_INIT2) |->
 		(DL_Up == 1'b1 && DL_Down == 1'b0);
 	endproperty
 	assert property (p_link_up_in_active_states)
@@ -103,7 +115,7 @@ interface passive_interface (input logic lclk);
 	// LINK_STATUS must be DL_DOWN when state is DL_INACTIVE, DL_FEATURE, or FC_INIT1
 	property p_link_down_in_inactive_states;
 		@(posedge lclk) disable iff (reset)
-		(state inside {DL_INACTIVE, DL_FEATURE, FC_INIT1}) |->
+		(state inside {DL_INACTIVE, DL_FEATURE, DL_INIT1}) |->
 		(DL_Down == 1'b1 && DL_Up == 1'b0);
 	endproperty
 	assert property (p_link_down_in_inactive_states)
@@ -397,17 +409,17 @@ interface passive_interface (input logic lclk);
     // ============================================================
     // FCINIT1_09 : HdrScale/DataScale must be != 00b in InitFC1 when Scaled FC active
     // ============================================================
-    property p_scale_nonzero_when_active;
+    property p_scale_nonzero_when_active_init1;
         @(posedge lclk) disable iff (reset)
         (state == DL_INIT1 && tx_is_initfc1  && scaled_fc_active)
         |-> (tx_hdr_scale != 2'b00 || tx_data_scale != 2'b00);
     endproperty
 
-    ast_fcinit1_09: assert property (p_scale_nonzero_when_active)
+    ast_fcinit1_09: assert property (p_scale_nonzero_when_active_init1)
         else `uvm_error("ASSERT_FCINIT1_09",
             "FCINIT1_09: Scale fields are 00b when Scaled FC is active")
 
-    cov_fcinit1_09: cover property (p_scale_nonzero_when_active);
+    cov_fcinit1_09: cover property (p_scale_nonzero_when_active_init1);
 
     // ============================================================
     // FCINIT1_10 : HdrFC and DataFC values correctly recorded from BOTH received InitFC1 AND InitFC2 DLLPs while in FC_INIT1
@@ -520,11 +532,11 @@ interface passive_interface (input logic lclk);
         |=> (state == DL_INIT2);
     endproperty
 
-    assert_trans_init1_01: assert property (p_init1_to_init2_on_fi1)
+    assert_trans_init1_01: assert property (p_trans_init1_to_init2_on_fi1)
         else `uvm_error("ASSERT_TRANS_INIT1_01",
             "TRANS_INIT1_01: Did not transition to DL_INIT2 when FI1=1 + LinkUp=1")
 
-    cov_trans_init1_01: cover property (p_init1_to_init2_on_fi1);
+    cov_trans_init1_01: cover property (p_trans_init1_to_init2_on_fi1);
 
     // ============================================================
     // FCINIT2_03 : InitFC2 triplet must be transmitted in strict order P->NP->CPL
@@ -648,17 +660,17 @@ interface passive_interface (input logic lclk);
     // ============================================================
     // FCINIT2_10 : HdrScale/DataScale must be != 00b in InitFC2 when Scaled FC active
     // ============================================================
-    property p_scale_nonzero_when_active;
+    property p_scale_nonzero_when_active_init2;
         @(posedge lclk) disable iff (reset) //tx or rx ??
         (state == DL_INIT2  && tx_is_initfc2  && scaled_fc_active)
         |-> (tx_hdr_scale != 2'b00 && tx_data_scale != 2'b00);
     endproperty
 
-    assert_fcinit2_10: assert property (p_scale_nonzero_when_active)
+    assert_fcinit2_10: assert property (p_scale_nonzero_when_active_init2)
         else `uvm_error("ASSERT_FCINIT2_10",
             "FCINIT2_10: Scale fields are 00b in InitFC2 when Scaled FC is active")
 
-    cov_fcinit2_10: cover property (p_scale_nonzero_when_active);
+    cov_fcinit2_10: cover property (p_scale_nonzero_when_active_init2);
 
     // ============================================================
     // FCINIT2_11 : UpdateFC DLLPs must use correct HdrScale/DataScale matching what advertised during init

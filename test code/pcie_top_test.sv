@@ -22,6 +22,9 @@
         string up_vip_mode;
         string down_vip_mode;
 
+        string up_err_mode;
+        string down_err_mode;
+
         // Callback instances
         pcie_vip_driver_cb us_drv_cb;
         pcie_vip_driver_cb ds_drv_cb;
@@ -57,28 +60,28 @@
                 end
 
                 "feature_reserved_err" : begin
-                    pcie_dllp_type_err_cb cb = pcie_feature_reserved_err_cb::type_id::create(name);
+                    pcie_feature_reserved_err_cb cb = pcie_feature_reserved_err_cb::type_id::create(name);
                     `uvm_info("TEST_CFG",
                         $sformatf("Creating DLLP type error callback: %s", name), UVM_LOW)
                     return cb;
                 end
                 
                 "updatefc_scale_err" : begin
-                    pcie_dllp_type_err_cb cb = pcie_updateFC_scale_err_cb::type_id::create(name);
+                    pcie_updateFC_scale_err_cb cb = pcie_updateFC_scale_err_cb::type_id::create(name);
                     `uvm_info("TEST_CFG",
                         $sformatf("Creating DLLP type error callback: %s", name), UVM_LOW)
                     return cb;
                 end
 
                 "dropped_fc_err" : begin
-                    pcie_dllp_type_err_cb cb = pcie_dropped_fc_cb::type_id::create(name);
+                    pcie_dropped_fc_cb cb = pcie_dropped_fc_cb::type_id::create(name);
                     `uvm_info("TEST_CFG",
                         $sformatf("Creating DLLP type error callback: %s", name), UVM_LOW)
                     return cb;
                 end
 
                 "out_of_order_fc_err" : begin
-                    pcie_dllp_type_err_cb cb = pcie_out_of_order_fc_cb::type_id::create(name);
+                    pcie_out_of_order_fc_cb cb = pcie_out_of_order_fc_cb::type_id::create(name);
                     `uvm_info("TEST_CFG",
                         $sformatf("Creating DLLP type error callback: %s", name), UVM_LOW)
                     return cb;
@@ -196,9 +199,9 @@
             end
 
             if (down_err_mode inside {"updatefc_scale_err", "crc_err", "dllp_type_err",  "feature_reserved_err"}) begin
-                ds_drv_cb = create_callback(down_err_mode,   "us_drv_cb");
+                ds_drv_cb = create_callback(down_err_mode,   "ds_drv_cb");
             end else if (down_err_mode inside {"dropped_fc_err", "out_of_order_fc_err"}) begin
-                ds_seq_cb = create_callback(down_err_mode,   "us_seq_cb");                
+                ds_seq_cb = create_callback(down_err_mode,   "ds_seq_cb");                
             end
 
             top_env = pcie_top_env::type_id::create("top_env",this); 

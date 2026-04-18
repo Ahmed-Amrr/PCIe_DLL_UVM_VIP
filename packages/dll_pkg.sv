@@ -52,11 +52,11 @@ package dll_pkg;
         FC_COMPLETION
     } fc_type_t;
 
-   typedef struct packed {
-    logic [2:0] [7:0]  hdr_credits;   // [FC_POSTED]=0, [FC_NON_POSTED]=1, [FC_COMPLETION]=2
-    logic [2:0] [11:0] data_credits;
-    logic [2:0] [1:0]  hdr_scale;
-    logic [2:0] [1:0]  data_scale;
+    typedef struct packed {
+        logic [7:0]  [2:0] hdr_credits;   // [FC_POSTED], [FC_NON_POSTED], [FC_COMPLETION]
+        logic [11:0] [2:0] data_credits;
+        logic [1:0]  [2:0] hdr_scale;
+        logic [1:0]  [2:0] data_scale;
     } fc_credits_t;
 
     typedef struct packed {
@@ -72,71 +72,82 @@ package dll_pkg;
     } dl_feature_status_reg_t;
 
 
-   // Sequence Items 
-  `include "pcie_dllp_seq_item.sv"
-  `include "pcie_state_seq_item.sv"
+    // =======================
+    // 3) Sequence Items
+    // =======================
+    `include "pcie_dllp_seq_item.sv"
+    `include "pcie_state_seq_item.sv"
 
-  // Config Object
-  `include "pcie_vip_config.sv"
+    `include "pcie_vip_config.sv"
+    `include "pcie_top_cfg.sv"
 
-    // Top config 
-  `include "pcie_top_cfg.sv"
-  
+    
 
-  // Coverage 
- // `include "pcie_vip_coverage.sv"
+    // =======================
+    // 4) Sequences
+    // =======================
+    typedef class pcie_vip_tx_sequencer;
+    typedef class pcie_base_seq;
+    `include "pcie_vip_driver_cb.sv"
+    `include "pcie_seq_cb.sv"
+    `include "pcie_base_sequence.sv"
+    `include "virtual_sequencer.sv"
+    `include "pcie_fc_init1_seq.sv"
+    `include "pcie_fc_init2_sequence.sv"
+    `include "pcie_active_sequence.sv"
+    `include "pcie_inactive_sequence.sv"
+    `include "pcie_feature_sequence.sv"
+    `include "pcie_feature_no_update_sequence.sv"
+    `include "pcie_feature_reserved_seq.sv"
+    `include "pcie_feature_reserved_err_cb.sv"
+    `include "pcie_out_of_order_fc_cb.sv"
+    `include "pcie_dropped_fc_err_cb.sv"
+    `include "pcie_type_err_cb.sv"
+    `include "pcie_crc_err_cb.sv"
+    `include "pcie_updateFC_scale_err_cb.sv"
+    `include "virtual_sequence.sv"
+    `include "pcie_vip_sequencer.sv"
+    `include "virtual_sequencer.sv"
 
-  // Scoreboard 
-  `include "ref_model.sv"
-  `include "dll_vip_scoreboard.sv"
-
-  // Sequencers 
-  `include "pcie_vip_sequencer.sv"
-  `include "virtual_sequencer.sv"
-
-  // Drivers & Monitors 
-  `include "pcie_vip_driver.sv"
-  `include "pcie_vip_err_driver.sv"
-  `include "pcie_vip_tx_monitor.sv"
-  `include "pcie_vip_rx_monitor.sv"
-
-  // State Machine 
-  `include "pcie_vip_state_machine.sv"
-
-  // VIP Agents 
-  `include "pcie_vip_tx_agent.sv"
-  `include "pcie_vip_rx_agent.sv"
-
-  // VIP Environment 
-  `include "pcie_vip_env.sv"
-
-  // Glue logic
-  `include "glue_logic_monitor.sv"
-  `include "glue_logic_driver.sv"
-  `include "glue_logic_agent.sv"
-
-  // Shared infra
-  `include "pcie_shared_scoreboard.sv"
-  `include "ref_model.sv"
+    // =======================
+    // 5) Drivers / Monitors / Agents / Sequencers
+    // =======================
+    `include "glue_logic_driver.sv"
+    `include "glue_logic_monitor.sv"
+    `include "glue_logic_agent.sv"
+    `include "pcie_vip_driver.sv"
+    `include "pcie_vip_err_driver.sv"
+    `include "pcie_passive_driver.sv"
 
 
-  // Sequences
-  `include "pcie_base_sequence.sv"
-  `include "pcie_active_sequence.sv"
-  `include "pcie_inactive_sequence.sv"
-  `include "pcie_init_sequence.sv"
-  `include "pcie_fc_init2_sequence.sv"
-  `include "pcie_feature_sequence.sv"
-  `include "pcie_feature_no_update_sequence.sv"
-  `include "pcie_feature_reserved_seq.sv"
-  `include "pcie_dropped_fc_sequence.sv"
-  `include "pcie_out_of_order_fc_sequence.sv"
-  `include "pcie_wrong_dllp_type_seq.sv"
-  `include "virtual_sequence.sv"
+    `include "pcie_vip_rx_monitor.sv"
+    `include "pcie_vip_rx_agent.sv"
 
-  // Top env & test (must be last)
-  `include "pcie_top_env.sv"
-  `include "pcie_top_test.sv"
+    `include "pcie_vip_tx_monitor.sv"
+    `include "pcie_vip_tx_agent.sv"
+
+    `include "pcie_vip_state_machine.sv"
+
+    // =======================
+    // 6) Scoreboards / Coverage / Models / Config
+    // =======================
+    `include "ref_model.sv"
+    `include "dll_vip_scoreboard.sv"
+    `include "pcie_shared_scoreboard.sv"
+    `include "pcie_vip_coverage.sv"
+    
+
+
+    // =======================
+    // 7) Environment
+    // =======================
+    `include "pcie_vip_env.sv"
+    `include "pcie_top_env.sv"
+
+    // =======================
+    // 8) Test
+    // =======================
+    `include "pcie_top_test.sv"
  
 endpackage : dll_pkg
  
