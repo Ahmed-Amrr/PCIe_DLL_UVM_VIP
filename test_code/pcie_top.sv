@@ -25,7 +25,7 @@ module pcie_top;
 
     // Run Test
     initial begin
-        run_test();
+        run_test(pcie_top_test_base);
     end
 
 endmodule
