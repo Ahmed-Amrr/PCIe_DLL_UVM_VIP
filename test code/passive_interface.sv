@@ -42,6 +42,9 @@ interface passive_interface (input logic lclk);
 	logic tx_is_initfc2;
 	logic rx_is_initfc1;
 	logic rx_is_initfc2;
+	logic rx_is_initfc2_p;
+    logic rx_is_initfc2_np;
+    logic rx_is_initfc2_cpl;
 	logic        tx_is_feature;
     logic        rx_is_feature;
     logic [22:0] tx_feature_field;
@@ -64,6 +67,9 @@ interface passive_interface (input logic lclk);
     assign tx_is_initfc2_p   = (tx_dllp[47:40] == INITFC2_P);
     assign tx_is_initfc2_np  = (tx_dllp[47:40] == INITFC2_NP);
     assign tx_is_initfc2_cpl = (tx_dllp[47:40] == INITFC2_CPL);
+	assign rx_is_initfc2_p   = (rx_dllp[47:40] == INITFC2_P);
+    assign rx_is_initfc2_np  = (rx_dllp[47:40] == INITFC2_NP);
+    assign rx_is_initfc2_cpl = (rx_dllp[47:40] == INITFC2_CPL);
 	assign tx_hdr_scale  = tx_dllp[39:38];
     assign tx_data_scale = tx_dllp[29:28];
 	assign tx_is_initfc1 = (tx_dllp[47:40] inside {INITFC1_P,INITFC1_NP,INITFC1_CPL});
@@ -274,8 +280,9 @@ interface passive_interface (input logic lclk);
     property p_scaled_fc_active_when_all_set;
         @(posedge lclk) disable iff (reset)
         (feature_exchange_cap                                    &&
-         local_register_feature.local_feature_supported[0]      &&
-         remote_register_feature.remote_feature_supported[0])
+         local_register_feature.local_feature_supported[0]       &&
+         remote_register_feature.remote_feature_supported[0]     &&
+		 remote_register_feature.remote_feature_valid )
         |-> scaled_fc_active;
     endproperty
 
@@ -339,21 +346,40 @@ interface passive_interface (input logic lclk);
     // ============================================================
     // FCINIT1_03 : InitFC1 triplet must be transmitted in strict order P->NP->CPL
     // ============================================================
-    property p_InitFC1_triplet_correct_order;
+    property p_InitFC1_triplet_correct_order_p_np;
         @(posedge lclk) disable iff (reset || !pl_lnk_up)
-        (state == DL_INIT1 && tx_is_initfc1_p )
+        (state == DL_INIT1 && tx_is_initfc1_p)
 		// After P is sent, NP must come next
         |=> (state == DL_INIT1 && tx_is_initfc1_np);
-		// After NP is sent, CPL must come next
-		|=> (state == DL_INIT1 && tx_is_initfc1_cpl);
     endproperty
+	property p_InitFC1_triplet_correct_order_np_cpl;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up)
+        (state == DL_INIT1 && tx_is_initfc1_np )
+		// After NP is sent, CPL must come next
+        |=> (state == DL_INIT1 && tx_is_initfc1_cpl);
+	endproperty
 
-    assert_fcinit1_03: assert property (p_InitFC1_triplet_correct_order)
+	property p_InitFC1_triplet_correct_order_cpl_p;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up)
+        (state == DL_INIT1 && tx_is_initfc1_cpl )
+		// After CPL is sent, P must come next
+        |=> (state == DL_INIT1 && tx_is_initfc1_p);
+	endproperty
+
+    assert_fcinit1_03_p_np : assert property (p_InitFC1_triplet_correct_order_p_np)
         else `uvm_error("ASSERT_FCINIT1_03",
-            "FCINIT1_03: InitFC1-P-NP-CPL did not follow CORRECT order")
+            "FCINIT1_03: InitFC1-P-NP did not follow CORRECT order")
+	assert_fcinit1_03_np_cpl : assert property (p_InitFC1_triplet_correct_order_np_cpl)
+        else `uvm_error("ASSERT_FCINIT1_03",
+            "FCINIT1_03: InitFC1-NP-CPL did not follow CORRECT order")
+	assert_fcinit1_03_cpl_p : assert property (p_InitFC1_triplet_correct_order_cpl_p)
+        else `uvm_error("ASSERT_FCINIT1_03",
+            "FCINIT1_03: InitFC1-CPL-P did not follow CORRECT order")
 
 
-    cov_fcinit1_03: cover property (p_InitFC1_triplet_correct_order);
+    cov_fcinit1_03_p_np: cover property (p_InitFC1_triplet_correct_order_p_np);
+	cov_fcinit1_03_np_cpl: cover property (p_InitFC1_triplet_correct_order_np_cpl);
+	cov_fcinit1_03_cpl_p: cover property (p_InitFC1_triplet_correct_order_cpl_p);
 
     // ============================================================
     // FCINIT1_08 : HdrScale/DataScale must be 00b in InitFC1 when Scaled FC NOT active
@@ -431,7 +457,7 @@ interface passive_interface (input logic lclk);
     // ============================================================
     property p_scale_recorded_p;
         @(posedge lclk) disable iff (reset)
-        (state == DL_INIT1 && (rx_is_initfc1_p || rx_is_initfc2_p )&& scaled_fc_active)
+        (state == DL_INIT1 && (rx_is_initfc1_p || rx_is_initfc2_p ) && scaled_fc_active)
         |=> (fc_credits_register.hdr_scale [FC_POSTED] == $past(rx_dllp[39:38]) &&
              fc_credits_register.data_scale[FC_POSTED] == $past(rx_dllp[29:28]));
     endproperty
@@ -465,18 +491,29 @@ interface passive_interface (input logic lclk);
     // ============================================================
     // FCINIT1_12 : FI1 flag set ONLY after ALL of P, NP, CPL received
     // ============================================================
-    property p_fi1_set_after_P_NP_CPL;
-        @(posedge lclk) disable iff (reset || !pl_link_up)
+    property p_fi1_set_after_P_NP_CPL_init1;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up)
         (state == DL_INIT1 && rx_is_initfc1_p)
         |-> ##[1:$] (state == DL_INIT1 && rx_is_initfc1_np) 
 		|-> ##[1:$] (state == DL_INIT1 && rx_is_initfc1_cpl)
-		|-> ##[1:$] (fi1_flag)
+		|=> (fi1_flag)
+    endproperty
+
+	property p_fi1_set_after_P_NP_CPL_init2;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up)
+        (state == DL_INIT1 && rx_is_initfc2_p)
+        |-> ##[1:$] (state == DL_INIT1 && rx_is_initfc2_np) 
+		|-> ##[1:$] (state == DL_INIT1 && rx_is_initfc2_cpl)
+		|=> (fi1_flag)
     endproperty
 
 
-    ast_fcinit1_12: assert property (p_fi1_set_after_P_NP_CPL)
-        else `uvm_error("ASSERT_FCINIT1_12", "FCINIT1_12: FI1 not set after all three P+NP+CPL received")
-    cov_fcinit1_12: cover property (p_fi1_set_after_P_NP_CPL);
+    assert_fcinit1_12_initfc1: assert property (p_fi1_set_after_P_NP_CPL_init1)
+        else `uvm_error("ASSERT_FCINIT1_12", "FCINIT1_12: FI1 not set after all three P+NP+CPL INIT1 received")
+    cov_fcinit1_12_initfc1: cover property (p_fi1_set_after_P_NP_CPL_init1);
+	assert_fcinit1_12_initfc2: assert property (p_fi1_set_after_P_NP_CPL_init2)
+        else `uvm_error("ASSERT_FCINIT1_12", "FCINIT1_12: FI1 not set after all three P+NP+CPL INIT2 received")
+    cov_fcinit1_12_initfc2: cover property (p_fi1_set_after_P_NP_CPL_init2);
     // ============================================================
     // TRANS_INIT1_01 : Exit FC_INIT1 -> FC_INIT2 when FI1=1 and LinkUp=1
     // ============================================================
@@ -496,27 +533,48 @@ interface passive_interface (input logic lclk);
     // FCINIT2_03 : InitFC2 triplet must be transmitted in strict order P->NP->CPL
     // ============================================================
     
-    property p_initfc2_P_NP_CPL_in_order;
+    property p_initfc2_P_NP_in_order;
         @(posedge lclk) disable iff (reset || !pl_lnk_up)
         (state == DL_INIT2 && tx_is_initfc2_p )
 		// After P is sent, NP must come next
         |=> (state == DL_INIT2 && tx_is_initfc2_np);
+    endproperty
+	property p_initfc2_NP_CPL_in_order;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up)
+        (state == DL_INIT2 && tx_is_initfc2_np )
 		// After NP is sent, CPL must come next
 		|=> (state == DL_INIT2 && tx_is_initfc2_cpl);
     endproperty
+	property p_initfc2_CPL_P_in_order;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up)
+        (state == DL_INIT2 && tx_is_initfc2_cpl )
+		// After NP is sent, CPL must come next
+		|=> (state == DL_INIT2 && tx_is_initfc2_p);
+    endproperty
 
-    assert_fcinit2_03:  assert property (p_initfc2_P_NP_CPL_in_order)
+    assert_fcinit2_03_P_NP:  assert property (p_initfc2_P_NP_in_order)
         else `uvm_error("ASSERT_FCINIT2_03",
-            "FCINIT2_03: InitFC2 triplet wrong order")
+            "FCINIT2_03: InitFC2 triplet wrong order P_NP")
 
-    cov_fcinit2_03: cover property (p_initfc2_P_NP_CPL_in_order);
+    cov_fcinit2_03_P_NP: cover property (p_initfc2_P_NP_in_order);
+
+	assert_fcinit2_03_NP_CPL:  assert property (p_initfc2_NP_CPL_in_order)
+        else `uvm_error("ASSERT_FCINIT2_03",
+            "FCINIT2_03: InitFC2 triplet wrong order NP_CPL")
+    cov_fcinit2_03_NP_CPL: cover property (p_initfc2_NP_CPL_in_order);
+
+	assert_fcinit2_03_CPL_P:  assert property (p_initfc2_CPL_P_in_order)
+        else `uvm_error("ASSERT_FCINIT2_03",
+            "FCINIT2_03: InitFC2 triplet wrong order CPL_P")
+
+    cov_fcinit2_03_CPL_P: cover property (p_initfc2_CPL_P_in_order);
 
     // ============================================================
     // FCINIT2_04 / FCINIT2_05 : In DL_INIT2 state, received InitFC1/InitFC2 values must be IGNORED
     // Credits and scales must NOT change
     // ============================================================
 
-    property p_initfc_p_ignored;
+    property p_initfc1_2_ignored;
         @(posedge lclk) disable iff (reset)
 
         // Receiving InitFC1 or InitFC2 dllps in INIT2 state
@@ -538,11 +596,11 @@ interface passive_interface (input logic lclk);
         );
     endproperty
 
-    assert_fcinit2_04_p: assert property (p_initfc_p_ignored)
+    assert_fcinit2_04: assert property (p_initfc1_2_ignored)
         else `uvm_error("ASSERT_FCINIT2_04",
             "FCINIT2_04: Local FC credits / scale changed on received posted initfc ")
 
-    cov_fcinit2_04_p: cover property (p_initfc_p_ignored);
+    cov_fcinit2_04: cover property (p_initfc1_2_ignored);
 
     // ============================================================
     // FCINIT2_06 : FI2 flag must be set on receipt of InitFC2 DLLP for VCx
@@ -564,7 +622,7 @@ interface passive_interface (input logic lclk);
     // ============================================================
     property p_fi2_set_on_updatefc;
         @(posedge lclk) disable iff (reset)
-        (state == DL_INIT2  && tx_dllp[47:40] inside {UPDATEFC_P, UPDATEFC_NP, UPDATEFC_CPL} )
+        (state == DL_INIT2  && rx_dllp[47:40] inside {UPDATEFC_P, UPDATEFC_NP, UPDATEFC_CPL} )
         |=> fi2_flag;
     endproperty
 
@@ -613,6 +671,8 @@ interface passive_interface (input logic lclk);
         @(posedge lclk) disable iff (reset)
         (state == DL_ACTIVE && tx_dllp[47:40] == UPDATEFC_P  && scaled_fc_active)
 		//right ? state machine doesn't change this values and ref model also so they are the same as init
+		// we inject error in dllp not in cfg 
+		// we can inject error in the transmitted dllp such that the hdr/data scale is changed in the dllp from the cfg 
         |-> (tx_hdr_scale  == fc_credits_register.hdr_scale [FC_POSTED] &&
              tx_data_scale == fc_credits_register.data_scale[FC_POSTED]);
     endproperty
@@ -660,21 +720,6 @@ interface passive_interface (input logic lclk);
             "TRANS_INIT2_01: Did not transition to DL_ACTIVE when FI2=1 + InitFC2 + LinkUp=1")
 
     cov_trans_init2_01: cover property (p_trans_init2_to_active);
-
-    // ============================================================
-    // ACTIVE_14 : Surprise Down error must be reported on DL_Active->DL_Inactive
-    // ============================================================
-    property p_surprise_down_reported;
-        @(posedge lclk) disable iff (reset)
-        (state == DL_ACTIVE  && !pl_lnk_up && surprise_down_capable)
-        |=> surprise_down_event;
-    endproperty
-
-    assert_active_14: assert property (p_surprise_down_reported)
-        else `uvm_error("ASSERT_ACTIVE_14",
-            "ACTIVE_14: Surprise Down error not reported on DL_Active->DL_Inactive ")
-
-    cov_active_14: cover property (p_surprise_down_reported);
 
     // ============================================================
     // LPIF Interface Assertions

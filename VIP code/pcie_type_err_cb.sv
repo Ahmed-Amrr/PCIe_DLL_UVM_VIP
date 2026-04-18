@@ -30,6 +30,7 @@ class pcie_dllp_type_err_cb extends pcie_vip_driver_cb;
                     1 : wrong_type = UPDATEFC_P;
                     1 : wrong_type = UPDATEFC_NP;
                     1 : wrong_type = UPDATEFC_CPL;
+                    
                 endcase
             end
             DL_INIT1 : begin

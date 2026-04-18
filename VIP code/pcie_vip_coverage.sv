@@ -140,7 +140,7 @@ class pcie_vip_coverage extends uvm_component;
 			bins not_disabled = {1};
 			bins disabled     = {0};
 		}
-		// el reset hena gaya mn el phi sah? rx or tx transaction? rx inshallah
+		// reset from phy - come on rx_seq
 		cp_multiple_resets : coverpoint seq_item_rx.reset {
 			bins reset_asserted   = {1};
         	bins reset_deasserted = {0};	
@@ -220,7 +220,7 @@ class pcie_vip_coverage extends uvm_component;
         // Illegal: any other DLLP type shouldn't be received in DL_FEATURE
            illegal_bins invalid_dllp_in_feature = default;
         }
-		// I think we don't need to do so, we already check them in fer model?
+		
 		// FEATURE_04 : Transmitted Feature field must equal local register
         cp_tx_feature_field_matches_local: coverpoint (seq_item_tx.dllp[38:16] == cfg.local_register_feature.local_feature_supported) iff (state_seq_item.vip_state == FEATURE
 		&& seq_item_tx.dllp[47:40] == FEATURE) {
