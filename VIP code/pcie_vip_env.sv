@@ -18,6 +18,7 @@ class pcie_vip_env extends  uvm_env;
 	dll_vip_scoreboard scoreboard;
 	pcie_vip_coverage coverage;
 	pcie_vip_state_machine state_machine;
+	pcie_passive_driver passive_driver;
 
 	pcie_vip_config cfg;
 

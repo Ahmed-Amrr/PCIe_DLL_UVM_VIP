@@ -13,7 +13,7 @@ class pcie_dllp_type_err_cb extends pcie_vip_driver_cb;
 
         dllp_type_t wrong_type;
 
-        if (sqr = null) begin
+        if (sqr == null) begin
             `uvm_warning("CB_DLLP_TYPE", "sqr is null")
             return;
         end

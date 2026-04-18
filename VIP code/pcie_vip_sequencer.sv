@@ -32,7 +32,7 @@ class pcie_vip_tx_sequencer extends uvm_sequencer #(pcie_dllp_seq_item);
             // wait until the state changes 
             @(state) ;     
             case (state)
-                DL_INACTIVE : seq = pcie_inactive_sequence::type_id::create("seq");
+                DL_INACTIVE : seq = pcie_inactive_seq::type_id::create("seq");
                 DL_FEATURE  : seq = pcie_feature_sequence::type_id::create("seq");
                 DL_INIT1    : seq = pcie_fc_init1_seq::type_id::create("seq");
                 DL_INIT2    : seq = pcie_fc_init2_seq::type_id::create("seq");

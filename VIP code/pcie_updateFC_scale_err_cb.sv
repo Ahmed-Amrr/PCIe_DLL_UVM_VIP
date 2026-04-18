@@ -11,7 +11,7 @@
 
         virtual task pre_drive(pcie_dllp_seq_item item, pcie_vip_tx_sequencer sqr);
 
-            if (sqr = null) begin
+            if (sqr == null) begin
                 `uvm_warning("CB_DLLP_TYPE", "sqr is null")
                 return;
             end

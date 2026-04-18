@@ -22,48 +22,6 @@ class pcie_vip_coverage extends uvm_component;
 
 	pcie_vip_config cfg;										//to get the configuration registers
 
-
-	// Constructor
-	function new(string name = "pcie_vip_coverage", uvm_component parent=null);
-		super.new(name, parent);
-		CovGp=new();
-	endfunction : new
-
-	function void build_phase(uvm_phase phase);
-		super.build_phase(phase);
-
-		// Get the configuration object to access the configuration registers
-	    if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG_ENV",cfg))
-	      `uvm_fatal("build_phase","unable to get configuration object in cov")
-
-	  	cov_export_tx=new("cov_export_tx",this);
-		cov_fifo_tx=new("cov_fifo_tx",this);
-
-		cov_export_rx=new("cov_export_rx",this);
-		cov_fifo_rx=new("cov_fifo_rx",this);
-
-		cov_export_sm=new("cov_export_sm",this);
-		cov_fifo_sm=new("cov_fifo_sm",this);
-
-	endfunction : build_phase
-
-	function void connect_phase(uvm_phase phase);
-		super.connect_phase(phase);
-		cov_export_tx.connect(cov_fifo_tx.analysis_export);
-		cov_export_rx.connect(cov_fifo_rx.analysis_export);
-		cov_export_sm.connect(cov_fifo_sm.analysis_export);
-	endfunction : connect_phase
-
-	task run_phase(uvm_phase phase);
-		super.run_phase(phase);
-		forever begin
-			cov_fifo_tx.get(seq_item_tx);
-			cov_fifo_rx.get(seq_item_rx);
-			cov_fifo_sm.get(state_seq_item);
-			CovGp.sample();
-		end
-	endtask : run_phase
-
 	covergroup CovGp ();
 	// State Coverage — all states and all legal transitions
 		cp_state : coverpoint state_seq_item.vip_state{
@@ -144,8 +102,8 @@ class pcie_vip_coverage extends uvm_component;
 		cp_multiple_resets : coverpoint seq_item_rx.reset {
 			bins reset_asserted   = {1};
         	bins reset_deasserted = {0};	
-			bins assert_reset     = {0 => 1};
-            bins multiple_reset   = {0 => 1 => 1 => 1};
+			bins assert_reset     = (0 => 1);
+            bins multiple_reset   = (0 => 1 => 1 => 1);
         }
 		// Feature exchange capability and enable from cfg
 		cp_feature_exchange_cap: coverpoint cfg.feature_exchange_cap {
@@ -414,15 +372,13 @@ class pcie_vip_coverage extends uvm_component;
 		}
 
 		// FCINIT2_03
-		cp_initfc2_sequence_order : coverpoint rx_type_c iff(state_seq_item.vip_state==DL_INIT2){
-			bins seq_order_P_NP_CPL = (binsof(rx_type_c.INITFC2_P_b) => binsof(rx_type_c.INITFC2_NP_b) => binsof(rx_type_c.INITFC2_CPL_b));
-			option.cross_auto_bin_max = 0;
+		cp_initfc2_sequence_order : coverpoint rx_type_c iff(state_seq_item.vip_state == DL_INIT2) {
+			bins seq_order_P_NP_CPL = (INITFC2_P => INITFC2_NP => INITFC2_CPL);
 		}
 
 		// FCINIT2_03 (For TX)
-		cp_initfc2_sequence_order_TX : coverpoint tx_type_c iff(state_seq_item.vip_state==DL_INIT2){
-			bins seq_order_P_NP_CPL = (binsof(tx_type_c.INITFC2_P_b) => binsof(tx_type_c.INITFC2_NP_b) => binsof(tx_type_c.INITFC2_CPL_b));
-			option.cross_auto_bin_max = 0;
+		cp_initfc2_sequence_order_TX : coverpoint tx_type_c iff(state_seq_item.vip_state == DL_INIT2) {
+			bins seq_order_P_NP_CPL = (INITFC2_P => INITFC2_NP => INITFC2_CPL);
 		}
 
 		// FCINIT2_06
@@ -454,6 +410,48 @@ class pcie_vip_coverage extends uvm_component;
 		}
 
 	endgroup : CovGp
+
+		// Constructor
+	function new(string name = "pcie_vip_coverage", uvm_component parent=null);
+		super.new(name, parent);
+		CovGp = new();
+	endfunction : new
+
+	function void build_phase(uvm_phase phase);
+		super.build_phase(phase);
+
+		// Get the configuration object to access the configuration registers
+	    if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG_ENV",cfg))
+	      `uvm_fatal("build_phase","unable to get configuration object in cov")
+
+	  	cov_export_tx=new("cov_export_tx",this);
+		cov_fifo_tx=new("cov_fifo_tx",this);
+
+		cov_export_rx=new("cov_export_rx",this);
+		cov_fifo_rx=new("cov_fifo_rx",this);
+
+		cov_export_sm=new("cov_export_sm",this);
+		cov_fifo_sm=new("cov_fifo_sm",this);
+
+	endfunction : build_phase
+
+	function void connect_phase(uvm_phase phase);
+		super.connect_phase(phase);
+		cov_export_tx.connect(cov_fifo_tx.analysis_export);
+		cov_export_rx.connect(cov_fifo_rx.analysis_export);
+		cov_export_sm.connect(cov_fifo_sm.analysis_export);
+	endfunction : connect_phase
+
+	task run_phase(uvm_phase phase);
+		super.run_phase(phase);
+		forever begin
+			cov_fifo_tx.get(seq_item_tx);
+			cov_fifo_rx.get(seq_item_rx);
+			cov_fifo_sm.get(state_seq_item);
+			CovGp.sample();
+		end
+	endtask : run_phase
+
 
 endclass : pcie_vip_coverage
 
