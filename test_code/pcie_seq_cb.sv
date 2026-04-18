@@ -15,10 +15,6 @@
             // default: do nothing, normal sequence runs
         endtask
 
-        virtual function bit override_pattern();
-            return 0; // default: don't override
-        endfunction
-
     endclass
 
 `endif

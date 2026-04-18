@@ -11,16 +11,8 @@
             super.new(name);
         endfunction
 
-        virtual function bit override_pattern();
-        // only override for the first 'active_cycles' iterations
-            if(current_cycle < active_cycles)
-                return 1;
-            else
-                return 0;  // ← after limit reached, go back to normal
-        endfunction
 
-
-        virtual task do_send_pattern(pcie_fc_init1_seq seq, dl_state_t state);
+        virtual task do_send_pattern(pcie_base_seq seq, dl_state_t state);
             pcie_dllp_seq_item item;
             item = pcie_dllp_seq_item::type_id::create("item");
 

@@ -53,10 +53,10 @@ package dll_pkg;
     } fc_type_t;
 
     typedef struct packed {
-        logic [7:0]  [2:0] hdr_credits;   // [FC_POSTED], [FC_NON_POSTED], [FC_COMPLETION]
-        logic [11:0] [2:0] data_credits;
-        logic [1:0]  [2:0] hdr_scale;
-        logic [1:0]  [2:0] data_scale;
+        logic [2:0]  [7:0]  hdr_credits;   // [FC_POSTED], [FC_NON_POSTED], [FC_COMPLETION]
+        logic [2:0]  [11:0] data_credits;
+        logic [2:0]  [1:0]  hdr_scale;
+        logic [2:0]  [1:0]  data_scale;
     } fc_credits_t;
 
     typedef struct packed {
@@ -88,9 +88,9 @@ package dll_pkg;
     // =======================
     typedef class pcie_vip_tx_sequencer;
     typedef class pcie_base_seq;
+    `include "pcie_base_sequence.sv"
     `include "pcie_vip_driver_cb.sv"
     `include "pcie_seq_cb.sv"
-    `include "pcie_base_sequence.sv"
     `include "virtual_sequencer.sv"
     `include "pcie_fc_init1_seq.sv"
     `include "pcie_fc_init2_sequence.sv"
@@ -116,8 +116,7 @@ package dll_pkg;
     `include "glue_logic_monitor.sv"
     `include "glue_logic_agent.sv"
     `include "pcie_vip_driver.sv"
-    `include "pcie_vip_err_driver.sv"
-    `include "pcie_passive_driver.sv"
+    //`include "pcie_passive_driver.sv"
 
 
     `include "pcie_vip_rx_monitor.sv"

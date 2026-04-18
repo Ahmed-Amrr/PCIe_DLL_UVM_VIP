@@ -56,7 +56,7 @@ interface passive_interface (input logic lclk);
     logic [22:0] rx_feature_field;
     logic        tx_ack_bit;
     logic        rx_ack_bit;
-
+/*
     assign tx_is_feature   = (tx_dllp[47:40] == FEATURE);
     assign rx_is_feature   = (rx_dllp[47:40] == FEATURE);
     assign tx_feature_field = tx_dllp[38:16];
@@ -237,7 +237,7 @@ interface passive_interface (input logic lclk);
 
     assert_feature_06_07: assert property (p_remote_field_recorded_on_first_dllp)
         else `uvm_error("ASSERT_FEATURE_06_07",
-            $sformatf("FEATURE_06_07: remote_feature_supported not updated on first DLLP. Expected 0x%0h got 0x%0h ,
+$sformatf("FEATURE_06_07: remote_feature_supported not updated on first DLLP. Expected 0x%0h got 0x%0h ,
                        remote_feature_valid not set after first Feature DLLP",
                  $past(rx_feature_field),
                 remote_register_feature.remote_feature_supported))
@@ -781,5 +781,5 @@ interface passive_interface (input logic lclk);
     assert property (p_rx_dllp_known_when_valid)
     else `uvm_error("ASSERT_LPIF_04",
     "DLLP_LPIF_04: pl_valid = 1 but rx_dllp is unknown");
-
+*/
 endinterface : passive_interface

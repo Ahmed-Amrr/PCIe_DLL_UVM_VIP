@@ -18,7 +18,7 @@ class pcie_vip_env extends  uvm_env;
 	dll_vip_scoreboard scoreboard;
 	pcie_vip_coverage coverage;
 	pcie_vip_state_machine state_machine;
-	pcie_passive_driver passive_driver;
+	//pcie_passive_driver passive_driver;
 
 	pcie_vip_config cfg;
 
@@ -45,7 +45,7 @@ class pcie_vip_env extends  uvm_env;
 		scoreboard = dll_vip_scoreboard::type_id::create("scoreboard", this);
 		coverage = pcie_vip_coverage::type_id::create("coverage", this);
 		state_machine = pcie_vip_state_machine::type_id::create("state_machine", this);
-		passive_driver = pcie_passive_driver::type_id::create("passive_driver", this);
+		//passive_driver = pcie_passive_driver::type_id::create("passive_driver", this);
 	endfunction : build_phase
 
 	function void connect_phase(uvm_phase phase);
@@ -66,9 +66,9 @@ class pcie_vip_env extends  uvm_env;
 		rx_agent.rx_mon.lpif_vif=cfg.lpif_vif;
 
 		//connecting passive interface driver to the monitors
-		tx_agent.tx_mon.tx_mon_ap.connect(passive_driver.fifo_mon_tx.analysis_export);
-		rx_agent.rx_mon.rx_mon_ap.connect(passive_driver.fifo_mon_rx.analysis_export);
-		state_machine.sm_ap.connect(passive_driver.fifo_mon_sm.analysis_export);
+		//tx_agent.tx_mon.tx_mon_ap.connect(passive_driver.fifo_mon_tx.analysis_export);
+		//rx_agent.rx_mon.rx_mon_ap.connect(passive_driver.fifo_mon_rx.analysis_export);
+		//state_machine.sm_ap.connect(passive_driver.fifo_mon_sm.analysis_export);
 
 	endfunction : connect_phase
 

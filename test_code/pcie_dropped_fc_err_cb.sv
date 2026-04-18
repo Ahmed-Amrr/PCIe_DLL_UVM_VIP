@@ -11,7 +11,7 @@
             super.new(name);
         endfunction
 
-        virtual task do_send_pattern(pcie_fc_init1_seq seq, dl_state_t state);
+        virtual task do_send_pattern(pcie_base_seq seq, dl_state_t state);
 
             pcie_dllp_seq_item item;
             item = pcie_dllp_seq_item::type_id::create("item");
