@@ -11,15 +11,14 @@
 
         virtual task pre_drive(pcie_dllp_seq_item item, pcie_vip_tx_sequencer sqr);
 
-            dllp_type_t wrong_type;
-
             if (sqr = null) begin
                 `uvm_warning("CB_DLLP_TYPE", "sqr is null")
                 return;
             end
 
-            if (sqr.state) begin
+            if (sqr.state == DL_FEATURE) begin
                 item.dllp[38:16] = $random();
+                item.dllp[39] = $random();
             end
 
         endtask : pre_drive
