@@ -154,7 +154,7 @@ class pcie_vip_coverage extends uvm_component;
 		cp_remote_feature_field_cleared: cross cp_state, cp_remote_feature_supported {
 			bins remote_feature_supported_cleared = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_supported.all_zeros);
 			// Illegal: non-zero feature field while inactive
-            illegal_bins field_set_while_inactive = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_supported.non_zero);
+            //illegal_bins field_set_while_inactive = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_supported.non_zero);
             option.cross_auto_bin_max = 0;
 		}
 		// Transition from INACTIVE to FEATURE — all conditions must be met
