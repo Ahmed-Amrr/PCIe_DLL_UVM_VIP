@@ -260,10 +260,9 @@
             end else if (ds_seq_cb != null) begin
                 uvm_callbacks #(pcie_fc_init1_seq, pcie_seq_cb)::add(top_env.u_vip.tx_agent.sqr.seq , ds_seq_cb);
             end*/
-
-            #100;
+            
+            #10000;
             phase.drop_objection(this);
-
         endtask : run_phase
     
     endclass 

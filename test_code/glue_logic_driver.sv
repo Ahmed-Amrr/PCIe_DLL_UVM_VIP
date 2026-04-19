@@ -27,7 +27,6 @@
 
         task run_phase(uvm_phase phase);
             super.run_phase(phase);
-
             forever begin
                 fifo_mon.get(s_item);
                 @(lpif_vif.drv_cb)

@@ -27,9 +27,9 @@ class pcie_vip_tx_sequencer extends uvm_sequencer #(pcie_dllp_seq_item);
 
     
     task run_phase(uvm_phase phase);
-
+        seq = pcie_inactive_seq::type_id::create("seq");
+        if (seq != null) seq.start(this);
         forever begin
-            // wait until the state changes 
             @(state) ;     
             case (state)
                 DL_INACTIVE : seq = pcie_inactive_seq::type_id::create("seq");
@@ -46,12 +46,10 @@ class pcie_vip_tx_sequencer extends uvm_sequencer #(pcie_dllp_seq_item);
 
     function void write (pcie_state_seq_item item);
         state = item.vip_state;
+        $display("state is = %s", state);
     endfunction
 
 endclass : pcie_vip_tx_sequencer 
 
 
 `endif 
-
-
-

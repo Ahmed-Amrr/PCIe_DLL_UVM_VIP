@@ -145,6 +145,8 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
                     $sformatf("[U2L-RX] Timeout! No RX received within %0t", RX_TIMEOUT));
                 break; // exit inner loop after timeout
             end
+            //Avoid zero-time busy spinning when FIFO is empty
+            #1step;
         end
     end
   endtask
@@ -189,7 +191,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
         forever begin
             // Try to get RX with small step
             if(upper_rx_fifo.try_get(rx_txn)) begin
-                rx_l_time = $time; // store RX arrival time
+                rx_u_time = $time; // store RX arrival time
                 `uvm_info(get_type_name(), $sformatf("[L2U-RX] Received UPPER RX: %s at time %0t", rx_txn.convert2string(), rx_l_time),UVM_HIGH);
                 match_l2u(rx_txn); // process RX
                 break; // exit inner loop after RX received
@@ -199,6 +201,8 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
                 `uvm_error(get_type_name(), $sformatf("[L2U-RX] Timeout! No RX received within %0t", RX_TIMEOUT));
                 break; // exit inner loop after timeout
             end
+            //Avoid zero-time busy spinning when FIFO is empty
+            #1step;
         end
     end
   endtask

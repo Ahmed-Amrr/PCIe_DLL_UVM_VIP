@@ -1,5 +1,6 @@
 import uvm_pkg::*;
 `include "uvm_macros.svh"
+import dll_pkg::*;
 
 module pcie_top;
 
@@ -25,7 +26,7 @@ module pcie_top;
 
     // Run Test
     initial begin
-        run_test(pcie_top_test_base);
+        run_test("pcie_top_test_base");
     end
 
 endmodule
