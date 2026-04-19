@@ -13,6 +13,10 @@ class pcie_inactive_seq extends pcie_base_seq;
             item.rst_req = 1;
             finish_item(item);
         end  
+        item = pcie_dllp_seq_item::type_id::create("item");
+        start_item(item);
+        item.rst_req = 0;
+        finish_item(item);
     endtask
 
 endclass //pcie_inactive_seq extends pcie_base_seq

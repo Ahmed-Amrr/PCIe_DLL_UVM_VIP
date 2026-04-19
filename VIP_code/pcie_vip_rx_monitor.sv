@@ -35,9 +35,9 @@
 				seq_item_rx_mon=pcie_dllp_seq_item::type_id::create("seq_item_rx_mon");
 	            @(lpif_vif.mon_cb);
 	            if (lpif_vif.pl_valid) begin 
-					seq_item_rx_mon.dllp = lpif_vif.pl_data;
-					seq_item_rx_mon.pl_valid = lpif_vif.pl_valid;
-					seq_item_rx_mon.pl_lnk_up = lpif_vif.pl_lnk_up;
+					seq_item_rx_mon.dllp = lpif_vif.mon_cb.pl_data;
+					seq_item_rx_mon.pl_lnk_up = lpif_vif.mon_cb.pl_lnk_up;
+					seq_item_rx_mon.reset = lpif_vif.mon_cb.reset;
 					rx_mon_ap.write(seq_item_rx_mon);
 	            end
 				/*`uvm_info("run_phase", seq_item_rx_mon.convert2string(), UVM_HIGH)*/

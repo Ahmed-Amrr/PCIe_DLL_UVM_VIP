@@ -30,8 +30,8 @@
             super.connect_phase(phase); 
 
             // Connect upstream monitor with downstream driver and vise vera
-            ds_monitor.mon_ap.connect(us_driver.fifo_mon.analysis_export);
-            us_monitor.mon_ap.connect(ds_driver.fifo_mon.analysis_export);
+            ds_monitor.mon_ap.connect(us_driver.mon_imp);
+            us_monitor.mon_ap.connect(ds_driver.mon_imp);
         endfunction
     endclass //glue_logic_agent extends uvm_agent
 

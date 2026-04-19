@@ -10,7 +10,7 @@
         pcie_dllp_seq_item s_item;
         pcie_top_cfg cfg;
 
-        uvm_tlm_analysis_fifo #(pcie_dllp_seq_item) fifo_mon;
+        uvm_analysis_imp #(pcie_dllp_seq_item, glue_logic_driver) mon_imp; 
 
         function new(string name = "glue_logic_driver", uvm_component parent = null);
             super.new(name, parent);
@@ -18,7 +18,7 @@
 
         function void build_phase(uvm_phase phase);
             super.build_phase(phase);
-            fifo_mon = new("fifo_mon", this);
+            mon_imp=new("mon_imp",this);
 
             // Retreving the cfg object from the top test
             if(!uvm_config_db #(pcie_top_cfg)::get(this, "", "top_cfg", cfg))
@@ -28,26 +28,31 @@
         task run_phase(uvm_phase phase);
             super.run_phase(phase);
             forever begin
-                fifo_mon.get(s_item);
                 @(lpif_vif.drv_cb)
-                if (s_item.rst_req == 1) begin
-                    lpif_vif.drv_cb.reset <= 1;
-                end
-                if (cfg.link_down_test == 0) begin              // Normal operation 
-                    lpif_vif.drv_cb.pl_lnk_up <= 1;
-                    lpif_vif.drv_cb.pl_data <= s_item.dllp;
+                if (s_item != null) begin
+                    if (s_item.rst_req == 1) begin
+                        lpif_vif.drv_cb.reset <= 1;
+                    end
+                    if (cfg.link_down_test == 0) begin              // Normal operation 
+                        lpif_vif.drv_cb.pl_lnk_up <= 1;
+                        lpif_vif.drv_cb.pl_data <= s_item.dllp;
 
-                    if (cfg.pl_valid_off) begin                 // Valid off testcases
-                        lpif_vif.drv_cb.pl_valid <= 0;
-                    end else begin
-                        lpif_vif.drv_cb.pl_valid <= 1;
+                        if (cfg.pl_valid_off) begin                 // Valid off testcases
+                            lpif_vif.drv_cb.pl_valid <= 0;
+                        end else begin
+                            lpif_vif.drv_cb.pl_valid <= 1;
+                        end 
+                    end else if (cfg.link_down_test) begin          // Linkup = 0 testcases
+                        lpif_vif.drv_cb.pl_lnk_up <= 0;
                     end 
-                end else if (cfg.link_down_test) begin          // Linkup = 0 testcases
-                    lpif_vif.drv_cb.pl_lnk_up <= 0;
-                end 
+                end
             end
-
         endtask
+
+        function void write (pcie_dllp_seq_item item);
+            s_item = item;
+        endfunction
+
     endclass 
 
 `endif

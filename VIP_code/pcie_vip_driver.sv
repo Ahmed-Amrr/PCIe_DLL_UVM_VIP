@@ -9,7 +9,7 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
     parameter int DLLP_WIDTH    = 48;
     parameter int PAYLOAD_WIDTH = 32;
     parameter int CRC_WIDTH     = 16;
-    parameter int BYTE 			= 8;
+    parameter int BYTE          = 8;
 
     virtual lpif_if    lpif_vif;
     pcie_vip_config    cfg;
@@ -38,8 +38,8 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
             `uvm_do_callbacks(pcie_vip_driver, pcie_vip_driver_cb, pre_drive(seq_item_drv, sqr))
 
             // drive the interface
-            lpif_vif.lp_data = seq_item_drv.dllp;
-            lpif_vif.lp_valid = seq_item_drv.lp_valid;
+            lpif_vif.drv_cb.lp_data <= seq_item_drv.dllp;
+            lpif_vif.drv_cb.lp_valid <= 1;
             @(lpif_vif.drv_cb);
 
             // post drive callback hook 
