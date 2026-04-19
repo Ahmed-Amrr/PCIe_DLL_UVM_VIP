@@ -151,18 +151,28 @@ class pcie_vip_state_machine extends uvm_component;
 	function void state_transition();
 		case (current_state)
 			DL_INACTIVE: begin 
+				state_seq_item.DL_Up=0;
+				state_seq_item.DL_Down=1;
 				inactive_state();
 			end
 			DL_FEATURE: begin
+				state_seq_item.DL_Up=0;
+				state_seq_item.DL_Down=1;
 				feature_state();
 			end
 			DL_INIT1: begin 
+				state_seq_item.DL_Up=0;
+				state_seq_item.DL_Down=1;
 				init1_state();
 			end
 			DL_INIT2: begin 
+				state_seq_item.DL_Up=1;
+				state_seq_item.DL_Down=0;
 				init2_state();
 			end
 			DL_ACTIVE: begin 
+				state_seq_item.DL_Up=1;
+				state_seq_item.DL_Down=0;
 				active_state();
 			end
 			default :inactive_state();
