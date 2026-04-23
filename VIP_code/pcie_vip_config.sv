@@ -18,14 +18,18 @@ class pcie_vip_config extends uvm_object;
      rand fc_credits_t fc_credits_register;                  //for "hdr_credits & data_credits" are for the credits counter
                                                         //for "hdr_scale & data_scale" are for the scale
 
+     rand bit reset;
+
 
     bit feature_exchange_cap;
+    bit scaled_fc_active;
 
     bit surprise_down_capable;
     rand bit link_not_disabled;
 
     constraint c {
-            link_not_disabled dist {0:=99, 1:=1};
+            link_not_disabled == 1 ;
+            reset dist {0:=99, 1:=1};
         }
 
      function new (string name ="pcie_vip_config");

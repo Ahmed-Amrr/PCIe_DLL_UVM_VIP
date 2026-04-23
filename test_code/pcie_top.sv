@@ -17,11 +17,13 @@ module pcie_top;
    // Interface Instances
     lpif_if u_lpif_if   (.lclk(clk));
     lpif_if d_lpif_if   (.lclk(clk));
+    passive_interface p_if   (.lclk(clk));
 
     // UVM Config DB — register interfaces
     initial begin
         uvm_config_db#(virtual lpif_if)::set(null, "*", "u_lpif", u_lpif_if);
         uvm_config_db#(virtual lpif_if)::set(null, "*", "d_lpif", d_lpif_if);
+        uvm_config_db#(virtual passive_interface)::set(null, "*", "p_if", p_if);
     end
 
     // Run Test

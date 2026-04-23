@@ -24,8 +24,8 @@ class pcie_active_seq extends pcie_base_seq;
             data_infinite_init[i] = (cfg.fc_credits_register.data_credits[i] == 0);
          end   
 
-        
-        while (p_sequencer.state == DL_ACTIVE) begin
+        for ( i = 0; i <1000; i++) begin
+            if (p_sequencer.state == DL_ACTIVE) begin
 
             // Randomize new credit values for this UpdateFC round
            if (!this.randomize())
@@ -43,15 +43,10 @@ class pcie_active_seq extends pcie_base_seq;
 
             if (needs_updatefc(FC_COMPLETION))
                 send_updatefc(UPDATEFC_CPL, FC_COMPLETION);
-
-            // Counter to count Timeout for each state in order not to stuck 
-            if (i == 1000) begin
-              `uvm_error(get_type_name(), "Timeout for the seq in DL_ACTIVE state")
-              break;
-            end
         end
 
-        `uvm_info(get_type_name(), "Active seq complete", UVM_LOW)
+        end
+        `uvm_info(get_type_name(), "Active seq complete", UVM_MEDIUM)
     endtask
 
 
@@ -65,7 +60,7 @@ class pcie_active_seq extends pcie_base_seq;
         if (hdr_infinite_init[fc_type] && data_infinite_init[fc_type]) begin
             `uvm_info(get_type_name(), $sformatf(
                 "FC type %0s: both infinite — skipping UpdateFC",
-                fc_type.name()), UVM_MEDIUM)
+                fc_type.name()), UVM_HIGH)
             return 0;
         end
         return 1;

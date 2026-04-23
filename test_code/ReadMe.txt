@@ -1,1 +1,0 @@
-This sub0directory contains the files for the actual verification environment code

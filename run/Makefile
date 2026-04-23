@@ -7,6 +7,7 @@ d_vip_mode   ?=
 seed         ?= 1
 verbosity    ?= UVM_MEDIUM
 uvm_ver       = uvm-1.2
+cb	     ?= 
 
 
 # ==============================================================================
@@ -89,7 +90,8 @@ RUN_OPTS =  -l ${LOG_FILE}                          \
 	           -cm_name ${RUN_NAME}                    \
 	           -cm_dir ${COV_DIR}/simv.vdb             \
 	           +vpdfile+${RUN_DIR}/vcdplus.vpd         \
-	           +fsdbfile+${RUN_DIR}/dump.fsdb
+	           +fsdbfile+${RUN_DIR}/dump.fsdb	   \
+	           +U_ERR_MODE=${cb}
 
 
 

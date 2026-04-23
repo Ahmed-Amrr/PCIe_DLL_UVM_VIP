@@ -6,17 +6,12 @@ class pcie_inactive_seq extends pcie_base_seq;
     endfunction //new()
 
     task body();
-        for (int i = 0; i < 10; i++) begin
-            item = pcie_dllp_seq_item::type_id::create("item");
-            
-            start_item(item);
-            item.rst_req = 1;
-            finish_item(item);
-        end  
-        item = pcie_dllp_seq_item::type_id::create("item");
-        start_item(item);
-        item.rst_req = 0;
-        finish_item(item);
+        while (p_sequencer.state == DL_INACTIVE) begin
+             item = pcie_dllp_seq_item::type_id::create("item");
+
+              start_item(item);
+              finish_item(item);
+        end
     endtask
 
 endclass //pcie_inactive_seq extends pcie_base_seq

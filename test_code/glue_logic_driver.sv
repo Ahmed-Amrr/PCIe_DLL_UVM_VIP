@@ -30,22 +30,19 @@
             forever begin
                 @(lpif_vif.drv_cb)
                 if (s_item != null) begin
-                    if (s_item.rst_req == 1) begin
-                        lpif_vif.drv_cb.reset <= 1;
-                    end
+                    if (cfg.pl_valid_off) begin                 // Valid off testcases
+                        lpif_vif.drv_cb.pl_valid <= 0;
+                    end else begin
+                        lpif_vif.drv_cb.pl_valid <= 1;
+                    end 
                     if (cfg.link_down_test == 0) begin              // Normal operation 
                         lpif_vif.drv_cb.pl_lnk_up <= 1;
                         lpif_vif.drv_cb.pl_data <= s_item.dllp;
 
-                        if (cfg.pl_valid_off) begin                 // Valid off testcases
-                            lpif_vif.drv_cb.pl_valid <= 0;
-                        end else begin
-                            lpif_vif.drv_cb.pl_valid <= 1;
-                        end 
                     end else if (cfg.link_down_test) begin          // Linkup = 0 testcases
                         lpif_vif.drv_cb.pl_lnk_up <= 0;
                     end 
-                end
+                end 
             end
         endtask
 

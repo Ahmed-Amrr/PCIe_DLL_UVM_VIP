@@ -29,7 +29,7 @@ class pcie_vip_tx_monitor extends uvm_monitor;
 		tx_mon_ap=new("tx_mon_ap", this);
 	endfunction : build_phase
 
-	task run_phase(uvm_phase phase);	
+	 task run_phase(uvm_phase phase);	
 		super.run_phase(phase);
 		forever begin
 			seq_item_tx_mon=pcie_dllp_seq_item::type_id::create("seq_item_tx_mon");
@@ -37,9 +37,28 @@ class pcie_vip_tx_monitor extends uvm_monitor;
 			seq_item_tx_mon.dllp = lpif_vif.mon_cb.lp_data;
 			seq_item_tx_mon.lp_valid = lpif_vif.mon_cb.lp_valid;
 			tx_mon_ap.write(seq_item_tx_mon);
-			/*`uvm_info("run_phase", seq_item_tx_mon.convert2string(), UVM_HIGH)*/
+			//`uvm_info("run_phase", seq_item_tx_mon.convert2string(), UVM_HIGH)
 		end
 	endtask : run_phase
+
+// 	task run_phase(uvm_phase phase);
+//     super.run_phase(phase);
+//     forever begin
+    	 
+//         seq_item_tx_mon = pcie_dllp_seq_item::type_id::create("seq_item_tx_mon");
+//         @(lpif_vif.mon_cb);
+        
+//         seq_item_tx_mon.lp_valid  = lpif_vif.mon_cb.lp_valid;
+        
+//         //So without the lp_valid check
+// 		//Every clock cycle — even idle cycles with dllp=0 — gets written to all 3 places. 
+// 		//The state machine receives the zero DLLP, decodes top_byte=0x00 as ACK, and fires the error.
+//  		if (lpif_vif.mon_cb.lp_valid) begin
+//  			seq_item_tx_mon.dllp      = lpif_vif.mon_cb.lp_data;
+//         	tx_mon_ap.write(seq_item_tx_mon);
+//       end
+//     end
+// endtask
 
 endclass : pcie_vip_tx_monitor
 

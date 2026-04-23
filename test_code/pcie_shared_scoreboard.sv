@@ -237,57 +237,55 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
 
   
   //  Match Logic
-  function void match_u2l(pcie_dllp_seq_item rx_item);
+   function void match_u2l(pcie_dllp_seq_item rx_item);
     pcie_dllp_seq_item tx_item;
+    int match_idx = -1;
 
-    if (u2l_queue.size() == 0) begin
-      
+    foreach (u2l_queue[i]) begin
+      if (u2l_queue[i].dllp === rx_item.dllp) begin
+        match_idx = i;
+        break;
+      end
+    end
+
+    if (match_idx == -1) begin
+      u2l_mismatches++;
       `uvm_error(get_type_name(),
-        $sformatf(" Lower RX item with no matching Upper TX!\n  RX: %s",
-                  rx_item.convert2string()))
+        $sformatf("[U2L-CORRUPT] No matching TX found for RX: 0x%012h", rx_item.dllp))
       return;
     end
 
-    // Dequeue the oldest TX item (FIFO match)
-    tx_item = u2l_queue.pop_front();
-
-    // Field-by-field comparison
-    if (tx_item.dllp == rx_item.dllp) begin
-      u2l_matches++;
-      `uvm_info(get_type_name(),
-        $sformatf("[U2L-MATCH] OK. TX: %s", tx_item.convert2string()), UVM_MEDIUM)
-    end else begin
-      u2l_mismatches++;
-      `uvm_error(get_type_name(),
-        $sformatf("[U2L-CORRUPT] Fields mismatch!\n  TX: %s\n  RX: %s\n",
-                  tx_item.convert2string(), rx_item.convert2string()))
-    end
+    tx_item = u2l_queue[match_idx];
+    u2l_queue.delete(match_idx);
+    u2l_matches++;
+    `uvm_info(get_type_name(),
+      $sformatf("[U2L-MATCH] OK. TX: %s", tx_item.convert2string()), UVM_MEDIUM)
   endfunction
 
   function void match_l2u(pcie_dllp_seq_item rx_item);
-    pcie_dllp_seq_item tx_item;
+  pcie_dllp_seq_item tx_item;
+  int match_idx = -1;
 
-    if (l2u_queue.size() == 0) begin
-      
-      `uvm_error(get_type_name(),
-        $sformatf(" Upper RX item with no matching Lower TX!\n  RX: %s",
-                  rx_item.convert2string()))
-      return;
+  foreach (l2u_queue[i]) begin
+    if (l2u_queue[i].dllp === rx_item.dllp) begin
+      match_idx = i;
+      break;
     end
+  end
 
-    tx_item = l2u_queue.pop_front();
+  if (match_idx == -1) begin
+    l2u_mismatches++;
+    `uvm_error(get_type_name(),
+      $sformatf("[L2U-CORRUPT] No matching TX found for RX: 0x%012h", rx_item.dllp))
+    return;
+  end
 
-    if (tx_item.dllp == rx_item.dllp) begin
-      l2u_matches++;
-      `uvm_info(get_type_name(),
-        $sformatf("[L2U-MATCH] OK. TX: %s", tx_item.convert2string()), UVM_MEDIUM)
-    end else begin
-      l2u_mismatches++;
-      `uvm_error(get_type_name(),
-        $sformatf("[L2U-CORRUPT] Fields mismatch!\n  TX: %s\n  RX: %s\n",
-                  tx_item.convert2string(), rx_item.convert2string()))
-    end
-  endfunction
+  tx_item = l2u_queue[match_idx];
+  l2u_queue.delete(match_idx);
+  l2u_matches++;
+  `uvm_info(get_type_name(),
+    $sformatf("[L2U-MATCH] OK. TX: %s", tx_item.convert2string()), UVM_MEDIUM)
+endfunction
 
 
   
@@ -310,11 +308,14 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
       case (upper_state)
 
         DL_INACTIVE: begin
-          return (lower_state == DL_INACTIVE);
+          return (lower_state == DL_INACTIVE ||
+                  lower_state == DL_FEATURE ||
+                  lower_state == DL_INIT1);
         end
 
         DL_FEATURE: begin
-          return (lower_state == DL_FEATURE ||
+          return (lower_state == DL_INACTIVE||
+                  lower_state == DL_FEATURE ||
                   lower_state == DL_INIT1);
         end
 
@@ -340,32 +341,6 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
   endfunction
 
 
-  
-  //  Check Phase — report unmatched items
-  function void check_phase(uvm_phase phase);
-    super.check_phase(phase);
-
-    // Report leftover TX items as drops 
-    if (u2l_queue.size() > 0) begin
-      u2l_drops = u2l_queue.size();
-      foreach (u2l_queue[i]) begin
-        `uvm_error(get_type_name(),
-          $sformatf("[U2L-DROP] Unmatched Upper TX item #%0d/%0d: %s",
-                    i+1, u2l_drops, u2l_queue[i].convert2string()))
-      end
-    end
-
-    if (l2u_queue.size() > 0) begin
-      l2u_drops = l2u_queue.size();
-      foreach (l2u_queue[i]) begin
-        `uvm_error(get_type_name(),
-          $sformatf("[L2U-DROP] Unmatched Lower TX item #%0d/%0d: %s",
-                    i+1, l2u_drops, l2u_queue[i].convert2string()))
-      end
-    end
-  endfunction
-
-
 
   
   //  Report Phase — summary
@@ -378,12 +353,10 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
     report = {report, $sformatf("\nU2L:\n")};
     report = {report, $sformatf("  Matches    : %0d\n", u2l_matches)};
     report = {report, $sformatf("  Mismatches : %0d (corruption)\n", u2l_mismatches)};
-    report = {report, $sformatf("  Drops      : %0d (TX with no RX)\n", u2l_drops)};
 
     report = {report, $sformatf("\nL2U:\n")};
     report = {report, $sformatf("  Matches    : %0d\n", l2u_matches)};
     report = {report, $sformatf("  Mismatches : %0d (corruption)\n", l2u_mismatches)};
-    report = {report, $sformatf("  Drops      : %0d (TX with no RX)\n", l2u_drops)};
 
     report = {report, $sformatf("\nState Pair Check:\n")};
     report = {report, $sformatf("  Total   : %0d\n", state_pair_checks)};

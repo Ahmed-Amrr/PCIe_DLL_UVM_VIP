@@ -9,11 +9,12 @@ class pcie_dllp_seq_item extends uvm_sequence_item;
 	
 	dllp_type_t dllp_type;
 
-	logic pl_lnk_up;
-	logic pl_valid;
+	bit pl_lnk_up;
+	bit pl_valid;
 
-	logic reset;
-	logic rst_req;
+	bit reset;
+	bit rst_req;
+	int unsigned pkt_id; // Added packet ID field for tracing
 
 	// Constructor
 	function new(string name = "pcie_dllp_seq_item");

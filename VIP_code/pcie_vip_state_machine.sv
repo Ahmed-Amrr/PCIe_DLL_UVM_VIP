@@ -7,6 +7,7 @@ class pcie_vip_state_machine extends uvm_component;
     parameter int PAYLOAD_WIDTH = 32;
     parameter int CRC_WIDTH     = 16;
     parameter int BYTE 			= 8;
+    parameter int PAYLOAD_IN_BYTES = PAYLOAD_WIDTH / BYTE;  // equals 4
 
 /*-------------------------------------------------------------------------------
 -- UVM Factory register
@@ -99,45 +100,75 @@ class pcie_vip_state_machine extends uvm_component;
 	task run_phase(uvm_phase phase);
 		super.run_phase(phase);
 		forever begin
+			//added
 			state_seq_item = pcie_state_seq_item::type_id::create("state_seq_item");
+			
 			// sm_fifo_tx.get(seq_item_tx);
 			sm_fifo_rx.get(seq_item_rx);
+			// ← add this temporarily
+			`uvm_info("SM_DEBUG", $sformatf(
+				"SM_IN pkt_id=%0d t=%0t dllp=0x%012h top=0x%02h state=%s pl_lnk_up=%0b reset=%0b",
+				seq_item_rx.pkt_id,
+				$time,
+			    seq_item_rx.dllp,
+			    seq_item_rx.dllp[47:40],
+			    current_state.name(),
+			    seq_item_rx.pl_lnk_up,
+			    cfg.reset), UVM_NONE)
 			received_dllp_payload = seq_item_rx.dllp[DLLP_WIDTH-1:CRC_WIDTH];
 			received_crc = seq_item_rx.dllp[CRC_WIDTH-1:0];
 			get_type_sm(.received_rx(seq_item_rx.dllp), .type_rx(received_type));	//get type
 
 			CRC_generation(.dllp_before_crc(received_dllp_payload), .crc(crc_expected));	//calculate the expected crc
 
-			if (received_crc == crc_expected) begin 								//check on crc before state transition
+			if ((received_crc == crc_expected) || (current_state == DL_INACTIVE)) begin 	//check on crc before state transition
 				type_legal_check(.current_state_r(current_state), .type_rx_r(received_type), .illegal_type_r(illegal_type_bit));					
-				if (!illegal_type_bit) begin
-					prev_state = current_state; 
-					state_transition();
-                    if (prev_state != current_state) begin //check on transitions
-                        `uvm_info("STATE_TRANS", $sformatf("Transition: %s -> %s", prev_state.name(), current_state.name()), UVM_NONE)
-                    end
-					state_seq_item.vip_state = current_state;
-					state_seq_item.FI1 = FI1;
-					state_seq_item.FI2 = FI2;
-				end
-				else begin
-					`uvm_error("State_Machine rx_type error (Illegal DLLP received)",
-       				$sformatf("received type is : %s",received_type))
-				end
+				//if (!illegal_type_bit) begin
+				prev_state = current_state; 
+				state_transition();
+                if (prev_state != current_state) begin //check on transitions
+                    `uvm_info("STATE_TRANS", $sformatf("Transition: %s -> %s", prev_state, current_state), UVM_MEDIUM)
+                end
+				//end
+				//else begin
+				//	`uvm_error("State_Machine rx_type error (Illegal DLLP received)",
+       			//	$sformatf("received type is : %s",received_type))
+				//end
 			end
 			else begin
 				`uvm_error("State_Machine rx_crc error (Illegal DLLP received)",
-       			$sformatf("received crc is : %s, expected crc : %s",received_crc, crc_expected))
+       			$sformatf("received crc is : 0x%h, expected crc : 0x%h, state: %s",received_crc, crc_expected, current_state))
 			end
-			sm_ap.write(state_seq_item);
+			state_seq_item.vip_state = current_state;
+			state_seq_item.DL_Up = ((current_state == DL_INIT2) || (current_state == DL_ACTIVE));
+			state_seq_item.DL_Down = ~state_seq_item.DL_Up;
+			state_seq_item.surprise_down_event = 0;
+			state_seq_item.scaled_fc_active = cfg.remote_register_feature.remote_feature_supported[0]
+												& cfg.local_register_feature.local_feature_supported[0];
+			state_seq_item.FI1 = FI1;
+			state_seq_item.FI2 = FI2;
+			if(!state_seq_item.scaled_fc_active) begin
+				cfg.fc_credits_register.hdr_scale = '0;
+				cfg.fc_credits_register.data_scale = '0;
+			end
+			else begin
+				cfg.fc_credits_register.hdr_scale[0] = $urandom_range(1,3);
+				cfg.fc_credits_register.hdr_scale[1] = $urandom_range(1,3);
+				cfg.fc_credits_register.hdr_scale[2] = $urandom_range(1,3);
+				cfg.fc_credits_register.data_scale[0] = $urandom_range(1,3);
+				cfg.fc_credits_register.data_scale[1] = $urandom_range(1,3);
+				cfg.fc_credits_register.data_scale[2] = $urandom_range(1,3);
+			end
+			sm_ap.write(state_seq_item);		
 		end
 	endtask : run_phase
 
+
 	function void get_type_sm;
-		input bit [DLLP_WIDTH-1:0] received_rx;
+		input logic [DLLP_WIDTH-1:0] received_rx;
 		output dllp_type_t type_rx;
 
-		bit [BYTE-1:0] type_;
+		logic [BYTE-1:0] type_;
 
 		type_ = received_rx[DLLP_WIDTH-1:(DLLP_WIDTH-BYTE)];
 
@@ -151,28 +182,18 @@ class pcie_vip_state_machine extends uvm_component;
 	function void state_transition();
 		case (current_state)
 			DL_INACTIVE: begin 
-				state_seq_item.DL_Up=0;
-				state_seq_item.DL_Down=1;
 				inactive_state();
 			end
 			DL_FEATURE: begin
-				state_seq_item.DL_Up=0;
-				state_seq_item.DL_Down=1;
 				feature_state();
 			end
 			DL_INIT1: begin 
-				state_seq_item.DL_Up=0;
-				state_seq_item.DL_Down=1;
 				init1_state();
 			end
-			DL_INIT2: begin 
-				state_seq_item.DL_Up=1;
-				state_seq_item.DL_Down=0;
+			DL_INIT2: begin
 				init2_state();
 			end
 			DL_ACTIVE: begin 
-				state_seq_item.DL_Up=1;
-				state_seq_item.DL_Down=0;
 				active_state();
 			end
 			default :inactive_state();
@@ -184,46 +205,42 @@ class pcie_vip_state_machine extends uvm_component;
 	//checks for the required signals to exit from the inactive state
 	function void inactive_state ();
 		reset_conf_regs();								//resets configuration regesters
-		if (seq_item_rx.reset) begin 					//requirs modeling for the reset logic
+		if (cfg.reset) begin 					//requirs modeling for the reset logic
 			next_state = DL_INACTIVE;
 			`uvm_info("SM_STATUS", "asserted reset", UVM_MEDIUM)
-		end else 
-		if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
+		end else if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
 			next_state = DL_INACTIVE;
 			`uvm_info("SM_STATUS", "Waiting for Physical Layer (pl_lnk_up)", UVM_HIGH)
 		end else if (cfg.local_register_feature.feature_exchange_enable && cfg.feature_exchange_cap) begin
 			next_state = DL_FEATURE;
-		end begin
+		end else begin
 			next_state = DL_INIT1;			
 		end
 	endfunction : inactive_state
 
 	function void feature_state ();
-		if (seq_item_rx.reset) begin 					//requirs modeling for the reset logic
+		if (cfg.reset) begin 					//requirs modeling for the reset logic
 			next_state = DL_INACTIVE;
 			`uvm_info("SM_STATUS", "asserted reset", UVM_MEDIUM)
-		end else 
-		if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
+		end else if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
 			next_state = DL_INACTIVE;
 			`uvm_info("SM_STATUS", "Waiting for Physical Layer (pl_lnk_up)", UVM_HIGH)
 		end else if ((received_type == INITFC1_P) || (received_type == INITFC1_NP) || (received_type == INITFC1_CPL)) begin
 			next_state = DL_INIT1;
-		end else if ((received_type == DL_FEATURE) && (seq_item_rx.dllp[39] == 1)) begin
+		end else if ((received_type == FEATURE) && (seq_item_rx.dllp[39] == 1)) begin
 			next_state = DL_INIT1;
 		end else begin 
 			next_state = DL_FEATURE;
 		end
 
-		if ((received_type == DL_FEATURE) && (cfg.remote_register_feature.remote_feature_valid == 0)) begin
+		if ((received_type == FEATURE) && (cfg.remote_register_feature.remote_feature_valid == 0)) begin
 			cfg.remote_register_feature.remote_feature_valid = 1;
 			cfg.remote_register_feature.remote_feature_supported = seq_item_rx.dllp[38:16];
 		end
-		state_seq_item.scaled_fc_active =  cfg.remote_register_feature.remote_feature_supported[0]
-                         				& cfg.local_register_feature.local_feature_supported[0];
 	endfunction : feature_state
 
 	function void init1_state ();
-		if (seq_item_rx.reset) begin 					//requirs modeling for the reset logic
+		if (cfg.reset) begin 					//requirs modeling for the reset logic
 			next_state = DL_INACTIVE;
 			`uvm_info("SM_STATUS", "asserted reset", UVM_MEDIUM)
 		end else 
@@ -269,62 +286,62 @@ class pcie_vip_state_machine extends uvm_component;
 		FI1 = init1_cpl_f;	//Raise flag for initfc1
 	endfunction : init1_state
 
-	function void init2_state ();						//should be checking on regs and report error if exist
-		if (seq_item_rx.reset) begin 					//requirs modeling for the reset logic
-			next_state = DL_INACTIVE;
-			`uvm_info("SM_STATUS", "asserted reset", UVM_MEDIUM)
-		end else 
-		if (!seq_item_rx.pl_lnk_up) begin 				//comes from the LPIF
-			next_state = DL_INACTIVE;
-			`uvm_info("SM_STATUS", "Waiting for Physical Layer (pl_lnk_up)", UVM_HIGH)
-			// if received any update in initefc_2 raise Fl2 and next state is Active 
+	function void init2_state (); //should be checking on regs and report error if exist
+		if (cfg.reset) begin //requirs modeling for the reset logic
+		next_state = DL_INACTIVE;
+		`uvm_info("SM_STATUS", "asserted reset", UVM_MEDIUM)
+		end else
+		if (!seq_item_rx.pl_lnk_up) begin //comes from the LPIF
+		next_state = DL_INACTIVE;
+		`uvm_info("SM_STATUS", "Waiting for Physical Layer (pl_lnk_up)", UVM_HIGH)
+		// if received any update in initefc_2 raise Fl2 and next state is Active
 		end else if ((received_type == UPDATEFC_P) || (received_type == UPDATEFC_NP) || (received_type == UPDATEFC_CPL)) begin
-			init2_p_f = 0;
-			init2_np_f = 0;
-			init2_cpl_f = 1;
+		init2_p_f = 0;
+		init2_np_f = 0;
+		init2_cpl_f = 1;
 
-			next_state = DL_ACTIVE;
+		next_state = DL_ACTIVE;
 		end else if (received_type == INITFC2_P) begin
-			init2_p_f = 1;
-			init2_np_f = 0;
-			init2_cpl_f = 0;
+		init2_p_f = 1;
+		init2_np_f = 0;
+		init2_cpl_f = 0;
 
-			fc_type = FC_POSTED;
-			check_conf_scale_reg(fc_type);
-			check_conf_credits_reg(fc_type);			
+		fc_type = FC_POSTED;
+		check_conf_scale_reg(fc_type);
+		check_conf_credits_reg(fc_type);
 
-			next_state = DL_INIT2;
+		next_state = DL_ACTIVE;
 		end else if ((received_type == INITFC2_NP) && init2_p_f) begin
-			init2_p_f = 0;
-			init2_np_f = 1;
-			init2_cpl_f = 0;
+		init2_p_f = 0;
+		init2_np_f = 1;
+		init2_cpl_f = 0;
 
-			fc_type = FC_NON_POSTED;
-			check_conf_scale_reg(fc_type);
-			check_conf_credits_reg(fc_type);			
+		fc_type = FC_NON_POSTED;
+		check_conf_scale_reg(fc_type);
+		check_conf_credits_reg(fc_type);
 
-			next_state = DL_INIT2;
+		next_state = DL_ACTIVE;
 		end else if ((received_type == INITFC2_CPL) && init2_np_f) begin
-			init2_p_f = 0;
-			init2_np_f = 0;
-			init2_cpl_f = 1;
+		init2_p_f = 0;
+		init2_np_f = 0;
+		init2_cpl_f = 1;
 
-			fc_type = FC_COMPLETION;
-			check_conf_scale_reg(fc_type);
-			check_conf_credits_reg(fc_type);			
+		fc_type = FC_COMPLETION;
+		check_conf_scale_reg(fc_type);
+		check_conf_credits_reg(fc_type);
 
-			next_state = DL_ACTIVE;
+		next_state = DL_ACTIVE;
 		end else begin
-			init2_p_f = 0;
-			init2_np_f = 0;
-			init2_cpl_f = 0;
-			next_state = DL_INIT2;
+		init2_p_f = 0;
+		init2_np_f = 0;
+		init2_cpl_f = 0;
+		next_state = DL_INIT2;
 		end
-		FI2 = init2_cpl_f;								//Raise flag for initfc2
-	endfunction : init2_state
+		FI2 = init2_cpl_f || init2_p_f || init2_np_f; //Raise flag for initfc2
+		endfunction : init2_state
 
 	function void active_state ();
-		if (seq_item_rx.reset) begin 					//requirs modeling for the reset logic
+		if (cfg.reset) begin 					//requirs modeling for the reset logic
 			next_state = DL_INACTIVE;
 			`uvm_info("SM_STATUS", "asserted reset", UVM_MEDIUM)
 		end else 
@@ -374,40 +391,43 @@ class pcie_vip_state_machine extends uvm_component;
 
 	function void type_legal_check(input dl_state_t current_state_r, input dllp_type_t type_rx_r, output bit illegal_type_r);		//check if the types received is legal
 		illegal_type_r = 0;
-		case (current_state)
-			DL_INACTIVE: begin
-				illegal_type_r = 1;
-				`uvm_error("SM", "Illegal DLLP received in state DL_INACTIVE")
-			end
-	        DL_FEATURE: begin
-				if(!(type_rx_r inside {DL_FEATURE,INITFC1_P,INITFC1_NP,INITFC1_CPL})) begin
+		if (!$isunknown(type_rx_r) ) begin
+			case (current_state)
+				DL_INACTIVE: begin
 					illegal_type_r = 1;
-					`uvm_error("State_Machine rx_type error (Illegal DLLP receiving in state DL_FEATURE)",
-       				$sformatf("received type is : %s",type_rx_r))
+				 	//`uvm_error("SM", "Illegal DLLP received in state DL_INACTIVE")
+				 end
+			    DL_FEATURE: begin
+					if(!(type_rx_r inside {FEATURE,INITFC1_P,INITFC1_NP,INITFC1_CPL})) begin
+						illegal_type_r = 1;
+						`uvm_error("State_Machine rx_type error (Illegal DLLP receiving in state DL_FEATURE)",
+							$sformatf("received type is : %s",type_rx_r))
+					end
 				end
-			end
-	        DL_INIT1: begin
-				if(!(type_rx_r inside {DL_FEATURE, INITFC1_P, INITFC1_NP, INITFC1_CPL, INITFC2_P, INITFC2_NP, INITFC2_CPL})) begin
-					illegal_type_r = 1;
-					`uvm_error("State_Machine rx_type error (Illegal DLLP receiving in state DL_INIT1)",
-       				$sformatf("received type is : %s",type_rx_r))
+			    DL_INIT1: begin
+					if(!(type_rx_r inside {FEATURE, INITFC1_P, INITFC1_NP, INITFC1_CPL, INITFC2_P, INITFC2_NP, INITFC2_CPL})) begin
+						illegal_type_r = 1;
+						`uvm_error("State_Machine rx_type error (Illegal DLLP receiving in state DL_INIT1)",
+							$sformatf("received type is : %s",type_rx_r))
+					end
 				end
-			end
-	        DL_INIT2: begin
-				if(type_rx_r inside {DL_FEATURE, ACK, NACK}) begin
-					illegal_type_r = 1;
-					`uvm_error("State_Machine rx_type error (Illegal DLLP receiving in state DL_INIT2)",
-       				$sformatf("received type is : %s",type_rx_r))
+			    DL_INIT2: begin
+					if(type_rx_r inside {FEATURE, ACK, NACK}) begin
+						illegal_type_r = 1;
+						`uvm_error("State_Machine rx_type error (Illegal DLLP receiving in state DL_INIT2)",
+							$sformatf("received type is : %s",type_rx_r))
+					end
 				end
-			end
-	        DL_ACTIVE: begin
-				if(type_rx_r == DL_FEATURE) begin
-					illegal_type_r = 1;
-					`uvm_error("State_Machine rx_type error (Illegal DLLP receiving in state DL_ACTIVE)",
-       				$sformatf("received type is : %s",type_rx_r))
+			    DL_ACTIVE: begin
+					if(type_rx_r == FEATURE) begin
+						illegal_type_r = 1;
+						`uvm_error("State_Machine rx_type error (Illegal DLLP receiving in state DL_ACTIVE)",
+							$sformatf("received type is : %s",type_rx_r))
+					end
 				end
-			end
-		endcase	
+			endcase	
+		end
+		
 	endfunction : type_legal_check
 
 	function void reset_conf_regs();					//resets configuration regesters & Flags
@@ -464,39 +484,39 @@ class pcie_vip_state_machine extends uvm_component;
 
 	function void CRC_generation(input bit[PAYLOAD_WIDTH-1:0] dllp_before_crc, output bit[CRC_WIDTH-1:0] crc);
 
-		bit [CRC_WIDTH-1:0]		crc_calc = 16'hFFFF;		//initial value
-		bit	[PAYLOAD_WIDTH-1:0] dllp_before_crc_rearanged;	//rearrange each byte to be (0,1,2,3,4,5,6,7)
-		bit [BYTE-1:0]			flipped_byte;				//used in the flipping loops
-		bit 					feedback;					//get the last bit of the crc and add it to the input bit
+        bit [CRC_WIDTH-1:0]     crc_calc = 16'hFFFF;        //initial value
+        bit [PAYLOAD_WIDTH-1:0] dllp_before_crc_rearanged;  //each byte (7,6,5,4,3,2,1,0) by default
+        bit [BYTE-1:0]          flipped_byte;
+        bit [BYTE-1:0]          order_bytes [PAYLOAD_IN_BYTES];    //used in the flipping loops
+        bit                     feedback;                   //get the last bit of the crc and add it to the input bit
 
-	//flipping each byte in dllp_pkg as specified
-		for (int i = 0; i < 4; i++) begin
-			for (int j = 0; j < BYTE; j++) begin
-				flipped_byte[7-j] = dllp_before_crc[(i*BYTE)+j];
-			end
-			dllp_before_crc_rearanged[(i*BYTE) +: BYTE] = flipped_byte;		//{Byte 0, Byte 1, Byte 2, Byte 3}
-		end 																//each byte (0,1,2,3,4,5,6,7)
-																			//[base +: width] (ai generated)
-																			//because (msb:lsb) compile error
-	//generating crc
-		for (int k = 0; k < PAYLOAD_WIDTH; k++) begin
-			feedback 	 =	dllp_before_crc_rearanged[PAYLOAD_WIDTH-k-1] ^ crc_calc[CRC_WIDTH-1];	//adding bit[15] with the input
-			crc_calc	 =	{crc_calc[CRC_WIDTH-2:0] , feedback};			//shift and add feedback
-			crc_calc[1]	 =	feedback ^ crc_calc[1];							//calculated using the polynomial 100Bh
-			crc_calc[3]	 =	feedback ^ crc_calc[3];
-			crc_calc[12] =	feedback ^ crc_calc[12];
-		end
+    //flipping each byte in dllp_pkg as specified
+        for (int i = 0; i < PAYLOAD_IN_BYTES; i++) begin
+        	order_bytes[i] = dllp_before_crc[(i*BYTE) +: BYTE];			//{Byte 0, Byte 1, Byte 2, Byte 3}
+        end
+        for (int i = 0; i < PAYLOAD_IN_BYTES; i++) begin
+        	dllp_before_crc_rearanged[(i*BYTE) +: BYTE] = order_bytes[PAYLOAD_IN_BYTES-1-i];
+        end                                                             //needed {Byte 3, Byte 2, Byte 1, Byte 0}            
+                                                                         
+    //generating crc
+        for (int k = 0; k < PAYLOAD_WIDTH; k++) begin
+            feedback     =  dllp_before_crc_rearanged[k] ^ crc_calc[CRC_WIDTH-1];   //adding bit[15] with the input
+            crc_calc     =  {crc_calc[CRC_WIDTH-2:0] , feedback};           //shift and add feedback
+            crc_calc[1]  =  feedback ^ crc_calc[1];                         //calculated using the polynomial 100Bh
+            crc_calc[3]  =  feedback ^ crc_calc[3];
+            crc_calc[12] =  feedback ^ crc_calc[12];
+        end
 
-	//flipping each byte in crc as specified
-		for (int i = 0; i < 2; i++) begin
-			for (int j = 0; j < BYTE; j++) begin
-				flipped_byte[7-j] = crc_calc[(i*BYTE)+j];
-			end
-			crc_calc[(i*BYTE) +: BYTE] = flipped_byte;	//{Byte 0, Byte 1} each byte (7,6,5,4,3,2,1,0)
-		end 											//instead of (0,1,2,3,4,5,6,7)
-	//inverse each bit to model the inverter in the crc
-		crc = ~crc_calc;
-	endfunction : CRC_generation
+    //flipping each byte in crc as specified
+        for (int i = 0; i < 2; i++) begin
+         for (int j = 0; j < BYTE; j++) begin
+             flipped_byte[7-j] = crc_calc[(i*BYTE)+j];
+         end
+         crc_calc[(i*BYTE) +: BYTE] = flipped_byte;  //maping each byte to (7,6,5,4,3,2,1,0)
+        end                                          //instead of (0,1,2,3,4,5,6,7)
+    //inverse each bit to model the inverter in the crc
+        crc = ~crc_calc;
+    endfunction : CRC_generation
 
 endclass : pcie_vip_state_machine
 

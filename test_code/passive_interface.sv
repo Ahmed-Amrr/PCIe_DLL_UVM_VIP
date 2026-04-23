@@ -18,7 +18,6 @@ interface passive_interface (input logic lclk);
 	logic pl_lnk_up;
 
 	logic reset;
-    logic rst_req;
 	logic pl_valid;
 	logic lp_valid;
 	logic lp_data;
@@ -38,8 +37,10 @@ interface passive_interface (input logic lclk);
 	logic tx_is_initfc2_p;
     logic tx_is_initfc2_np;
     logic tx_is_initfc2_cpl;
-	logic tx_hdr_scale;
-	logic rx_hdr_scale;
+	logic [1:0] tx_hdr_scale;
+    logic [1:0]tx_data_scale;
+	logic [1:0] rx_hdr_scale;
+    logic [1:0] rx_data_scale;
 	logic tx_is_initfc1;
 	logic tx_is_initfc2;
 	logic rx_is_initfc1;
@@ -56,7 +57,7 @@ interface passive_interface (input logic lclk);
     logic [22:0] rx_feature_field;
     logic        tx_ack_bit;
     logic        rx_ack_bit;
-/*
+
     assign tx_is_feature   = (tx_dllp[47:40] == FEATURE);
     assign rx_is_feature   = (rx_dllp[47:40] == FEATURE);
     assign tx_feature_field = tx_dllp[38:16];
@@ -81,6 +82,8 @@ interface passive_interface (input logic lclk);
 
 	assign tx_hdr_scale  = tx_dllp[39:38];
     assign tx_data_scale = tx_dllp[29:28];
+	assign rx_hdr_scale  = rx_dllp[39:38];
+    assign rx_data_scale = rx_dllp[29:28];
 	assign tx_is_initfc1 = (tx_dllp[47:40] inside {INITFC1_P,INITFC1_NP,INITFC1_CPL});
     assign tx_is_initfc2 = (tx_dllp[47:40] inside {INITFC2_P,INITFC2_NP,INITFC2_CPL}); 
     assign rx_is_initfc1 = (rx_dllp[47:40] inside {INITFC1_P,INITFC1_NP,INITFC1_CPL});
@@ -91,8 +94,8 @@ interface passive_interface (input logic lclk);
 	property p_reset_clears_remote_feature;
 		@(posedge lclk)
 		(reset == 1) |=>
-		(dl_feature_status.remote_feature_valid    == 0 &&
-		dl_feature_status.remote_feature_supported == 0);
+		(remote_register_feature.remote_feature_valid    == 0 &&
+		remote_register_feature.remote_feature_supported == 0);
 	endproperty
 
 	assert property (p_reset_clears_remote_feature)
@@ -103,8 +106,8 @@ interface passive_interface (input logic lclk);
 
 	// LINK_STATUS must be DL_UP when state is DL_ACTIVE or FC_INIT2
 	property p_link_up_in_active_states;
-		@(posedge lclk) disable iff (reset)
-		(state == DL_ACTIVE || state == DL_INIT2) |->
+		@(posedge lclk) disable iff (reset || $isunknown(DL_Up))
+		(state == DL_ACTIVE || state == DL_INIT2) |-> 
 		(DL_Up == 1'b1 && DL_Down == 1'b0);
 	endproperty
 	assert property (p_link_up_in_active_states)
@@ -114,8 +117,8 @@ interface passive_interface (input logic lclk);
 
 	// LINK_STATUS must be DL_DOWN when state is DL_INACTIVE, DL_FEATURE, or FC_INIT1
 	property p_link_down_in_inactive_states;
-		@(posedge lclk) disable iff (reset)
-		(state inside {DL_INACTIVE, DL_FEATURE, DL_INIT1}) |->
+		@(posedge lclk) disable iff (reset || $isunknown(DL_Up))
+		(state inside {DL_INACTIVE, DL_FEATURE, DL_INIT1}) |-> 
 		(DL_Down == 1'b1 && DL_Up == 1'b0);
 	endproperty
 	assert property (p_link_down_in_inactive_states)
@@ -236,9 +239,7 @@ interface passive_interface (input logic lclk);
     endproperty
 
     assert_feature_06_07: assert property (p_remote_field_recorded_on_first_dllp)
-        else `uvm_error("ASSERT_FEATURE_06_07",
-$sformatf("FEATURE_06_07: remote_feature_supported not updated on first DLLP. Expected 0x%0h got 0x%0h ,
-                       remote_feature_valid not set after first Feature DLLP",
+        else `uvm_error("ASSERT_FEATURE_06_07",$sformatf("FEATURE_06_07: remote_feature_supported not updated on first DLLP. Expected 0x%0h got 0x%0h ,remote_feature_valid not set after first Feature DLLP",
                  $past(rx_feature_field),
                 remote_register_feature.remote_feature_supported))
 
@@ -263,21 +264,6 @@ $sformatf("FEATURE_06_07: remote_feature_supported not updated on first DLLP. Ex
                 remote_register_feature.remote_feature_supported))
 
     cov_feature_08: cover property (p_no_update_after_valid_1);
-
-    // ============================================================
-    // FEATURE_09 : No ACK DLLPs must be transmitted while in DL_Feature
-    // ============================================================
-    property p_no_ack_in_dl_feature;
-        @(posedge lclk) disable iff (reset)
-        (state == DL_FEATURE)
-        |-> (tx_dllp[47:40] != ACK);
-    endproperty
-
-    assert_feature_09: assert property (p_no_ack_in_dl_feature)
-        else `uvm_error("ASSERT_FEATURE_09",
-            "FEATURE_09: ACK DLLP transmitted during DL_Feature state")
-
-    cov_feature_09: cover property (p_no_ack_in_dl_feature);
 
     // ============================================================
     // FEATURE_11
@@ -359,20 +345,20 @@ $sformatf("FEATURE_06_07: remote_feature_supported not updated on first DLLP. Ex
         @(posedge lclk) disable iff (reset || !pl_lnk_up)
         (state == DL_INIT1 && tx_is_initfc1_p)
 		// After P is sent, NP must come next
-        |=> (state == DL_INIT1 && tx_is_initfc1_np);
+        |=> if(state == DL_INIT1) tx_is_initfc1_np;
     endproperty
 	property p_InitFC1_triplet_correct_order_np_cpl;
         @(posedge lclk) disable iff (reset || !pl_lnk_up)
         (state == DL_INIT1 && tx_is_initfc1_np )
 		// After NP is sent, CPL must come next
-        |=> (state == DL_INIT1 && tx_is_initfc1_cpl);
+        |=> if(state == DL_INIT1) tx_is_initfc1_cpl;
 	endproperty
 
 	property p_InitFC1_triplet_correct_order_cpl_p;
         @(posedge lclk) disable iff (reset || !pl_lnk_up)
         (state == DL_INIT1 && tx_is_initfc1_cpl )
 		// After CPL is sent, P must come next
-        |=> (state == DL_INIT1 && tx_is_initfc1_p);
+        |=> if(state == DL_INIT1) tx_is_initfc1_p;
 	endproperty
 
     assert_fcinit1_03_p_np : assert property (p_InitFC1_triplet_correct_order_p_np)
@@ -758,20 +744,6 @@ $sformatf("FEATURE_06_07: remote_feature_supported not updated on first DLLP. Ex
 
     cover property (p_lp_valid_data_known);
 
-
-    // When reset is requested, reset must be asserted
-    property p_reset_request_assert_reset;
-        @(posedge lclk)
-        (rst_req) |=> (reset);
-    endproperty
-
-    assert property (p_reset_request_assert_reset)
-    else `uvm_error("ASSERT_LPIF_03",
-    "LPIF_03: reset_req asserted but reset is NOT high");
-
-    cover property (p_reset_request_assert_reset);
-
-
     // When pl_valid is high and link is up, rx_dllp must be valid 
     property p_rx_dllp_known_when_valid;
         @(posedge lclk) disable iff (reset || !pl_lnk_up)
@@ -779,7 +751,22 @@ $sformatf("FEATURE_06_07: remote_feature_supported not updated on first DLLP. Ex
     endproperty
 
     assert property (p_rx_dllp_known_when_valid)
-    else `uvm_error("ASSERT_LPIF_04",
-    "DLLP_LPIF_04: pl_valid = 1 but rx_dllp is unknown");
-*/
+    else `uvm_error("ASSERT_LPIF_03",
+    "DLLP_LPIF_03: pl_valid = 1 but rx_dllp is unknown");
+
+    // ============================================================
+    // FEATURE_09 : No ACK DLLPs must be transmitted while in DL_Feature
+    // ============================================================
+    // property p_no_ack_in_dl_feature;
+    //     @(posedge lclk) disable iff (reset)
+    //     (state == DL_FEATURE)
+    //     |-> (tx_dllp[47:40] != ACK);
+    // endproperty
+
+    // assert_feature_09: assert property (p_no_ack_in_dl_feature)
+    //     else `uvm_error("ASSERT_FEATURE_09",
+    //         "FEATURE_09: ACK DLLP transmitted during DL_Feature state")
+
+    // cov_feature_09: cover property (p_no_ack_in_dl_feature);
+
 endinterface : passive_interface

@@ -5,7 +5,6 @@
       `uvm_object_utils(pcie_feature_sequence)
 
       pcie_dllp_seq_item item;
-      pcie_vip_config cfg;
      
       function new(string name = "pcie_feature_sequence");
           super.new(name);

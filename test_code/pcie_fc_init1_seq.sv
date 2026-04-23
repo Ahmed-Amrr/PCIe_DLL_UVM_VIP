@@ -1,6 +1,5 @@
 class pcie_fc_init1_seq extends pcie_base_seq;
     `uvm_object_utils(pcie_fc_init1_seq)
-    `uvm_register_cb(pcie_fc_init1_seq, pcie_seq_cb)
 
     pcie_dllp_seq_item item;
 
@@ -18,8 +17,7 @@ class pcie_fc_init1_seq extends pcie_base_seq;
         while(p_sequencer.state == DL_INIT1) begin
 
                 // callback registered — let it handle sending
-                `uvm_do_callbacks(pcie_fc_init1_seq, pcie_seq_cb,
-                                do_send_pattern(this, p_sequencer.state))
+                `uvm_do_callbacks(pcie_base_seq, pcie_seq_cb, do_send_pattern(this, p_sequencer.state))
                                 
                 // no callback — normal pattern
                 send_fc_dllp(INITFC1_P,   FC_POSTED,     item);

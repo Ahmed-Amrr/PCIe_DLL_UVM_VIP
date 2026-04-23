@@ -76,10 +76,9 @@
                     passive_vif.feature_exchange_cap      = cfg.feature_exchange_cap;
                     passive_vif.fc_credits_register       = cfg.fc_credits_register;
                     passive_vif.lp_data                   = lpif_vif.lp_data;
-                    passive_vif.lp_valid                  = lpif_vif.lp_data;
-                    passive_vif.pl_lnk_up                 = lpif_vif.lp_data;
-                    passive_vif.pl_valid                  = lpif_vif.lp_data;
-                    passive_vif.pl_data                   = lpif_vif.lp_data;
+                    passive_vif.lp_valid                  = lpif_vif.lp_valid;
+                    passive_vif.pl_valid                  = lpif_vif.pl_valid;
+                    passive_vif.pl_data                   = lpif_vif.pl_data;
                 end
             end
             

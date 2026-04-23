@@ -18,6 +18,9 @@
 
            
             if (current_cycle < active_cycles) begin
+                `uvm_info("DROPPPPPPPPPPP",
+                "DROPPED FC",
+                UVM_LOW)
                 randcase
                     1: begin // DROP_NP
                         seq.send_fc_dllp(INITFC1_P,   FC_POSTED,     item);

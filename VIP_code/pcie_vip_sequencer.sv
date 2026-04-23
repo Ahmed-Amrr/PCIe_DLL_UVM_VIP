@@ -7,7 +7,14 @@ class pcie_vip_tx_sequencer extends uvm_sequencer #(pcie_dllp_seq_item);
     uvm_analysis_imp #(pcie_state_seq_item, pcie_vip_tx_sequencer) sqr_export;     
     pcie_vip_config cfg;
     dl_state_t state;
+    bit scaled_fc_active;
+    pcie_base_seq seq1;
+    pcie_base_seq seq2;
+    pcie_base_seq seq3;
+    pcie_base_seq seq4;
+    pcie_base_seq seq5;
     pcie_base_seq seq;
+
 
 
     function new(string name = "pcie_vip_tx_sequencer", uvm_component parent = null);
@@ -29,8 +36,10 @@ class pcie_vip_tx_sequencer extends uvm_sequencer #(pcie_dllp_seq_item);
     task run_phase(uvm_phase phase);
         seq = pcie_inactive_seq::type_id::create("seq");
         if (seq != null) seq.start(this);
-        forever begin
-            @(state) ;     
+        forever begin 
+             cfg.rand_mode(0);
+             cfg.reset.rand_mode(1);
+             assert(cfg.randomize());  
             case (state)
                 DL_INACTIVE : seq = pcie_inactive_seq::type_id::create("seq");
                 DL_FEATURE  : seq = pcie_feature_sequence::type_id::create("seq");
@@ -39,13 +48,14 @@ class pcie_vip_tx_sequencer extends uvm_sequencer #(pcie_dllp_seq_item);
                 DL_ACTIVE   : seq = pcie_active_seq::type_id::create("seq");
                 default     : `uvm_warning("SQR", $sformatf("Unhandled state: %s", state.name()))
             endcase
-            seq.start(this);
+            if (seq != null) seq.start(this);
         end
 
     endtask : run_phase
 
     function void write (pcie_state_seq_item item);
         state = item.vip_state;
+        scaled_fc_active = item.scaled_fc_active;
         $display("state is = %s", state);
     endfunction
 

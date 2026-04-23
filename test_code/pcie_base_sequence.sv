@@ -3,6 +3,7 @@
 
   class pcie_base_seq extends uvm_sequence#(pcie_dllp_seq_item);
     `uvm_object_utils(pcie_base_seq)
+    `uvm_register_cb(pcie_base_seq, pcie_seq_cb)
 
     `uvm_declare_p_sequencer(pcie_vip_tx_sequencer)
 
@@ -11,6 +12,7 @@
 
     extern virtual task send_feat_dllp (input dllp_type_t pkt_type, pcie_dllp_seq_item item);
     extern virtual task send_fc_dllp(dllp_type_t pkt_type, fc_type_t fc_type, pcie_dllp_seq_item item);
+    extern virtual task reset();
 
     function new(string name = "pcie_base_seq");
         super.new(name);
@@ -48,7 +50,6 @@
     // send_fc_dllp
   task pcie_base_seq::send_fc_dllp(dllp_type_t pkt_type, fc_type_t fc_type, pcie_dllp_seq_item item);
       item = pcie_dllp_seq_item::type_id::create("item");
-
       start_item(item);
           item.dllp[47:40] = pkt_type;
 
@@ -59,6 +60,15 @@
           // Credit fields
           item.dllp[37:30] = cfg.fc_credits_register.hdr_credits [fc_type];
           item.dllp[27:16] = cfg.fc_credits_register.data_credits[fc_type];
+
+      finish_item(item);
+  endtask
+
+   task pcie_base_seq::reset();
+     item = pcie_dllp_seq_item::type_id::create("item");
+
+      start_item(item);
+      cfg.reset = 1;
       finish_item(item);
   endtask
 

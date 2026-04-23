@@ -5,13 +5,10 @@ interface lpif_if (
     bit        pl_lnk_up;   // Indicates that the physical link is up and active
 
     bit        lp_valid;   // Indicates that lp_data contains valid data
-    bit [63:0] lp_data ;   // 64-bit data bus from Link Partner (DLLP/TLP data)
+    logic [63:0] lp_data ;   // 64-bit data bus from Link Partner (DLLP/TLP data)
 
     bit        pl_valid;   // Indicates that pl_data contains valid data from PL
-    bit [63:0] pl_data ;   // 64-bit data bus from Physical Layer
-
-    bit reset;
-    bit rst_req;
+    logic [63:0] pl_data ;   // 64-bit data bus from Physical Layer
 
 
     // driver clocking block
@@ -22,8 +19,7 @@ interface lpif_if (
         output lp_data;
         output pl_data;
         output pl_valid;
-        output reset;
-        output rst_req;
+
     endclocking
 
     // monitor clocking block
@@ -34,8 +30,7 @@ interface lpif_if (
         input lp_data;
         input pl_data;
         input pl_valid;
-        input reset;
-        input rst_req;
+
     endclocking
 
 endinterface // lpif_if

@@ -50,7 +50,7 @@ class dll_ref_model #(
     endfunction : new
 
     function void rx_path;
-        input  bit [DLLP_WIDTH-1:0] _rx_item  ;
+        input  logic [DLLP_WIDTH-1:0] _rx_item  ;
         input  bit                  _pl_lnk_up;
         input  bit                  _dl_reset ;
        // input  bit                 _link_not_disabled                    ; 
@@ -66,6 +66,8 @@ class dll_ref_model #(
         logic      is_legal      ;
         dl_state_t next_state    ;
         logic      state_changed ;
+        _surprise_down_event = 1'b0;
+        get_dl_status(._state(this.current_state), ._DL_Down(_DL_Down), ._DL_Up(_DL_Up));
         //now
         if (cfg == null) begin
             `uvm_fatal("DLL_RM", "[rx_path] cfg handle is null — set ref_model.cfg before calling rx_path")
@@ -74,12 +76,29 @@ class dll_ref_model #(
 
         dllp_type = get_dllp_type(._rx_item(_rx_item));
         vc_num    = get_vc_num(._rx_item(_rx_item));
-
+        if (this.current_state == DL_INACTIVE) begin
+                update_sm_on_rx(._dllp_type(dllp_type), ._dllp(_rx_item), ._current_state(this.current_state),
+                                .pl_lnk_up(_pl_lnk_up), .dl_reset(_dl_reset), .FI1(this.FI1), .FI2(this.FI2), 
+                                // NOW read from cfg instead of function input:
+                                .surprise_down_Error_Reporting_capable(cfg.surprise_down_capable),
+                                .link_not_disabled(cfg.link_not_disabled),
+                                .next_state(next_state),
+                                .state_changed(state_changed),
+                                .surprise_down_event(_surprise_down_event));
+            this.current_state = next_state;
+        end
         verify_rx_crc(._rx_item(_rx_item), ._should_discard(should_discard));
-        if (should_discard) 
+        if (should_discard) begin
+            `uvm_error("DLL_RM",
+                $sformatf("[rx_path] CRC discard: state=%s type=%s pl_lnk_up=%0b reset=%0b dllp=0x%012h",
+                          this.current_state.name(), dllp_type.name(), _pl_lnk_up, _dl_reset, _rx_item))
             return;
+        end
         else begin
             check_rx_legality(._dllp_type(dllp_type), ._current_state(this.current_state), ._is_legal(is_legal));
+            `uvm_info("DLL_RM",
+                $sformatf("[rx_path] legality=%0b state=%s type=%s", is_legal, this.current_state.name(), dllp_type.name()),
+                UVM_MEDIUM)
             if (is_legal) begin
                 process_rx_dllp(._dllp_type(dllp_type), ._dllp(_rx_item));
                 update_sm_on_rx(._dllp_type(dllp_type), ._dllp(_rx_item), ._current_state(this.current_state),
@@ -92,19 +111,28 @@ class dll_ref_model #(
                                 .surprise_down_event(_surprise_down_event));
                 this.current_state = next_state;
                 get_dl_status(._state(this.current_state), ._DL_Down(_DL_Down), ._DL_Up(_DL_Up));
+                `uvm_info("DLL_RM",
+                    $sformatf("[rx_path] next_state=%s DL_Up=%0b DL_Down=%0b surprise_down=%0b",
+                              this.current_state.name(), _DL_Up, _DL_Down, _surprise_down_event),
+                    UVM_MEDIUM)
 
             end else begin
+                `uvm_info("DLL_RM",
+                    $sformatf("[rx_path] Illegal DLLP blocked state update: state=%s type=%s",
+                              this.current_state.name(), dllp_type.name()),
+                    UVM_MEDIUM)
                 return;
             end
         end
+        //this.current_state = next_state;
         
         
     endfunction
 
     function dllp_type_t get_dllp_type;
-        input bit [DLLP_WIDTH-1:0] _rx_item;
+        input logic [DLLP_WIDTH-1:0] _rx_item;
         
-        bit [BYTE-1:0] type_byte;
+        logic [BYTE-1:0] type_byte;
         type_byte = _rx_item[DLLP_WIDTH-1:40];
 
         // mask VC bits [2:0] for all FC types
@@ -125,18 +153,28 @@ class dll_ref_model #(
     // Calculate the CRC-16 over the received DLLP and compare it against the CRC field carried in rx_item.
     // Sets should_discard = 1 when a mismatch is detected.
     function void verify_rx_crc;
-        input  bit [DLLP_WIDTH-1:0] _rx_item       ;
+        input  logic [DLLP_WIDTH-1:0] _rx_item       ;
         output bit                  _should_discard;
 
         bit [CRC_WIDTH-1:0] rx_crc  ;
         bit [CRC_WIDTH-1:0] calc_crc; 
+        bit [PAYLOAD_WIDTH-1:0] payload_wo_crc;
 
-        rx_crc = _rx_item[(4*BYTE) +: (2*BYTE)];
-        crc_calc(._dllp_without_crc(_rx_item[0 +: PAYLOAD_WIDTH]), ._crc(calc_crc));
+        payload_wo_crc = _rx_item[DLLP_WIDTH-1:CRC_WIDTH];
+        rx_crc = _rx_item[CRC_WIDTH-1:0];
+        crc_calc(._dllp_without_crc(payload_wo_crc), ._crc(calc_crc));
+
+        `uvm_info("DLL_RM",
+            $sformatf("[verify_rx_crc] CRC mismatch. Calculated=0x%04h Received=0x%04h FullDLLP=0x%012h Payload[31:0]=0x%08h TypeByte=0x%02h",
+                      calc_crc, rx_crc, _rx_item, payload_wo_crc, _rx_item[47:40]),
+            UVM_MEDIUM)
 
         if (rx_crc !== calc_crc) begin
             _should_discard = 1;
-            `uvm_info("DLL_RM", $sformatf("[verify_rx_crc] CRC mismatch. Calculated=0x%04h  Received=0x%04h", calc_crc, rx_crc), UVM_HIGH)
+            `uvm_info("DLL_RM",
+                $sformatf("[verify_rx_crc] CRC mismatch. Calculated=0x%04h Received=0x%04h FullDLLP=0x%012h Payload[31:0]=0x%08h TypeByte=0x%02h",
+                          calc_crc, rx_crc, _rx_item, payload_wo_crc, _rx_item[47:40]),
+                UVM_MEDIUM)
         end else begin
             _should_discard = 0;
             `uvm_info("DLL_RM", "[verify_rx_crc] CRC OK", UVM_HIGH)
@@ -155,53 +193,63 @@ class dll_ref_model #(
         output bit         _is_legal     ;
 
         _is_legal = 1;
-        case (_current_state)
-            // DL_INACTIVE : no DLLPs should be accepted
-            DL_INACTIVE: begin
-                _is_legal = 0;
-                `uvm_error("DLL_RM", "[check_rx_legality] Illegal DLLP receving in state DL_INACTIVE")
-            end
-
-            // DL_FEATURE : only feature exchange or FC_INIT1 expected
-            DL_FEATURE: begin
-                if (!(_dllp_type inside {DL_FEATURE,INITFC1_P,INITFC1_NP,INITFC1_CPL})) begin
-                    _is_legal = 0;
-                    `uvm_error("DLL_RM", "[check_rx_legality] Illegal DLLP receving in state DL_FEATURE")
+        if (!$isunknown(_dllp_type)) begin
+            case (_current_state)
+                // DL_INACTIVE : no DLLPs should be accepted
+                DL_INACTIVE: begin
+                    _is_legal = 1;
+                   // `uvm_error("DLL_RM", "[check_rx_legality] Illegal DLLP receving in state DL_INACTIVE")
                 end
-            end
 
-            // DL_INIT1 : only feature exchange or initialization dllps expected
-            DL_INIT1: begin
-                if (!(_dllp_type inside {DL_FEATURE, INITFC1_P, INITFC1_NP, INITFC1_CPL, INITFC2_P, INITFC2_NP, INITFC2_CPL})) begin
-                    _is_legal = 0;
-                    `uvm_error("DLL_RM", "[check_rx_legality] Illegal DLLP receving in state DL_INIT1")
+                // DL_FEATURE : only feature exchange or FC_INIT1 expected
+                DL_FEATURE: begin
+                    if (!(_dllp_type inside {FEATURE,INITFC1_P,INITFC1_NP,INITFC1_CPL})) begin
+                        _is_legal = 0;
+                        `uvm_error("DLL_RM",
+                            $sformatf("[check_rx_legality] Illegal DLLP in DL_FEATURE. received=%s allowed={FEATURE,INITFC1_P,INITFC1_NP,INITFC1_CPL}",
+                                      _dllp_type.name()))
+                    end
                 end
-            end
 
-            // DL_INIT2 : only initialization and active dllps are expected
-            DL_INIT2: begin
-                if (_dllp_type inside {DL_FEATURE, ACK, NACK}) begin
-                    _is_legal = 0;
-                    `uvm_error("DLL_RM", "[check_rx_legality] Illegal DLLP receving in state DL_INIT2")
+                // DL_INIT1 : only feature exchange or initialization dllps expected
+                DL_INIT1: begin
+                    if (!(_dllp_type inside {FEATURE, INITFC1_P, INITFC1_NP, INITFC1_CPL, INITFC2_P, INITFC2_NP, INITFC2_CPL})) begin
+                        _is_legal = 0;
+                        `uvm_error("DLL_RM",
+                            $sformatf("[check_rx_legality] Illegal DLLP in DL_INIT1. received=%s allowed={FEATURE,INITFC1_P,INITFC1_NP,INITFC1_CPL,INITFC2_P,INITFC2_NP,INITFC2_CPL}",
+                                      _dllp_type.name()))
+                    end
                 end
-            end
-            // DL_ACTIVE : normal operation, 
-            // only active and initialization dllps are expected
-            // INITFC1 are expected in case of initializing other VCs
-            DL_ACTIVE: begin
-                if (_dllp_type == DL_FEATURE) begin
-                    _is_legal = 0;
-                    `uvm_error("DLL_RM", "[check_rx_legality] Illegal DLLP receving in state DL_ACTIVE")
-                end
-            end
 
-        endcase
+                // DL_INIT2 : only initialization and active dllps are expected
+                DL_INIT2: begin
+                    if (_dllp_type inside {FEATURE, ACK, NACK}) begin
+                        _is_legal = 0;
+                        `uvm_error("DLL_RM",
+                            $sformatf("[check_rx_legality] Illegal DLLP in DL_INIT2. received=%s forbidden={FEATURE,ACK,NACK}",
+                                      _dllp_type.name()))
+                    end
+                end
+                // DL_ACTIVE : normal operation, 
+                // only active and initialization dllps are expected
+                // INITFC1 are expected in case of initializing other VCs
+                DL_ACTIVE: begin
+                    if (_dllp_type == FEATURE) begin
+                        _is_legal = 0;
+                        `uvm_error("DLL_RM",
+                            $sformatf("[check_rx_legality] Illegal DLLP in DL_ACTIVE. received=%s forbidden={FEATURE}",
+                                      _dllp_type.name()))
+                    end
+                end
+
+            endcase
+        end
 
     endfunction : check_rx_legality
 
     function void process_rx_dllp;
         input dllp_type_t          _dllp_type;
-        input bit [DLLP_WIDTH-1:0] _dllp     ;
+        input logic [DLLP_WIDTH-1:0] _dllp     ;
 
         case (_dllp_type)
             INITFC1_P, INITFC1_NP, INITFC1_CPL: begin
@@ -222,7 +270,7 @@ class dll_ref_model #(
                     this.FI2 = 1;
                 end
             end
-            DL_FEATURE : begin 
+            FEATURE : begin 
                 if (this.current_state == DL_FEATURE ) begin
                      // now cfg.remote_register_feature
                     if (cfg.remote_register_feature.remote_feature_valid == 1'b0) begin
@@ -419,6 +467,9 @@ class dll_ref_model #(
         
         // Reset handling (reset)
         if (dl_reset) begin
+            `uvm_info("DLL_RM",
+                $sformatf("[update_sm_on_rx] reset=1, forcing DL_INACTIVE from %s", _current_state.name()),
+                UVM_MEDIUM)
             next_state = DL_INACTIVE;
             if (_current_state != DL_INACTIVE) begin
                 state_changed = 1'b1;
@@ -436,6 +487,9 @@ class dll_ref_model #(
 
         // every state has "exit to DL_Inactive if PhysicalLinkUp=0"
         if (!pl_lnk_up) begin
+            `uvm_info("DLL_RM",
+                $sformatf("[update_sm_on_rx] pl_lnk_up=0, forcing DL_INACTIVE from %s", _current_state.name()),
+                UVM_MEDIUM)
             if (_current_state != DL_INACTIVE) begin
 
                 // detect DL_ACTIVE → DL_INACTIVE transition
@@ -456,6 +510,12 @@ class dll_ref_model #(
 
         case (_current_state)
             DL_INACTIVE: begin
+                `uvm_info("DLL_RM",
+                    $sformatf("[update_sm_on_rx][DL_INACTIVE] link_not_disabled=%0b feature_cap=%0b feature_enable=%0b",
+                              link_not_disabled,
+                              cfg.feature_exchange_cap,
+                              cfg.local_register_feature.feature_exchange_enable),
+                    UVM_MEDIUM)
                 // Exit to DL_Feature if: port supports feature exchange,
                 //   feature exchange enable bit is Set, link not disabled,
                 //   and PhysicalLinkUp=1 (already confirmed above)
@@ -466,11 +526,13 @@ class dll_ref_model #(
                if (link_not_disabled) begin
                     //  now cfg.feature_exchange_cap / cfg.local_register_feature
                     if (cfg.feature_exchange_cap && cfg.local_register_feature.feature_exchange_enable) begin
+                        `uvm_info("DLL_RM", "[update_sm_on_rx][DL_INACTIVE] Taking transition to DL_FEATURE", UVM_MEDIUM)
                         next_state = DL_FEATURE;
                         cfg.remote_register_feature.remote_feature_supported = '0;
                         cfg.remote_register_feature.remote_feature_valid     = 1'b0;
                     end
                     else begin
+                        `uvm_info("DLL_RM", "[update_sm_on_rx][DL_INACTIVE] Taking transition to DL_INIT1", UVM_MEDIUM)
                         next_state = DL_INIT1;
                     end
 
@@ -478,6 +540,7 @@ class dll_ref_model #(
 
                 end 
                 else begin
+                    `uvm_info("DLL_RM", "[update_sm_on_rx][DL_INACTIVE] Staying in DL_INACTIVE because link_not_disabled=0", UVM_MEDIUM)
                     next_state    = _current_state;
                     state_changed = 1'b0;
                 end
@@ -496,7 +559,7 @@ class dll_ref_model #(
                 if (_dllp_type == INITFC1_P ||_dllp_type == INITFC1_NP ||_dllp_type == INITFC1_CPL) begin
                     next_state    = DL_INIT1;
                     state_changed = 1'b1;
-                end else if (_dllp_type == DL_FEATURE && _dllp[39]) begin //_dllp[39] :Feature ack
+                end else if (_dllp_type == FEATURE && _dllp[39]) begin //_dllp[39] :Feature ack
                     // feature ack seen → exchange complete
                     next_state    = DL_INIT1;
                     state_changed = 1'b1;
@@ -542,16 +605,20 @@ class dll_ref_model #(
 
     // after update_sm_on_rx returns next_state
     function void get_dl_status;
-        input  dl_state_t _state;
-        output bit        _DL_Down;
-        output bit        _DL_Up;
+    input  dl_state_t _state;
+    output bit        _DL_Down;
+    output bit        _DL_Up;
 
-        case (_state)
-            DL_INACTIVE, DL_FEATURE, DL_INIT1 : _DL_Down = 1'b1;  //  DL_Down reported
-            DL_INIT2, DL_ACTIVE : _DL_Up   = 1'b1;                //  DL_Up reported
-            default : _DL_Down = 1'b1;                            // unknown state → safe default = DL_Down
-        endcase
-    endfunction : get_dl_status
+    // default both to 0 explicitly
+    _DL_Down = 1'b0;
+    _DL_Up   = 1'b0;
+
+    case (_state)
+        DL_INACTIVE, DL_FEATURE, DL_INIT1 : _DL_Down = 1'b1;
+        DL_INIT2, DL_ACTIVE               : _DL_Up   = 1'b1;
+        default                           : _DL_Down = 1'b1;
+    endcase
+endfunction
 
 
     function void predict_expected_tx_response;
@@ -639,11 +706,11 @@ class dll_ref_model #(
             crc = initial_seed;
 
             // process the btes to generate the crc
-            for (int i = 0; i < PAYLOAD_IN_BYTES; i++) begin            
+            for (int i = 3; i >= 0; i--) begin            
                 for (int j = 0; j < BYTE; j++) begin
                     feedback = data[i][j] ^ crc[CRC_WIDTH-1];
                     crc = crc << 1;
-                    crc[0] = feedback;
+                    //crc[0] = feedback;
                     if (feedback) 
                         crc = crc ^ generator_polynomial;
                 end

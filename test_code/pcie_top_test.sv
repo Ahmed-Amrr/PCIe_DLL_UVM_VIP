@@ -248,20 +248,22 @@
             phase.raise_objection(this);
 
             // register callbacks on drivers if created, null check means no error injection for that side
-            /*if (us_drv_cb != null) begin
+            if (us_drv_cb != null) begin
                 uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.u_vip.tx_agent.drv, us_drv_cb);
-            end else if (us_seq_cb != null) begin
-                uvm_callbacks #(pcie_fc_init1_seq, pcie_seq_cb)::add(top_env.u_vip.tx_agent.sqr.seq , us_seq_cb);
+            end 
+            else if (us_seq_cb != null) begin
+                uvm_callbacks #(pcie_base_seq, pcie_seq_cb)::add(top_env.u_vip.tx_agent.sqr.seq , us_seq_cb);
             end
 
 
             if (ds_drv_cb != null) begin
                 uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.u_vip.tx_agent.drv, ds_drv_cb);
-            end else if (ds_seq_cb != null) begin
-                uvm_callbacks #(pcie_fc_init1_seq, pcie_seq_cb)::add(top_env.u_vip.tx_agent.sqr.seq , ds_seq_cb);
-            end*/
+            end 
+            else if (ds_seq_cb != null) begin
+                uvm_callbacks #(pcie_base_seq, pcie_seq_cb)::add(top_env.u_vip.tx_agent.sqr.seq , ds_seq_cb);
+            end
             
-            #10000;
+            #195;
             phase.drop_objection(this);
         endtask : run_phase
     

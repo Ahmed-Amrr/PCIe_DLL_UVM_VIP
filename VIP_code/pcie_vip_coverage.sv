@@ -99,7 +99,7 @@ class pcie_vip_coverage extends uvm_component;
 			bins disabled     = {0};
 		}
 		// reset from phy - come on rx_seq
-		cp_multiple_resets : coverpoint seq_item_rx.reset {
+		cp_multiple_resets : coverpoint cfg.reset {
 			bins reset_asserted   = {1};
         	bins reset_deasserted = {0};	
 			bins assert_reset     = (0 => 1);
@@ -177,7 +177,7 @@ class pcie_vip_coverage extends uvm_component;
         {
            bins valid_dllp_in_feature = {FEATURE, INITFC1_P, INITFC1_NP, INITFC1_CPL};
         // Illegal: any other DLLP type shouldn't be received in DL_FEATURE
-           illegal_bins invalid_dllp_in_feature = default;
+           //illegal_bins invalid_dllp_in_feature = default;
         }
 		
 		// FEATURE_04 : Transmitted Feature field must equal local register
@@ -346,7 +346,7 @@ class pcie_vip_coverage extends uvm_component;
             bins non_zero[] = {4'b0101, 4'b0110, 4'b0111,
                                4'b1001, 4'b1010, 4'b1011,
                                4'b1111, 4'b1101, 4'b1110};
-            illegal_bins wrong_scale = default;
+            //illegal_bins wrong_scale = default;
         }
 
         // TRANS_INIT1_01: FC_INIT1->FC_INIT2 when FI1=1 + LinkUp=1

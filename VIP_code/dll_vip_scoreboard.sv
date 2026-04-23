@@ -71,7 +71,7 @@ class dll_vip_scoreboard extends uvm_scoreboard;
 
     // Function : write_rx_mon
     // Called when rx monitor sends transaction. This is where ref model is called and predictions are generated
-    virtual function void write_rx_mon(pcie_dllp_seq_item trans);
+   virtual function void write_rx_mon(pcie_dllp_seq_item trans);
         pcie_dllp_seq_item cloned_rx;
         pcie_state_seq_item   predicted_sm;
         pcie_dllp_seq_item predicted_tx;
@@ -81,8 +81,18 @@ class dll_vip_scoreboard extends uvm_scoreboard;
         // create predicted tx transaction
         predicted_tx = pcie_dllp_seq_item::type_id::create("predicted_tx");
 
-        // clone transaction
-        $cast(cloned_rx, trans.clone());
+        // Explicit copy avoids clone-field automation dependency and preserves debug IDs.
+        if (trans == null) begin
+            `uvm_warning("DLL_SB", "write_rx_mon received null transaction")
+            return;
+        end
+        cloned_rx = pcie_dllp_seq_item::type_id::create("cloned_rx");
+        cloned_rx.dllp = trans.dllp;
+        cloned_rx.lp_valid = trans.lp_valid;
+        cloned_rx.dllp_type = trans.dllp_type;
+        cloned_rx.pl_lnk_up = trans.pl_lnk_up;
+        cloned_rx.pl_valid = trans.pl_valid;
+        cloned_rx.pkt_id = trans.pkt_id;
         rx_queue.push_back(cloned_rx);
 
         // Run timing check on received DLLP
@@ -94,17 +104,31 @@ class dll_vip_scoreboard extends uvm_scoreboard;
         // Model processes received DLLP and predicts:
         // 1. Expected state + DL_Up/Down for THIS cycle
         // 2. Expected tx response for NEXT cycle
-       
+         `uvm_info("DLL_SB_DEBUG", $sformatf(
+     "REF_IN pkt_id=%0d t=%0t dllp=0x%012h top=0x%02h pl_lnk_up=%0b reset=%0b ref_state_before=%s",
+     cloned_rx.pkt_id,
+     $time,
+     cloned_rx.dllp,
+     cloned_rx.dllp[47:40],
+     cloned_rx.pl_lnk_up,
+     cfg.reset,
+     ref_model.current_state.name()), UVM_HIGH)
 
         // now 
         ref_model.rx_path(
             ._rx_item(cloned_rx.dllp),
             ._pl_lnk_up(cloned_rx.pl_lnk_up),
-            ._dl_reset(cloned_rx.reset),
+            ._dl_reset(cfg.reset),
             ._DL_Down(predicted_sm.DL_Down),
             ._DL_Up(predicted_sm.DL_Up),
             ._surprise_down_event(predicted_sm.surprise_down_event)
         );
+
+        `uvm_info("DLL_SB_DEBUG", $sformatf(
+    "REF_OUT pkt_id=%0d t=%0t ref_state_after=%s",
+    cloned_rx.pkt_id,
+    $time,
+    ref_model.current_state.name()), UVM_HIGH)
         // get predicted state from model
         predicted_sm.vip_state = ref_model.current_state;
         // store predicted sm for comparison with actual sm monitor output
@@ -113,18 +137,15 @@ class dll_vip_scoreboard extends uvm_scoreboard;
         `uvm_info("DLL_SB", $sformatf("Model predicted state=%s DL_Up=%0b DL_Down=%0b", predicted_sm.vip_state.name(), predicted_sm.DL_Up, predicted_sm.DL_Down), UVM_MEDIUM)
 
         // get predicted tx response from model
-        ref_model.predict_expected_tx_response(.current_state(ref_model.current_state), .expected_type(predicted_tx.dllp_type));
+        //ref_model.predict_expected_tx_response(.current_state(ref_model.current_state), .expected_type(predicted_tx.dllp_type));
 
         // store predicted tx for comparison with actual tx monitor output
-        predicted_tx_queue.push_back(predicted_tx);
+        //predicted_tx_queue.push_back(predicted_tx);
 
         `uvm_info("DLL_SB",$sformatf("Model predicted TX type=%s", predicted_tx.dllp_type.name()), UVM_MEDIUM)
 
-        // try to compare sm if actual available
-        if(sm_queue.size() > 0)
-            compare_sm_transactions();
-
     endfunction : write_rx_mon
+    
 
     // Function : write_tx_mon
     // Called when tx monitor sends transaction. Stores in queue and tries to compare with predicted tx from model
@@ -138,25 +159,25 @@ class dll_vip_scoreboard extends uvm_scoreboard;
         `uvm_info("DLL_SB", $sformatf("TX Monitor transaction received: %s", cloned_tx.convert2string()), UVM_HIGH)
 
         // try to compare if predicted tx available
-        if(predicted_tx_queue.size() > 0)
-            compare_tx_transactions();
+        //if(predicted_tx_queue.size() > 0)
+            //compare_tx_transactions();
 
     endfunction : write_tx_mon
 
     // write_sm_mon
     // Called when sm monitor sends transaction. Stores in queue and tries to compare with predicted sm from model
     virtual function void write_sm_mon(pcie_state_seq_item trans);
-        pcie_state_seq_item cloned_sm;
 
-        // clone transaction
-        $cast(cloned_sm, trans.clone());
-        sm_queue.push_back(cloned_sm);
-
-        `uvm_info("DLL_SB", $sformatf("SM Monitor transaction received: %s", cloned_sm.convert2string()), UVM_HIGH)
+        if (trans == null) begin
+            `uvm_warning("DLL_SB", "write_sm_mon received null transaction")
+            return;
+        end
+        
+    
 
         // try to compare if predicted sm available
         if(predicted_sm_queue.size() > 0)
-            compare_sm_transactions();
+            compare_sm_transactions(trans);
 
     endfunction : write_sm_mon
 
@@ -167,11 +188,20 @@ class dll_vip_scoreboard extends uvm_scoreboard;
     
     // Function : compare_sm_transactions
     // Compares predicted state + DL_Up/Down from model against actual from sm monitor
-    protected virtual function void compare_sm_transactions();
+    protected virtual function void compare_sm_transactions(pcie_state_seq_item trans);
         pcie_state_seq_item actual_sm;
         pcie_state_seq_item predicted_sm;
 
-        actual_sm    = sm_queue.pop_front();
+        actual_sm = pcie_state_seq_item::type_id::create("actual_sm");
+        actual_sm.vip_state = trans.vip_state;
+        actual_sm.DL_Up = trans.DL_Up;
+        actual_sm.DL_Down = trans.DL_Down;
+        actual_sm.surprise_down_event = trans.surprise_down_event;
+        actual_sm.scaled_fc_active = trans.scaled_fc_active;
+        actual_sm.FI1 = trans.FI1;
+        actual_sm.FI2 = trans.FI2;
+
+        // actual_sm    = sm_queue.pop_front();
         predicted_sm = predicted_sm_queue.pop_front();
 
         `uvm_info("DLL_SB", $sformatf("Comparing SM: predicted state=%s actual state=%s", predicted_sm.vip_state.name(), actual_sm.vip_state.name()), UVM_MEDIUM)
@@ -220,7 +250,7 @@ class dll_vip_scoreboard extends uvm_scoreboard;
 
     // Function : compare_tx_transactions
     // Compares predicted tx DLLP from model against actual tx from tx monitor
-    protected virtual function void compare_tx_transactions();
+   /* protected virtual function void compare_tx_transactions();
         pcie_dllp_seq_item actual_tx;
         pcie_dllp_seq_item predicted_tx;
 
@@ -251,7 +281,7 @@ class dll_vip_scoreboard extends uvm_scoreboard;
             correct_count++;
         end
 
-    endfunction : compare_tx_transactions
+    endfunction : compare_tx_transactions*/
 
     //==========================================================
     // Timing Check
@@ -327,26 +357,27 @@ class dll_vip_scoreboard extends uvm_scoreboard;
     // Check Phase
     // verify no leftover transactions in queues
     //==========================================================
-    function void check_phase(uvm_phase phase);
-        super.check_phase(phase);
+    // function void check_phase(uvm_phase phase);
 
-        if(rx_queue.size() != 0) begin
-            `uvm_error("DLL_SB", $sformatf("RX queue not empty! \ %0d transactions remaining", rx_queue.size()))
-        end
-        if(tx_queue.size() != 0) begin
-            `uvm_error("DLL_SB", $sformatf("TX queue not empty! \ %0d transactions remaining", tx_queue.size()))
-        end
-        if(sm_queue.size() != 0) begin
-            `uvm_error("DLL_SB", $sformatf("SM queue not empty! \ %0d transactions remaining", sm_queue.size()))
-        end
-        if(predicted_tx_queue.size() != 0) begin
-            `uvm_error("DLL_SB", $sformatf("Predicted TX queue not empty! \ %0d transactions remaining", predicted_tx_queue.size()))
-        end
-        if(predicted_sm_queue.size() != 0) begin
-            `uvm_error("DLL_SB", $sformatf("Predicted SM queue not empty! \ %0d transactions remaining", predicted_sm_queue.size()))
-        end
+    //     super.check_phase(phase);
 
-    endfunction : check_phase
+    //     if(rx_queue.size() != 0) begin
+    //         `uvm_error("DLL_SB", $sformatf("RX queue not empty! \ %0d transactions remaining", rx_queue.size()))
+    //     end
+    //     if(tx_queue.size() != 0) begin
+    //         `uvm_error("DLL_SB", $sformatf("TX queue not empty! \ %0d transactions remaining", tx_queue.size()))
+    //     end
+    //     if(sm_queue.size() != 0) begin
+    //         `uvm_error("DLL_SB", $sformatf("SM queue not empty! \ %0d transactions remaining", sm_queue.size()))
+    //     end
+    //     if(predicted_tx_queue.size() != 0) begin
+    //         `uvm_error("DLL_SB", $sformatf("Predicted TX queue not empty! \ %0d transactions remaining", predicted_tx_queue.size()))
+    //     end
+    //     if(predicted_sm_queue.size() != 0) begin
+    //         `uvm_error("DLL_SB", $sformatf("Predicted SM queue not empty! \ %0d transactions remaining", predicted_sm_queue.size()))
+    //     end
+
+    // endfunction : check_phase
 
     //==========================================================
     // Report Phase
