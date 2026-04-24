@@ -129,11 +129,6 @@ class pcie_vip_state_machine extends uvm_component;
                 if (prev_state != current_state) begin //check on transitions
                     `uvm_info("STATE_TRANS", $sformatf("Transition: %s -> %s", prev_state, current_state), UVM_MEDIUM)
                 end
-				//end
-				//else begin
-				//	`uvm_error("State_Machine rx_type error (Illegal DLLP received)",
-       			//	$sformatf("received type is : %s",received_type))
-				//end
 			end
 			else begin
 				`uvm_error("State_Machine rx_crc error (Illegal DLLP received)",
@@ -147,6 +142,8 @@ class pcie_vip_state_machine extends uvm_component;
 												& cfg.local_register_feature.local_feature_supported[0];
 			state_seq_item.FI1 = FI1;
 			state_seq_item.FI2 = FI2;
+
+			// Giving values to header and data scale
 			if(!state_seq_item.scaled_fc_active) begin
 				cfg.fc_credits_register.hdr_scale = '0;
 				cfg.fc_credits_register.data_scale = '0;

@@ -107,17 +107,7 @@
 
 
         // Function to configure the top cfg testcases based of the sequences
-        function void configure_top (ref pcie_top_cfg top_cfg, string up_vip_mode, string down_vip_mode, pcie_vip_config u_cfg, pcie_vip_config d_cfg);
-            
-            // Control nop for the link_up signal
-            if (up_vip_mode == "link_down_test" || down_vip_mode == "link_down_test") 
-                assert(top_cfg.randomize() with {link_down_test == 1;});
-
-            // Control nop for the valid signal in interface
-            else if (up_vip_mode == "valid_off_test" || down_vip_mode == "valid_off_test") 
-                assert(top_cfg.randomize() with {pl_valid_off == 1;});
-            else
-                assert(top_cfg.randomize());
+        function void configure_top (ref pcie_top_cfg top_cfg, pcie_vip_config u_cfg, pcie_vip_config d_cfg);
 
             // Getting the upper and lower interfaces from each environment cfg
             top_cfg.u_lpif_vif = u_cfg.lpif_vif;
@@ -147,35 +137,23 @@
             else
                 cfg.surprise_down_capable = 1;
 
-           // Control nops for the control credits and scale
-            if (vip_mode == "P_infinite_credits") 
-                assert(cfg.randomize() with { 
-                    fc_credits_register.hdr_credits[FC_POSTED] == 0;
-                    fc_credits_register.data_credits[FC_POSTED] == 0; 
-                });
-            
-            else if (vip_mode == "NP_infinite_credits") 
-                assert(cfg.randomize() with { 
-                    fc_credits_register.hdr_credits[FC_NON_POSTED] == 0;
-                    fc_credits_register.data_credits[FC_NON_POSTED] == 0; 
-                });
-            
-            else if (vip_mode == "CPL_infinite_credits") 
-                assert(cfg.randomize() with { 
-                    fc_credits_register.hdr_credits[FC_COMPLETION] == 0;
-                    fc_credits_register.data_credits[FC_COMPLETION] == 0; 
-                });
-
-            else if (vip_mode == "scaledFC_not_supported") 
-                assert(cfg.randomize() with { fc_credits_register.hdr_scale[FC_POSTED] == 0;
-                                        fc_credits_register.data_scale[FC_POSTED] == 0;
-                                        fc_credits_register.hdr_scale[FC_NON_POSTED] == 0;
-                                        fc_credits_register.data_scale[FC_NON_POSTED] == 0;
-                                        fc_credits_register.hdr_scale[FC_COMPLETION] == 0;
-                                        fc_credits_register.data_scale[FC_COMPLETION] == 0;});
-            else
-                assert(cfg.randomize());
-                       
+           // Control nops for the control credits 
+            if (vip_mode == "P_infinite_credits") begin
+                cfg.fc_credits_register.hdr_credits[FC_POSTED] == 0;
+                cfg.fc_credits_register.data_credits[FC_POSTED] == 0; 
+            end 
+            else if (vip_mode == "NP_infinite_credits") begin
+                cfg.fc_credits_register.hdr_credits[FC_NON_POSTED] == 0;
+                cfg.fc_credits_register.data_credits[FC_NON_POSTED] == 0; 
+            end
+            else if (vip_mode == "CPL_infinite_credits") begin
+                cfg.fc_credits_register.hdr_credits[FC_COMPLETION] == 0;
+                cfg.fc_credits_register.data_credits[FC_COMPLETION] == 0; 
+            end
+            else begin
+                cfg.fc_credits_register.hdr_credits[FC_COMPLETION] == $random();
+                cfg.fc_credits_register.data_credits[FC_COMPLETION] == $random(); 
+            end            
         endfunction : configure_vip
 
 
@@ -232,7 +210,7 @@
             // Call configure functions 
             configure_vip (u_cfg, up_vip_mode);
             configure_vip (d_cfg, down_vip_mode);
-            configure_top (top_cfg, up_vip_mode, down_vip_mode, u_cfg, d_cfg);
+            configure_top (top_cfg, u_cfg, d_cfg);
 
             // Set the CFGs to the corresponding enviroments 
             uvm_config_db#(pcie_top_cfg)::set(this, "*", "top_cfg", top_cfg);

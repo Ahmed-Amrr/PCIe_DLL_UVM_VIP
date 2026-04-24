@@ -21,6 +21,10 @@ class pcie_fc_init2_seq extends pcie_base_seq;
               break;
             end
             i++;
+
+            int delay;
+            assert(std::randomize(delay) with {delay > 0;  delay < 34;});
+            #(delay);
        end
 
         `uvm_info(get_type_name(), "Full FC initialization complete", UVM_LOW)

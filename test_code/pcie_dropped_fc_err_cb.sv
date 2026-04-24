@@ -17,10 +17,8 @@
             item = pcie_dllp_seq_item::type_id::create("item");
 
            
-            if (current_cycle < active_cycles) begin
-                `uvm_info("DROPPPPPPPPPPP",
-                "DROPPED FC",
-                UVM_LOW)
+            while (current_cycle < active_cycles) begin
+                `uvm_info("DROP_CB", "DROPPED FC", UVM_LOW)
                 randcase
                     1: begin // DROP_NP
                         seq.send_fc_dllp(INITFC1_P,   FC_POSTED,     item);
@@ -44,15 +42,9 @@
                         seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
                     end
                 endcase
-            end else begin
-                // normal pattern
-                seq.send_fc_dllp(INITFC1_P,   FC_POSTED,     item);
-                seq.send_fc_dllp(INITFC1_NP,  FC_NON_POSTED, item);
-                seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
-            end
+                current_cycle++;  // increment every time pattern is called
+            end 
            
-            current_cycle++;  // increment every time pattern is called
-
         endtask
 
     endclass

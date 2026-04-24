@@ -63,6 +63,20 @@
             vsqr.tx_us_sqr = u_vip.tx_agent.sqr;
             vsqr.tx_ds_sqr = d_vip.tx_agent.sqr;
         endfunction : connect_phase
+
+        task run_phase(uvm_phase phase);
+            super.run_phase(phase);
+
+            forever begin
+                @(posedge top_cfg.d_lpif_vif.lclk)
+
+                assert (top_cfg.randomize());
+                u_vip.cfg.reset = top_cfg.common_reset;
+                d_vip.cfg.reset = top_cfg.common_reset;
+
+            end
+            
+        endtask : run_phase
     
     endclass 
 

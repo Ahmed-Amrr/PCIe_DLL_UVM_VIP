@@ -14,11 +14,12 @@
          virtual lpif_if d_lpif_vif;
 
         rand bit link_down_test;        // Signal to configure linkdown testcases
-        rand bit GL_error_inj;          // Signal to configure Glue logic error injection tetcases
         rand bit pl_valid_off;          // Signal to configure Valid off interface testcases
+        rand common_reset;
         constraint c {
             link_down_test dist {0:=99, 1:=1};
             pl_valid_off dist {0:=99, 1:=1};
+            common_reset dist {0:=99, 1:=1};
         }
 
      /*-------------------------------------------------------------------------------

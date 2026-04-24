@@ -29,6 +29,10 @@ class pcie_fc_init1_seq extends pcie_base_seq;
                 `uvm_error(get_type_name(), "Timeout in DL_INIT1")
                 break;
             end
+
+            int delay;
+            assert(std::randomize(delay) with {delay > 0;  delay < 34;});
+            #(delay);
         end
 
     endtask

@@ -16,7 +16,7 @@
             pcie_dllp_seq_item item;
             item = pcie_dllp_seq_item::type_id::create("item");
 
-            if (current_cycle < active_cycles) begin
+            while (current_cycle < active_cycles) begin
                 // out of order pattern 
                 randcase
                     1: begin 
@@ -44,15 +44,10 @@
                         seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
                         seq.send_fc_dllp(INITFC1_P,   FC_POSTED, item);
                     end
-                    endcase
-            end
-            else begin
-                // normal pattern
-                seq.send_fc_dllp(INITFC1_P,   FC_POSTED,     item);
-                seq.send_fc_dllp(INITFC1_NP,  FC_NON_POSTED, item);
-                seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
-            end   
-            current_cycle++;        
+                endcase
+                current_cycle++; 
+            end  
+                   
         endtask
 
     endclass

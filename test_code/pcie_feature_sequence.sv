@@ -22,6 +22,10 @@
               `uvm_error(get_type_name(), "Timeout for the seq in DL_FEATURE state")
               break;
             end
+
+            int delay;
+            assert(std::randomize(delay) with {delay > 0;  delay < 34;});
+            #(delay);
           end
 
           `uvm_info(get_type_name(), "Feature Exchange Sequence Finished", UVM_LOW)
