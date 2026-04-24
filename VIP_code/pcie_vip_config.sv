@@ -15,8 +15,9 @@ class pcie_vip_config extends uvm_object;
                                                         //remote_feature_valid and remote_feature_supported [0] (Supported or not)
      // the other bits are reserved must be 0s.
 
-     rand fc_credits_t fc_credits_register;                  //for "hdr_credits & data_credits" are for the credits counter
+     fc_credits_t fc_credits_register;                  //for "hdr_credits & data_credits" are for the credits counter
                                                         //for "hdr_scale & data_scale" are for the scale
+     fc_credits_t remote_fc_credits_register;
 
      rand bit reset;
 
@@ -28,7 +29,7 @@ class pcie_vip_config extends uvm_object;
     rand bit link_not_disabled;
 
     constraint c {
-            link_not_disabled == 1 ;
+            link_not_disabled dist {0:=99, 1:=1};
             reset dist {0:=99, 1:=1};
         }
 
