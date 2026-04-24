@@ -149,20 +149,20 @@ class dll_vip_scoreboard extends uvm_scoreboard;
 
     // Function : write_tx_mon
     // Called when tx monitor sends transaction. Stores in queue and tries to compare with predicted tx from model
-    virtual function void write_tx_mon(pcie_dllp_seq_item trans);
-        pcie_dllp_seq_item cloned_tx;
+    // virtual function void write_tx_mon(pcie_dllp_seq_item trans);
+    //     pcie_dllp_seq_item cloned_tx;
 
-        // clone transaction
-        $cast(cloned_tx, trans.clone());
-        tx_queue.push_back(cloned_tx);
+    //     // clone transaction
+    //     $cast(cloned_tx, trans.clone());
+    //     tx_queue.push_back(cloned_tx);
 
-        `uvm_info("DLL_SB", $sformatf("TX Monitor transaction received: %s", cloned_tx.convert2string()), UVM_HIGH)
+    //     `uvm_info("DLL_SB", $sformatf("TX Monitor transaction received: %s", cloned_tx.convert2string()), UVM_HIGH)
 
-        // try to compare if predicted tx available
-        //if(predicted_tx_queue.size() > 0)
-            //compare_tx_transactions();
+    //     // try to compare if predicted tx available
+    //     if(predicted_tx_queue.size() > 0)
+    //         compare_tx_transactions();
 
-    endfunction : write_tx_mon
+    // endfunction : write_tx_mon
 
     // write_sm_mon
     // Called when sm monitor sends transaction. Stores in queue and tries to compare with predicted sm from model
@@ -173,7 +173,10 @@ class dll_vip_scoreboard extends uvm_scoreboard;
             return;
         end
         
-    
+        $cast(cloned_sm, trans.clone());
+        sm_queue.push_back(cloned_sm);
+
+
 
         // try to compare if predicted sm available
         if(predicted_sm_queue.size() > 0)
@@ -193,15 +196,8 @@ class dll_vip_scoreboard extends uvm_scoreboard;
         pcie_state_seq_item predicted_sm;
 
         actual_sm = pcie_state_seq_item::type_id::create("actual_sm");
-        actual_sm.vip_state = trans.vip_state;
-        actual_sm.DL_Up = trans.DL_Up;
-        actual_sm.DL_Down = trans.DL_Down;
-        actual_sm.surprise_down_event = trans.surprise_down_event;
-        actual_sm.scaled_fc_active = trans.scaled_fc_active;
-        actual_sm.FI1 = trans.FI1;
-        actual_sm.FI2 = trans.FI2;
 
-        // actual_sm    = sm_queue.pop_front();
+        actual_sm    = sm_queue.pop_front();
         predicted_sm = predicted_sm_queue.pop_front();
 
         `uvm_info("DLL_SB", $sformatf("Comparing SM: predicted state=%s actual state=%s", predicted_sm.vip_state.name(), actual_sm.vip_state.name()), UVM_MEDIUM)
