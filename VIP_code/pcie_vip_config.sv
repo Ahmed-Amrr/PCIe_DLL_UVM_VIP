@@ -1,44 +1,45 @@
-`ifndef PCIE_VIP_CONFIG
-`define PCIE_VIP_CONFIG
+`ifndef PCIE_VIP_CONFIG_SV
+`define PCIE_VIP_CONFIG_SV
 
 class pcie_vip_config extends uvm_object;
-    `uvm_object_utils (pcie_vip_config)
 
-     // virtal interface handle    
-     virtual lpif_if lpif_vif;
+    // UVM Factory register
+    `uvm_object_utils(pcie_vip_config)
 
-     // Configuration registers
-     // these types are declared in dll_pkg.sv
-     dl_feature_cap_reg_t local_register_feature;       //for feature "Scaled Flow Control" the only important bits are
-                                                        //feature_exchange_enable and local_feature_supported [0] (Supported or not)
-     dl_feature_status_reg_t remote_register_feature;   //for feature "Scaled Flow Control" the only important bits are
-                                                        //remote_feature_valid and remote_feature_supported [0] (Supported or not)
-     // the other bits are reserved must be 0s.
+    // Virtual interface handles, one to LPIF and one to passive side of the VIP (for assertions)
+    virtual lpif_if           lpif_vif;
+    virtual passive_interface p_vif   ;
 
-     fc_credits_t fc_credits_register;                  //for "hdr_credits & data_credits" are for the credits counter
-                                                        //for "hdr_scale & data_scale" are for the scale
-     fc_credits_t remote_fc_credits_register;
+    // Feature Exchange Registers
+    dl_feature_cap_reg_t    local_register_feature ;
+    dl_feature_status_reg_t remote_register_feature;
 
-     
-     bit reset;
+    // FC Credit Registers
+    fc_credits_t local_fc_credits_register ;
+    fc_credits_t remote_fc_credits_register;
 
-     bit feature_exchange_cap;
-     bit scaled_fc_active;
+    // Control Flags
+    bit reset               ;   // Active-high reset signal
+    bit feature_exchange_cap;   // Enables feature exchange capability
+    bit scaled_fc_active    ;   // Indicates scaled FC is currently active
 
-     rand bit surprise_down_capable;
-     rand bit link_not_disabled;
+    // Randomizable capability flags
+    rand bit surprise_down_capable;
+    rand bit link_not_disabled    ;
 
-
-
-
+    // Constraints — keep disabled/incapable scenarios rare
     constraint c {
-            link_not_disabled dist {0:=99, 1:=1};
-            surprise_down_capable dist {0:=99, 1:=1};
-        }
+        link_not_disabled     dist {0:=1,  1:=99};
+        surprise_down_capable dist {0:=1,  1:=99};
+    }
 
-     function new (string name ="pcie_vip_config");
-      super.new(name);
-     endfunction
+    //==========================================================
+    // Constructor
+    //==========================================================
+    function new(string name = "pcie_vip_config");
+        super.new(name);
+    endfunction : new
+
 endclass
 
 `endif
