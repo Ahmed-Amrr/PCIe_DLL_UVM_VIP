@@ -1,8 +1,6 @@
-
 // ============================================================
 //  PCIe Gen 5 – Data Link Layer Package
 // ============================================================
-
 `ifndef DLL_PKG_SV
 `define DLL_PKG_SV
  
@@ -10,8 +8,6 @@ package dll_pkg;
     
     import uvm_pkg::*;
     `include "uvm_macros.svh"
-
-
  
     // Data Link Layer state machine states
     typedef enum { 
@@ -60,15 +56,15 @@ package dll_pkg;
     } fc_credits_t;
 
     typedef struct packed {
-        logic        feature_exchange_enable;   // bit 31
+        logic        feature_exchange_enable;    // bit 31
         logic [7:0]  rsvdp;                      // bits 30:23
-        logic [22:0] local_feature_supported;   // bits 22:0
+        logic [22:0] local_feature_supported;    // bits 22:0
     } dl_feature_cap_reg_t;
 
    typedef struct packed {
-        logic        remote_feature_valid;      // bit 31
+        logic        remote_feature_valid;       // bit 31
         logic [7:0]  rsvdz;                      // bits 30:23
-        logic [22:0] remote_feature_supported;  // bits 22:0
+        logic [22:0] remote_feature_supported;   // bits 22:0
     } dl_feature_status_reg_t;
 
 
@@ -88,9 +84,9 @@ package dll_pkg;
     // =======================
     typedef class pcie_vip_tx_sequencer;
     typedef class pcie_base_seq;
+    `include "pcie_seq_cb.sv"
     `include "pcie_base_sequence.sv"
     `include "pcie_vip_driver_cb.sv"
-    `include "pcie_seq_cb.sv"
     `include "virtual_sequencer.sv"
     `include "pcie_fc_init1_seq.sv"
     `include "pcie_fc_init2_sequence.sv"
@@ -116,7 +112,7 @@ package dll_pkg;
     `include "glue_logic_monitor.sv"
     `include "glue_logic_agent.sv"
     `include "pcie_vip_driver.sv"
-    //`include "pcie_passive_driver.sv"
+    `include "pcie_passive_driver.sv"
 
 
     `include "pcie_vip_rx_monitor.sv"

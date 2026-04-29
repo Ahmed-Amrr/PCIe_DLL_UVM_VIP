@@ -2,46 +2,35 @@
 `define PCIE_DLLP_SEQ_ITEM
 
 class pcie_dllp_seq_item extends uvm_sequence_item;
-	`uvm_object_utils(pcie_dllp_seq_item)
 
-	rand logic [47:0] dllp;			// 8 * 6bytes = 48 bits
-	rand logic lp_valid;
-	
-	dllp_type_t dllp_type;
+    // Randomizable Fields
+    rand logic [47:0] dllp        ;   // Full 48-bit DLLP (6 bytes)
+    rand logic        lp_valid    ;   // Link Partner valid flag
+	// Field Declarations
+    dllp_type_t       dllp_type   ;   // Decoded DLLP type enum
+    bit               pl_lnk_up   ;   // Physical link up indicator
+    bit               pl_valid    ;   // Physical layer data valid
+    bit               reset       ;   // Reset flag
+    int unsigned      pkt_id      ;   // Packet ID for tracing and debug
 
-	bit pl_lnk_up;
-	bit pl_valid;
+    // UVM Factory register + field automation
+    `uvm_object_utils_begin(pcie_dllp_seq_item)
+        `uvm_field_int  (dllp,                          UVM_ALL_ON)
+        `uvm_field_int  (lp_valid,                      UVM_ALL_ON)
+        `uvm_field_enum (dllp_type_t, dllp_type,        UVM_ALL_ON)
+        `uvm_field_int  (pl_lnk_up,                     UVM_ALL_ON)
+        `uvm_field_int  (pl_valid,                      UVM_ALL_ON)
+        `uvm_field_int  (reset,                         UVM_ALL_ON)
+        `uvm_field_int  (pkt_id,                        UVM_ALL_ON)
+    `uvm_object_utils_end
 
-	bit reset;
-	bit rst_req;
-	int unsigned pkt_id; // Added packet ID field for tracing
+    //==========================================================
+    // Constructor
+    //==========================================================
+    function new(string name = "pcie_dllp_seq_item");
+        super.new(name);
+    endfunction
 
-	// Constructor
-	function new(string name = "pcie_dllp_seq_item");
-		super.new(name);
-	endfunction
-
-	// constraint Ack_c {
-	// 	dllp [47:40] = 8'b0000_0000;			//type
-	// 	dllp [39:28] = {12{1'b0}};				//reserved
-	// }
-
-	// // for NOP type no need for constraints as the datapayload is arbitrary value
-
-	// constraint PM_c {
-	// 	dllp [47:43] = 5'b0010_0;				//type
-	// 	dllp [39:16] = {24{1'b0}};				//reserved
-	// }
-
-	// constraint Feature_c {
-	// 	dllp [47:40] = 8'b0000_0010;
-	// }
-
-	// constraint ready_c {
-	// 	ready dist {1:/99, 0:/1};
-	// }
 endclass : pcie_dllp_seq_item
 
-`endif 
-
-
+`endif
