@@ -33,11 +33,6 @@
             mon_imp_tx = new("mon_imp_tx", this);
             mon_imp_sm = new("mon_imp_sm", this);
 
-            if(!uvm_config_db #(pcie_vip_config)::get(this, "", "vip_cfg", cfg))
-                `uvm_fatal("CFG", "Passive Driver couldn't get config object")
-
-            if(!uvm_config_db #(virtual passive_interface)::get(this, "", "p_if", passive_vif))
-                `uvm_fatal("CFG", "Passive Driver couldn't get passive_vif")
         endfunction
 
         // Write callback for RX items
@@ -58,27 +53,28 @@
         task run_phase(uvm_phase phase);
             super.run_phase(phase);
             forever begin
-                @(lpif_vif.drv_cb)
+                @(lpif_vif.drv_cb);
                 if (s_item_rx != null && s_item_tx != null && s_item_sm != null) begin
                     // Drive all passive interface signals
-                    passive_vif.tx_dllp                   = s_item_tx.dllp;
-                    passive_vif.rx_dllp                   = s_item_rx.dllp;
-                    passive_vif.reset                     = cfg.reset;
-                    passive_vif.pl_lnk_up                 = s_item_rx.pl_lnk_up;
-                    passive_vif.state                     = s_item_sm.vip_state;
-                    passive_vif.DL_Up                     = s_item_sm.DL_Up;
-                    passive_vif.DL_Down                   = s_item_sm.DL_Down;
-                    passive_vif.fi1_flag                  = s_item_sm.FI1;
-                    passive_vif.fi2_flag                  = s_item_sm.FI2;
-                    passive_vif.scaled_fc_active          = s_item_sm.scaled_fc_active;
-                    passive_vif.local_register_feature    = cfg.local_register_feature;
-                    passive_vif.remote_register_feature   = cfg.remote_register_feature;
-                    passive_vif.feature_exchange_cap      = cfg.feature_exchange_cap;
-                    passive_vif.fc_credits_register       = cfg.fc_credits_register;
-                    passive_vif.lp_data                   = lpif_vif.lp_data;
-                    passive_vif.lp_valid                  = lpif_vif.lp_valid;
-                    passive_vif.pl_valid                  = lpif_vif.pl_valid;
-                    passive_vif.pl_data                   = lpif_vif.pl_data;
+                    passive_vif.tx_dllp                    <= s_item_tx.dllp;
+                    passive_vif.rx_dllp                    <= s_item_rx.dllp;
+                    passive_vif.reset                      <= cfg.reset;
+                    passive_vif.pl_lnk_up                  <= s_item_rx.pl_lnk_up;
+                    passive_vif.state                      <= s_item_sm.vip_state;
+                    passive_vif.DL_Up                      <= s_item_sm.DL_Up;
+                    passive_vif.DL_Down                    <= s_item_sm.DL_Down;
+                    passive_vif.fi1_flag                   <= s_item_sm.FI1;
+                    passive_vif.fi2_flag                   <= s_item_sm.FI2;
+                    passive_vif.scaled_fc_active           <= cfg.scaled_fc_active;
+                    passive_vif.local_register_feature     <= cfg.local_register_feature;
+                    passive_vif.remote_register_feature    <= cfg.remote_register_feature;
+                    passive_vif.feature_exchange_cap       <= cfg.feature_exchange_cap;
+                    passive_vif.local_fc_credits_register  <= cfg.local_fc_credits_register;
+                    passive_vif.remote_fc_credits_register <= cfg.remote_fc_credits_register;
+                    passive_vif.lp_data                    <= lpif_vif.lp_data;
+                    passive_vif.lp_valid                   <= lpif_vif.lp_valid;
+                    passive_vif.pl_valid                   <= lpif_vif.pl_valid;
+                    passive_vif.pl_data                    <= lpif_vif.pl_data;
                 end
             end
             
