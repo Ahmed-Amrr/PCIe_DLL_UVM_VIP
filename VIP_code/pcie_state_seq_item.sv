@@ -1,26 +1,38 @@
-`ifndef PCIE_STATE_SEQ_ITEM
-`define PCIE_STATE_SEQ_ITEM
+`ifndef PCIE_STATE_SEQ_ITEM_SV
+`define PCIE_STATE_SEQ_ITEM_SV
 
 class pcie_state_seq_item extends uvm_sequence_item;
-	`uvm_object_utils(pcie_state_seq_item)
 
-	dl_state_t vip_state;
+	// Randomizable fields
+	dl_state_t  vip_state          ;   // Current state of the VIP state machine
+	int         DL_Up              ;   // Flag indicating if the data link layer is currently up
+	int         DL_Down            ;   // Flag indicating if the data link layer has gone down
+	int         surprise_down_event;   // Flag indicating if a surprise down event occurred
+	int         scaled_fc_active   ;   // Flag indicating if scaled flow control is active
+	int         FI1                ;   // Flag indicating if the INIT1 has done
+	int         FI2                ;   // Flag indicating if the INIT2 has done
 
-	logic DL_Up;
-	logic DL_Down;
-	logic surprise_down_event;
-	bit scaled_fc_active;
 
-	bit FI1;
-	bit FI2;
+	`uvm_object_utils_begin(pcie_state_seq_item)
+        `uvm_field_enum (dl_state_t, vip_state,           UVM_ALL_ON)
+        `uvm_field_int  (DL_Up                ,           UVM_ALL_ON)
+        `uvm_field_int  (DL_Down              ,           UVM_ALL_ON)
+        `uvm_field_int  (surprise_down_event  ,           UVM_ALL_ON)
+        `uvm_field_int  (scaled_fc_active     ,           UVM_ALL_ON)
+        `uvm_field_int  (FI1                  ,           UVM_ALL_ON)
+        `uvm_field_int  (FI2                  ,           UVM_ALL_ON)
+    `uvm_object_utils_end
+	
 
 	// Constructor
 	function new(string name = "pcie_state_seq_item");
 		super.new(name);
-	endfunction
+	endfunction : new
 
 endclass : pcie_state_seq_item
 
 `endif 
+
+
 
 

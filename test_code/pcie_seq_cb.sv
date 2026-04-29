@@ -1,20 +1,28 @@
-`ifndef PCIE_SEQ_CALLBACKS
-`define PCIE_SEQ_CALLBACKS
+`ifndef PCIE_SEQ_CB_SV
+`define PCIE_SEQ_CB_SV  
 
+class pcie_seq_cb extends uvm_callback;
 
-    class pcie_seq_cb extends uvm_callback;
-        `uvm_object_utils(pcie_seq_cb)
+    // UVM Factory register
+    `uvm_object_utils(pcie_seq_cb)
 
-        dl_state_t state;
+    // Current DLL state — can be used by derived callbacks to gate behavior
+    dl_state_t state;
 
-        function new(string name = "pcie_seq_cb");
-            super.new(name);
-        endfunction
+    //==========================================================
+    // Constructor
+    //==========================================================
+    function new(string name = "pcie_seq_cb");
+        super.new(name);
+    endfunction
 
-        virtual task do_send_pattern(pcie_base_seq seq, dl_state_t state);
-            // default: do nothing, normal sequence runs
-        endtask
+    //==========================================================
+    // do_send_pattern - Base callback hook for custom FC send patterns
+    //==========================================================
+    virtual task do_send_pattern(pcie_base_seq seq, dl_state_t state);
+        // Default: do nothing — normal sequence pattern runs
+    endtask
 
-    endclass
+endclass
 
 `endif
