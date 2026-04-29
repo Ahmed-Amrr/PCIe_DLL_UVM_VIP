@@ -3,26 +3,17 @@
 
 class pcie_vip_rx_agent extends uvm_agent;
 
-/*-------------------------------------------------------------------------------
--- Interface, port, fields
--------------------------------------------------------------------------------*/
-  
+  // UVM Factory register
 
-/*-------------------------------------------------------------------------------
--- UVM Factory register
--------------------------------------------------------------------------------*/
-  // Provide implementations of virtual methods such as get_type_name and create
   `uvm_component_utils(pcie_vip_rx_agent)
   pcie_vip_rx_monitor rx_mon;
   pcie_vip_config cfg;
 
   virtual lpif_if lpif_vif;
 
-  uvm_analysis_port #(pcie_dllp_seq_item) rx_agent_ap;  //analysis port declaration
+  uvm_analysis_port #(pcie_dllp_seq_item) rx_agent_ap;  // analysis port declaration
 
-/*-------------------------------------------------------------------------------
--- Functions
--------------------------------------------------------------------------------*/
+  // Functions
   // Constructor
   function new(string name = "pcie_vip_rx_agent", uvm_component parent=null);
     super.new(name, parent);
@@ -44,4 +35,4 @@ class pcie_vip_rx_agent extends uvm_agent;
 
 endclass : pcie_vip_rx_agent
 
-`endif // End of include guard
+`endif 

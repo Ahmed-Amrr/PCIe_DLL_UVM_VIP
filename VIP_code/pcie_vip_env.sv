@@ -3,15 +3,7 @@
 
 class pcie_vip_env extends  uvm_env;
 
-/*-------------------------------------------------------------------------------
--- Interface, port, fields
--------------------------------------------------------------------------------*/
-	
-
-/*-------------------------------------------------------------------------------
--- UVM Factory register
--------------------------------------------------------------------------------*/
-	// Provide implementations of virtual methods such as get_type_name and create
+// UVM Factory register
 	`uvm_component_utils(pcie_vip_env)
 	pcie_vip_tx_agent tx_agent;
 	pcie_vip_rx_agent rx_agent;
@@ -22,9 +14,8 @@ class pcie_vip_env extends  uvm_env;
 
 	pcie_vip_config cfg;
 
-/*-------------------------------------------------------------------------------
--- Functions
--------------------------------------------------------------------------------*/
+
+    // Functions
 	// Constructor
 	function new(string name = "pcie_vip_env", uvm_component parent=null);
 		super.new(name, parent);
@@ -33,11 +24,11 @@ class pcie_vip_env extends  uvm_env;
 	function void build_phase(uvm_phase phase);
 		super.build_phase(phase);
 
-		// Get interface to assign it to the driver and the monitor's virtual interface
+		// Get the shared VIP configuration object used by the scoreboard and state machine.
 	    if(!uvm_config_db #(pcie_vip_config)::get(this,"","vip_cfg",cfg))
 	      `uvm_fatal("build_phase","unable to get configuration object in VIP ENV")
 
-	  	//setting the configuration object to get the configuration registers in the scoreboard and State machine components
+	  	// Make the same configuration object visible to child components through the UVM config DB.
 	  	uvm_config_db#(pcie_vip_config)::set(this, "*", "CFG_ENV", cfg);
 
 		tx_agent = pcie_vip_tx_agent::type_id::create("tx_agent", this);
@@ -60,18 +51,20 @@ class pcie_vip_env extends  uvm_env;
 		state_machine.sm_ap.connect(scoreboard.sm_mon_export);
 		state_machine.sm_ap.connect(tx_agent.sqr.sqr_export);
 
-		//connecting interface to the drivers and monitors of each agent
+		// Bind the shared LPIF interface to the active driver and monitors.
 		tx_agent.drv.lpif_vif=cfg.lpif_vif;
 		tx_agent.tx_mon.lpif_vif=cfg.lpif_vif;
 		rx_agent.rx_mon.lpif_vif=cfg.lpif_vif;
 
-		//connecting passive interface driver to the monitors
-		tx_agent.tx_agent_ap.connect(passive_driver.mon_imp_tx);
-		rx_agent.rx_agent_ap.connect(passive_driver.mon_imp_rx);
-		state_machine.sm_ap.connect(passive_driver.mon_imp_sm);
-		passive_driver.lpif_vif = cfg.lpif_vif;
-
 	endfunction : connect_phase
 
+	virtual task run_phase(uvm_phase phase);
+        super.run_phase(phase);
+        forever begin
+        	@(posedge cfg.lpif_vif.lclk)
+        	assert(cfg.randomize());
+        end
+    endtask
+
 endclass : pcie_vip_env
-`endif // End of include guard
+`endif
