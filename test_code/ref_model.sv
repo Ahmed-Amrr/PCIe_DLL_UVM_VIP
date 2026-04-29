@@ -252,7 +252,7 @@ class dll_ref_model #(
                     // In INIT1 : record credits and track reception order
                     if (this.current_state == DL_INIT1) begin
                         record_fc_values(_dllp);
-                         update_fi_flags(_dllp_type, 0); // FI1
+                        update_fi_flags(_dllp_type, 0); // FI1
                     // In INIT2 : any InitFC2 received asserts FI2
                     end else if (this.current_state == DL_INIT2) begin
                         update_fi_flags(_dllp_type, 1); // FI2
@@ -350,8 +350,8 @@ class dll_ref_model #(
 
             INITFC1_P, INITFC2_P: begin
                 // Posted must come first — NP and CPL must not be set yet
-                if (fi1_np || fi1_cpl)
-                    `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — P received after NP or CPL")
+                if (fi1_p || fi1_np || fi1_cpl)
+                    `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — P received after P or NP or CPL")
                 else begin
                     fi1_p = 1;
                     `uvm_info("DLL_RM", "[update_fi_flags] P credits recorded", UVM_HIGH)
@@ -360,12 +360,11 @@ class dll_ref_model #(
 
             INITFC1_NP, INITFC2_NP: begin
                 // NP must come after P and before CPL
-                if (!fi1_p)
-                    `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — NP received before P")
-                else if (fi1_cpl)
-                    `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — NP received after CPL")
+                if (!fi1_p || fi1_np || fi1_cpl)
+                    `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — NP received before P or received after NP,CPL")
                 else begin
                     fi1_np = 1;
+                    fi1_p = 0;
                     `uvm_info("DLL_RM", "[update_fi_flags] NP credits recorded", UVM_HIGH)
                 end
             end
@@ -376,6 +375,7 @@ class dll_ref_model #(
                     `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — CPL received before P or NP")
                 else begin
                     fi1_cpl = 1;
+                    fi1_np = 0;
                     `uvm_info("DLL_RM", "[update_fi_flags] CPL credits recorded", UVM_HIGH)
                 end
             end
