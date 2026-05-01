@@ -1,4 +1,4 @@
-`ifndef PCIE_SHARED_SCOREBOARD
+ `ifndef PCIE_SHARED_SCOREBOARD
 `define PCIE_SHARED_SCOREBOARD
 
 class pcie_shared_scoreboard extends uvm_scoreboard;
@@ -241,49 +241,53 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
         pcie_dllp_seq_item tx_item;
         int match_idx = -1;
 
-        foreach (u2l_queue[i]) begin
-        if (u2l_queue[i].dllp === rx_item.dllp) begin
-            match_idx = i;
-            break;
-        end
-        end
+        if ($isunknown(rx_item)) begin
+            foreach (u2l_queue[i]) begin
+                if (u2l_queue[i].dllp === rx_item.dllp) begin
+                    match_idx = i;
+                    break;
+                end
+            end
 
-        if (match_idx == -1) begin
-        u2l_mismatches++;
-        `uvm_error(get_type_name(),
-            $sformatf("[U2L-CORRUPT] No matching TX found for RX: 0x%012h", rx_item.dllp))
-        return;
+            if (match_idx == -1) begin
+                u2l_mismatches++;
+                `uvm_error(get_type_name(),
+                    $sformatf("[U2L-CORRUPT] No matching TX found for RX: 0x%012h", rx_item.dllp))
+                return;
+            end
+            tx_item = u2l_queue[match_idx];
+            u2l_queue.delete(match_idx);
+            u2l_matches++;
+            `uvm_info(get_type_name(),
+            $sformatf("[U2L-MATCH] OK. TX: 0x%012h", tx_item.dllp), UVM_MEDIUM)
         end
-
-        tx_item = u2l_queue[match_idx];
-        u2l_queue.delete(match_idx);
-        u2l_matches++;
-        `uvm_info(get_type_name(),
-        $sformatf("[U2L-MATCH] OK. TX: 0x%012h", tx_item.dllp), UVM_MEDIUM)
     endfunction
 
     function void match_l2u(pcie_dllp_seq_item rx_item);
-    pcie_dllp_seq_item tx_item;
-    int match_idx = -1;
-    foreach (l2u_queue[i]) begin
-        if (l2u_queue[i].dllp === rx_item.dllp) begin
-        match_idx = i;
-        break;
+        pcie_dllp_seq_item tx_item;
+        int match_idx = -1;
+        if ($isunknown(rx_item)) begin
+            foreach (l2u_queue[i]) begin
+                if (l2u_queue[i].dllp === rx_item.dllp) begin
+                    match_idx = i;
+                    break;
+                end
+            end
+
+            if (match_idx == -1) begin
+                l2u_mismatches++;
+                `uvm_error(get_type_name(),
+                $sformatf("[L2U-CORRUPT] No matching TX found for RX: 0x%012h", rx_item.dllp))
+                return;
+            end
+
+            tx_item = l2u_queue[match_idx];
+            l2u_queue.delete(match_idx);
+            l2u_matches++;
+            `uvm_info(get_type_name(),
+                $sformatf("[L2U-MATCH] OK. TX: 0x%012h", tx_item.dllp), UVM_MEDIUM)
+
         end
-    end
-
-    if (match_idx == -1) begin
-        l2u_mismatches++;
-        `uvm_error(get_type_name(),
-        $sformatf("[L2U-CORRUPT] No matching TX found for RX: 0x%012h", rx_item.dllp))
-        return;
-    end
-
-    tx_item = l2u_queue[match_idx];
-    l2u_queue.delete(match_idx);
-    l2u_matches++;
-    `uvm_info(get_type_name(),
-        $sformatf("[L2U-MATCH] OK. TX: 0x%012h", tx_item.dllp), UVM_MEDIUM)
     endfunction
 
 

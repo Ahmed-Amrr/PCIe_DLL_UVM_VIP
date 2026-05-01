@@ -1,6 +1,8 @@
+
 // ============================================================
 //  PCIe Gen 5 – Data Link Layer Package
 // ============================================================
+
 `ifndef DLL_PKG_SV
 `define DLL_PKG_SV
  
@@ -8,6 +10,8 @@ package dll_pkg;
     
     import uvm_pkg::*;
     `include "uvm_macros.svh"
+
+
  
     // Data Link Layer state machine states
     typedef enum { 
@@ -56,15 +60,15 @@ package dll_pkg;
     } fc_credits_t;
 
     typedef struct packed {
-        logic        feature_exchange_enable;    // bit 31
+        logic        feature_exchange_enable;   // bit 31
         logic [7:0]  rsvdp;                      // bits 30:23
-        logic [22:0] local_feature_supported;    // bits 22:0
+        logic [22:0] local_feature_supported;   // bits 22:0
     } dl_feature_cap_reg_t;
 
    typedef struct packed {
-        logic        remote_feature_valid;       // bit 31
+        logic        remote_feature_valid;      // bit 31
         logic [7:0]  rsvdz;                      // bits 30:23
-        logic [22:0] remote_feature_supported;   // bits 22:0
+        logic [22:0] remote_feature_supported;  // bits 22:0
     } dl_feature_status_reg_t;
 
 
@@ -87,12 +91,15 @@ package dll_pkg;
     `include "pcie_seq_cb.sv"
     `include "pcie_base_sequence.sv"
     `include "pcie_vip_driver_cb.sv"
+    `include "virtual_sequencer.sv"
     `include "pcie_fc_init1_seq.sv"
     `include "pcie_fc_init2_sequence.sv"
     `include "pcie_active_sequence.sv"
     `include "pcie_inactive_sequence.sv"
     `include "pcie_feature_sequence.sv"
     `include "pcie_feature_no_update_sequence.sv"
+    `include "pcie_feature_reserved_seq.sv"
+    `include "pcie_feature_reserved_err_cb.sv"
     `include "pcie_feature_wrong_ack_cb.sv"
     `include "pcie_feature_wrong_cb.sv"
     `include "pcie_out_of_order_fc_cb.sv"
@@ -100,7 +107,9 @@ package dll_pkg;
     `include "pcie_type_err_cb.sv"
     `include "pcie_crc_err_cb.sv"
     `include "pcie_updateFC_scale_err_cb.sv"
+    `include "virtual_sequence.sv"
     `include "pcie_vip_sequencer.sv"
+    `include "virtual_sequencer.sv"
 
     // =======================
     // 5) Drivers / Monitors / Agents / Sequencers
