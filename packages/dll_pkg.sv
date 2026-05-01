@@ -91,15 +91,11 @@ package dll_pkg;
     `include "pcie_seq_cb.sv"
     `include "pcie_base_sequence.sv"
     `include "pcie_vip_driver_cb.sv"
-    `include "virtual_sequencer.sv"
     `include "pcie_fc_init1_seq.sv"
     `include "pcie_fc_init2_sequence.sv"
     `include "pcie_active_sequence.sv"
     `include "pcie_inactive_sequence.sv"
     `include "pcie_feature_sequence.sv"
-    `include "pcie_feature_no_update_sequence.sv"
-    `include "pcie_feature_reserved_seq.sv"
-    `include "pcie_feature_reserved_err_cb.sv"
     `include "pcie_feature_wrong_ack_cb.sv"
     `include "pcie_feature_wrong_cb.sv"
     `include "pcie_out_of_order_fc_cb.sv"
@@ -107,9 +103,8 @@ package dll_pkg;
     `include "pcie_type_err_cb.sv"
     `include "pcie_crc_err_cb.sv"
     `include "pcie_updateFC_scale_err_cb.sv"
-    `include "virtual_sequence.sv"
     `include "pcie_vip_sequencer.sv"
-    `include "virtual_sequencer.sv"
+
 
     // =======================
     // 5) Drivers / Monitors / Agents / Sequencers
@@ -153,4 +148,3 @@ package dll_pkg;
 endpackage : dll_pkg
  
 `endif
-

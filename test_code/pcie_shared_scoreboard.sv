@@ -136,8 +136,10 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
                     `uvm_info(get_type_name(),
                         $sformatf("[U2L-RX] Received Lower RX: %s at time %0t", rx_txn.convert2string(), rx_l_time),
                         UVM_HIGH);
-                    match_u2l(rx_txn); // process RX
-                    break; // exit inner loop after RX received
+                    if (!$isunknown(rx_txn.dllp)) begin
+                        match_u2l(rx_txn); // process RX
+                        break; // exit inner loop after RX received
+                    end
                 end
                 // Timeout check
                 if($time - start_time >= RX_TIMEOUT) begin
@@ -193,8 +195,10 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
                 if(upper_rx_fifo.try_get(rx_txn)) begin
                     rx_u_time = $time; // store RX arrival time
                     `uvm_info(get_type_name(), $sformatf("[L2U-RX] Received UPPER RX: %s at time %0t", rx_txn.convert2string(), rx_u_time),UVM_HIGH)
-                    match_l2u(rx_txn); // process RX
-                    break; // exit inner loop after RX received
+                    if (!$isunknown(rx_txn.dllp)) begin
+                        match_l2u(rx_txn); // process RX
+                        break; // exit inner loop after RX received
+                    end
                 end
                 // Timeout check
                 if($time - start_time >= RX_TIMEOUT) begin
@@ -241,11 +245,12 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
         pcie_dllp_seq_item tx_item;
         int match_idx = -1;
 
-        if ($isunknown(rx_item)) begin
+        if (!$isunknown(rx_item)) begin
             foreach (u2l_queue[i]) begin
                 if (u2l_queue[i].dllp === rx_item.dllp) begin
                     match_idx = i;
                     break;
+
                 end
             end
 
@@ -266,7 +271,7 @@ class pcie_shared_scoreboard extends uvm_scoreboard;
     function void match_l2u(pcie_dllp_seq_item rx_item);
         pcie_dllp_seq_item tx_item;
         int match_idx = -1;
-        if ($isunknown(rx_item)) begin
+        if (!$isunknown(rx_item)) begin
             foreach (l2u_queue[i]) begin
                 if (l2u_queue[i].dllp === rx_item.dllp) begin
                     match_idx = i;

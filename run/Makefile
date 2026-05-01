@@ -2,8 +2,10 @@
 # Default Configuration
 # ==============================================================================
 test         ?= pcie_top_test_base
-u_vip_mode   ?=
-d_vip_mode   ?=
+u_vip_mode   ?= default
+d_vip_mode   ?= default
+u_err_mode	 ?=
+d_err_mode	 ?=
 seed         ?= 1
 verbosity    ?= UVM_MEDIUM
 uvm_ver       = uvm-1.2
@@ -28,15 +30,15 @@ uvm_defines = UVM_NO_DEPRECATED+UVM_OBJECT_MUST_HAVE_CONSTRUCTOR
 # Run Name  
 # =============================================================================
 
-RUN_NAME_BASE = default
+RUN_NAME_BASE = $(u_vip_mode)_u_$(d_vip_mode)_d
 
 # Append VIP modes only if defined
-ifneq ($(u_vip_mode),)
-	   RUN_NAME_BASE := $(RUN_NAME_BASE)_$(u_vip_mode)u
+ifneq ($(u_err_mode),)
+	   RUN_NAME_BASE := $(RUN_NAME_BASE)_$(u_err_mode)_u
 endif
 
-ifneq ($(d_vip_mode),)
-	   RUN_NAME_BASE := $(RUN_NAME_BASE)_$(d_vip_mode)d
+ifneq ($(d_err_mode),)
+	   RUN_NAME_BASE := $(RUN_NAME_BASE)_$(d_err_mode)_d
 endif
 
 RUN_NAME = $(RUN_NAME_BASE)
@@ -86,6 +88,8 @@ RUN_OPTS =  -l ${LOG_FILE}                          \
 	           +UVM_VERBOSITY=${verbosity}             \
 	           +U_VIP_MODE=${u_vip_mode}               \
 	           +D_VIP_MODE=${d_vip_mode}               \
+	           +U_ERR_MODE=${u_err_mode}			   \
+	           +D_ERR_MODE=${d_err_mode}			   \
 	           -cm line+tgl+cond+branch+assert         \
 	           -cm_name ${RUN_NAME}                    \
 	           -cm_dir ${COV_DIR}/simv.vdb             \
