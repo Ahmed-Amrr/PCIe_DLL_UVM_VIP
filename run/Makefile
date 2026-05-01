@@ -172,16 +172,15 @@ cover:
 	   urg -full64 \
 	       -dir ${COMPILE_COV_DIR} \
 	       -dir ${COV_DIR}/simv.vdb \
-	       -dbname ${RUN_NAME} \
 	       -report ${COV_DIR}/report
-	   @echo "Coverage report: ${COV_DIR}/report/index.html"
+	   @echo "Coverage report: ${COV_DIR}/report/dashboard.html"
 
 # Open coverage in Verdi for a specific run
 verdi_cov:
 	   @echo "Opening coverage for ${RUN_NAME} in Verdi..."
 	   verdi -cov \
-	         -covdir ${COMPILE_COV_DIR} \
-	         -covdir ${COV_DIR}/simv.vdb \
+	         -dir ${COMPILE_COV_DIR} \
+	         -dir ${COV_DIR}/simv.vdb \
 	         -nologo &
 
 # Merge all runs coverage databases into a single .vdb
@@ -198,23 +197,23 @@ merge_coverage:
 	   urg -full64 \
 	       -dir ${COMPILE_COV_DIR} \
 	       $(shell cat ${run_base_path}/runs/vdb_list.txt | sed 's/^/-dir /') \
-	       -dbname ${run_base_path}/runs/merged_coverage/merged.vdb \
+	       -dbname ${run_base_path}/merged_coverage \
 	       -format both \
 	       -report ${run_base_path}/runs/merged_coverage
 	   @echo "Merge complete."
 	   @echo "  HTML report : ${run_base_path}/runs/merged_coverage/index.html"
-	   @echo "  VDB         : ${run_base_path}/runs/merged_coverage/merged.vdb"
+	   @echo "  VDB         : ${run_base_path}/runs//merged_coverage.vdb"
 
 # View merged coverage in Verdi
 verdi_cov_merged:
-	   @if [ ! -d ${run_base_path}/runs/merged_coverage/merged.vdb ]; then \
+	   @if [ ! -d ${run_base_path}/merged_coverage.vdb ]; then \
 	       echo "ERROR: Merged coverage database not found."; \
 	       echo "Run 'make merge_coverage' first."; \
 	       exit 1; \
 	   fi
 	   @echo "Opening merged coverage in Verdi..."
 	   verdi -cov \
-	         -covdir ${run_base_path}/runs/merged_coverage/merged.vdb \
+	         -dir ${run_base_path}/merged_coverage.vdb \
 	         -nologo &
 
 # ==============================================================================
@@ -280,19 +279,19 @@ log:
 
 # Open per-run coverage HTML report in browser
 cov_report:
-	   @if [ ! -f ${COV_DIR}/report/index.html ]; then \
+	   @if [ ! -f ${COV_DIR}/report/dashboard.html ]; then \
 	       echo "ERROR: Coverage report not found. Run 'make cover' first."; \
 	       exit 1; \
 	   fi
-	   firefox ${COV_DIR}/report/index.html &
+	   firefox ${COV_DIR}/report/dashboard.html &
 
 # Open merged coverage HTML report in browser
 cov_merged:
-	   @if [ ! -f ${run_base_path}/runs/merged_coverage/index.html ]; then \
+	   @if [ ! -f ${run_base_path}/runs/merged_coverage/dashboard.html ]; then \
 	       echo "ERROR: Merged report not found. Run 'make merge_coverage' first."; \
 	       exit 1; \
 	   fi
-	   firefox ${run_base_path}/runs/merged_coverage/index.html &
+	   firefox ${run_base_path}/runs/merged_coverage/dashboard.html &
 
 # ==============================================================================
 # Clean Targets
