@@ -24,8 +24,12 @@ class pcie_fc_init2_seq extends pcie_base_seq;
         int i = 0;
 
         while (p_sequencer.state == DL_INIT2) begin
+
+            if (p_sequencer.state == DL_INIT2)
             send_fc_dllp(INITFC2_P,   FC_POSTED,     item);
+            if (p_sequencer.state == DL_INIT2)
             send_fc_dllp(INITFC2_NP,  FC_NON_POSTED, item);
+            if (p_sequencer.state == DL_INIT2)
             send_fc_dllp(INITFC2_CPL, FC_COMPLETION, item);
 
             // Timeout guard — break if state has not advanced after 1000 iterations

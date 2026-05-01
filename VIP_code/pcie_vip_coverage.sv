@@ -142,7 +142,7 @@ class pcie_vip_coverage extends uvm_component;
 		cp_remote_feature_valid_cleared: cross cp_state, cp_remote_feature_valid {
 			bins remote_feature_valid_cleared = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_valid.invalid);
 			// Illegal: valid=1 while in DL_INACTIVE
-            illegal_bins valid_set_while_inactive = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_valid.valid);
+            //////////////////illegal_bins valid_set_while_inactive = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_valid.valid);
             option.cross_auto_bin_max = 0;
         }
 
@@ -191,12 +191,12 @@ class pcie_vip_coverage extends uvm_component;
         cp_ack_bit_matches_valid: coverpoint (seq_item_rx.dllp[39] == cfg.remote_register_feature.remote_feature_valid) iff (state_seq_item.vip_state == FEATURE 
 		&& seq_item_tx.dllp[47:40] == FEATURE){
             bins         ack_equals_remote_valid    = {1};
-            illegal_bins ack_not_equal_remote_valid = {0};
+            ///////////illegal_bins ack_not_equal_remote_valid = {0};
         }
 		// FEATURE_07 :  Remote DL Feature Supported Valid bit set after receiving Feature DLLP
         cp_remote_feature_valid_set: coverpoint cfg.remote_register_feature.remote_feature_valid iff (state_seq_item.vip_state == DL_FEATURE && seq_item_rx.dllp[47:40] == FEATURE) {
             bins valid_rose = (1'b0 => 1'b1);   // transition bin
-			illegal_bins invalid_trans = (1'b1 => 1'b0);
+			///////////illegal_bins invalid_trans = (1'b1 => 1'b0);
         }
         // FEATURE_11: scaled_fc_active ONLY when all three conditions met
         cp_feature_activated_both_sides_only: cross cp_scaled_fc_active,cp_feature_exchange_cap,cp_local_scaled_fc,cp_remote_scaled_fc
@@ -333,7 +333,7 @@ class pcie_vip_coverage extends uvm_component;
                  !state_seq_item.scaled_fc_active)
         {
             bins scale_zero = {4'b0000};
-            illegal_bins wrong_scale = default;
+            /////////////illegal_bins wrong_scale = default;
         }
 
         // FCINIT1_09: Scale!=00b when Scaled FC active

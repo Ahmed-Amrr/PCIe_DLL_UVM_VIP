@@ -292,13 +292,13 @@ class pcie_vip_state_machine extends uvm_component;
 		end else if (!seq_item_rx.pl_lnk_up) begin
 			next_state = DL_INACTIVE;
 			`uvm_info("SM_STATUS", "Waiting for Physical Layer (pl_lnk_up)", UVM_HIGH)
-		end else if (received_type == UPDATEFC_P && seq_item_rx.pl_valid) begin
+		end else if (((received_type == UPDATEFC_P)||(received_type == UPDATEFC_NP)||(received_type == UPDATEFC_CPL)) && seq_item_rx.pl_valid) begin
 			//If received any update in initefc_2 raise Fl2 and next state is Active
 			init2_p_f 	= 0;
 			init2_np_f 	= 0;
 			init2_cpl_f = 1;
 
-			next_state 	= DL_INIT2;
+			next_state 	= DL_ACTIVE;
 		end else if (received_type == INITFC2_P && seq_item_rx.pl_valid) begin
 			init2_p_f 	= 1;	//First in order
 			init2_np_f 	= 0;

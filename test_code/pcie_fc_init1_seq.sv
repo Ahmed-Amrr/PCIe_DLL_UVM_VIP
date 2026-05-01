@@ -33,8 +33,11 @@ class pcie_fc_init1_seq extends pcie_base_seq;
             // If a callback is registered it handles sending; otherwise send normal triplet
             `uvm_do_callbacks(pcie_base_seq, pcie_seq_cb, do_send_pattern(this, p_sequencer.state))
 
+            if (p_sequencer.state == DL_INIT1)
             send_fc_dllp(INITFC1_P,   FC_POSTED,     item);
+            if (p_sequencer.state == DL_INIT1)
             send_fc_dllp(INITFC1_NP,  FC_NON_POSTED, item);
+            if (p_sequencer.state == DL_INIT1)
             send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
 
             i++;
@@ -48,3 +51,4 @@ class pcie_fc_init1_seq extends pcie_base_seq;
 endclass : pcie_fc_init1_seq
 
 `endif
+

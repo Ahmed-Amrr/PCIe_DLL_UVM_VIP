@@ -39,9 +39,4 @@ module pcie_top;
         run_test("pcie_top_test_base");
     end
 
-    initial begin
-    $fsdbDumpfile("dump.fsdb"); // Name of the output file
-    $fsdbDumpvars(0, pcie_top);                // Dump all signals (level 0) from pcie_top
-    end
-
 endmodule : pcie_top

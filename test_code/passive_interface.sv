@@ -6,6 +6,10 @@ interface passive_interface (input logic lclk);
     import uvm_pkg::*;
     `include "uvm_macros.svh"
 
+    ///////////////////////vcs/////////////////////
+    dl_state_t   state_ref;              // DL state machine
+    bit          FI1_ref, FI2_ref;                   // flags to exit init1 / init2 states
+
     // DLLP buses 
     bit [47:0] tx_dllp;   // DLLP being transmitted by local side
     bit [47:0] rx_dllp;   // DLLP received from remote side
@@ -279,12 +283,12 @@ interface passive_interface (input logic lclk);
     //                 remote_feature_supported must be recorded and valid set next cycle
     // ============================================================
     property p_remote_field_recorded_on_first_dllp;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
+        @(posedge lclk) disable iff (reset || !pl_lnk_up)
         // Trigger: first Feature DLLP arrives when valid is still clear
-        (rx_is_feature && !remote_register_feature.remote_feature_valid)
+        (rx_is_feature && !$past(remote_register_feature.remote_feature_valid) && pl_valid)
         // Next cycle: supported field updated and valid set
-        |=> (remote_register_feature.remote_feature_supported == $past(rx_feature_field) &&
-             remote_register_feature.remote_feature_valid);
+        |=> ((remote_register_feature.remote_feature_supported == $past(rx_feature_field)) &&
+             (remote_register_feature.remote_feature_valid == 1));
     endproperty
 
     assert_feature_06_07: assert property (p_remote_field_recorded_on_first_dllp)
@@ -337,12 +341,12 @@ interface passive_interface (input logic lclk);
     // TRANS_FEAT_01 : DL_FEATURE -> DL_INIT1 when ACK=1 and LinkUp=1
     // ============================================================
     property p_feature_to_init_on_ack;
-        @(posedge lclk) disable iff (reset || !pl_valid)
-        (state == DL_FEATURE &&
+        @(posedge lclk) disable iff (reset || !pl_lnk_up)
+        ($past(state) == DL_FEATURE &&
+         pl_valid == 1'b1    &&
          rx_is_feature       &&
-         rx_ack_bit == 1'b1  &&
-         pl_lnk_up  == 1'b1)
-        |=> ##2 (state == DL_INIT1);
+         rx_ack_bit == 1'b1)
+        |=> (state == DL_INIT1);
     endproperty
 
     assert_trans_feat_01: assert property (p_feature_to_init_on_ack)
@@ -355,10 +359,9 @@ interface passive_interface (input logic lclk);
     //                 (hits when feature exchange is disabled)
     // ============================================================
     property p_feature_to_init_on_initfc1;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
+        @(posedge lclk) disable iff (reset || !pl_lnk_up)
         ($past(state) == DL_FEATURE &&
-         rx_dllp[47:40] == INITFC1_P &&
-         pl_lnk_up == 1'b1)
+         rx_dllp[47:40] == INITFC1_P)
         |-> (state == DL_INIT1);
     endproperty
 
@@ -403,7 +406,7 @@ interface passive_interface (input logic lclk);
     property p_InitFC1_triplet_correct_order_cpl_p;
         @(posedge lclk) disable iff (reset || !pl_lnk_up)
         (state == DL_INIT1 && tx_is_initfc1_cpl)
-        |=> if (state == DL_INIT1) tx_is_initfc1_p;
+        |=> if (state == DL_INIT2) tx_is_initfc1_p;
     endproperty
 
     assert_fcinit1_03_p_np:   assert property (p_InitFC1_triplet_correct_order_p_np)
@@ -540,21 +543,21 @@ interface passive_interface (input logic lclk);
     endproperty
 
     // fi1_flag set after receiving InitFC2 P -> NP -> CPL while still in DL_INIT1
-    property p_fi1_set_after_P_NP_CPL_init2;
+    property p_fi2_set_after_P_NP_CPL_init2;
         @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
-        (state == DL_INIT1 && rx_is_initfc2_p)
-        |=> (state == DL_INIT1 && rx_is_initfc2_np)
-        |=> ($past(state == DL_INIT1) && rx_is_initfc2_cpl)
-        |-> (fi1_flag)
+        (state == DL_INIT2 && rx_is_initfc2_p)
+        |=> (state == DL_INIT2 && rx_is_initfc2_np)
+        |=> ($past(state == DL_INIT2) && rx_is_initfc2_cpl)
+        |-> (fi2_flag)
     endproperty
 
     assert_fcinit1_12_initfc1: assert property (p_fi1_set_after_P_NP_CPL_init1)
         else `uvm_error("ASSERT_FCINIT1_12", "FCINIT1_12: FI1 not set after all three P+NP+CPL INIT1 received")
-    assert_fcinit1_12_initfc2: assert property (p_fi1_set_after_P_NP_CPL_init2)
-        else `uvm_error("ASSERT_FCINIT1_12", "FCINIT1_12: FI1 not set after all three P+NP+CPL INIT2 received")
+    assert_fcinit2_12_initfc2: assert property (p_fi2_set_after_P_NP_CPL_init2)
+        else `uvm_error("ASSERT_FCINIT2_12", "FCINIT2_12: FI2 not set after all three P+NP+CPL INIT2 received")
 
     cov_fcinit1_12_initfc1: cover property (p_fi1_set_after_P_NP_CPL_init1);
-    cov_fcinit1_12_initfc2: cover property (p_fi1_set_after_P_NP_CPL_init2);
+    cov_fcinit2_12_initfc2: cover property (p_fi2_set_after_P_NP_CPL_init2);
 
     // ============================================================
     // TRANS_INIT1_01 : DL_INIT1 -> DL_INIT2 when fi1_flag=1 and LinkUp=1
