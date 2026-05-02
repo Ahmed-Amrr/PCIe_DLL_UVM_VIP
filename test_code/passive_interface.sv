@@ -543,21 +543,21 @@ interface passive_interface (input logic lclk);
     endproperty
 
     // fi1_flag set after receiving InitFC2 P -> NP -> CPL while still in DL_INIT1
-    property p_fi2_set_after_P_NP_CPL_init2;
+    property p_fi1_set_after_P_NP_CPL_init2;
         @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
-        (state == DL_INIT2 && rx_is_initfc2_p)
-        |=> (state == DL_INIT2 && rx_is_initfc2_np)
-        |=> ($past(state == DL_INIT2) && rx_is_initfc2_cpl)
-        |-> (fi2_flag)
+        (state == DL_INIT1 && rx_is_initfc2_p)
+        |=> (state == DL_INIT1 && rx_is_initfc2_np)
+        |=> ($past(state == DL_INIT1) && rx_is_initfc2_cpl)
+        |-> (fi1_flag)
     endproperty
 
     assert_fcinit1_12_initfc1: assert property (p_fi1_set_after_P_NP_CPL_init1)
         else `uvm_error("ASSERT_FCINIT1_12", "FCINIT1_12: FI1 not set after all three P+NP+CPL INIT1 received")
-    assert_fcinit2_12_initfc2: assert property (p_fi2_set_after_P_NP_CPL_init2)
-        else `uvm_error("ASSERT_FCINIT2_12", "FCINIT2_12: FI2 not set after all three P+NP+CPL INIT2 received")
+    assert_fcinit1_12_initfc2: assert property (p_fi1_set_after_P_NP_CPL_init2)
+        else `uvm_error("ASSERT_FCINIT1_12", "FCINIT1_12: FI1 not set after all three P+NP+CPL INIT2 received")
 
     cov_fcinit1_12_initfc1: cover property (p_fi1_set_after_P_NP_CPL_init1);
-    cov_fcinit2_12_initfc2: cover property (p_fi2_set_after_P_NP_CPL_init2);
+    cov_fcinit1_12_initfc2: cover property (p_fi1_set_after_P_NP_CPL_init2);
 
     // ============================================================
     // TRANS_INIT1_01 : DL_INIT1 -> DL_INIT2 when fi1_flag=1 and LinkUp=1

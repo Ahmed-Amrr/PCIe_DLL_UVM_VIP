@@ -239,7 +239,7 @@ class pcie_vip_state_machine extends uvm_component;
 		if (!seq_item_rx.pl_lnk_up) begin
 			next_state = DL_INACTIVE;
 			`uvm_info("SM_STATUS", "Waiting for Physical Layer (pl_lnk_up)", UVM_HIGH)
-		end else if (received_type == INITFC1_P && seq_item_rx.pl_valid) begin
+		end else if (((received_type == INITFC1_P)||(received_type == INITFC2_P)) && seq_item_rx.pl_valid) begin
 			init1_p_f 	= 1;	//First in order
 			init1_np_f 	= 0;
 			init1_cpl_f = 0;
@@ -250,7 +250,7 @@ class pcie_vip_state_machine extends uvm_component;
 			save_conf_credits_reg(fc_type);
 
 			next_state = DL_INIT1;
-		end else if ((received_type == INITFC1_NP) && init1_p_f && seq_item_rx.pl_valid) begin
+		end else if (((received_type == INITFC1_NP)||(received_type == INITFC2_NP)) && init1_p_f && seq_item_rx.pl_valid) begin
 			init1_p_f 	= 0;
 			init1_np_f 	= 1;	//Second in order
 			init1_cpl_f = 0;
@@ -261,7 +261,7 @@ class pcie_vip_state_machine extends uvm_component;
 			save_conf_credits_reg(fc_type);
 
 			next_state = DL_INIT1;
-		end else if ((received_type == INITFC1_CPL) && init1_np_f && seq_item_rx.pl_valid) begin
+		end else if (((received_type == INITFC1_CPL)||(received_type == INITFC2_CPL)) && init1_np_f && seq_item_rx.pl_valid) begin
 			init1_p_f 	= 0;
 			init1_np_f 	= 0;
 			init1_cpl_f = 1;	//Third in order
