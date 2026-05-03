@@ -9,7 +9,7 @@ d_err_mode	 ?=
 seed         ?= 1
 verbosity    ?= UVM_MEDIUM
 uvm_ver       = uvm-1.2
-cb	     ?= 
+
 
 
 # ==============================================================================
@@ -301,6 +301,10 @@ cov_merged:
 clean_runs:
 	   @echo "Cleaning run directories..."
 	   @rm -rf ${run_base_path}/runs
+	   @rm -rf ${run_base_path}/coverage_db
+	   @rm -rf ${run_base_path}/*.vpd
+	   @rm -rf ${run_base_path}/*.fsdb
+	   @rm -rf ${run_base_path}/*.vdb
 	   @echo "Runs cleaned."
 
 # Clean everything (runs + compiled artifacts)
@@ -316,6 +320,9 @@ clean_all:
 	   @rm -rf ${run_base_path}/*.vpd
 	   @rm -rf ${run_base_path}/*.fsdb
 	   @rm -rf ${run_base_path}/*.vdb
+	   @rm -rf novas*
+	   @rm -rf DVE* verdi*
+	   @rm -rf vc* vd* 
 	   @echo "Full clean complete."
 
 # ==============================================================================
