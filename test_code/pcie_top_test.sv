@@ -238,20 +238,20 @@ class pcie_top_test_base extends uvm_test;
         super.run_phase(phase);
         phase.raise_objection(this);
 
-        #500;
+        #5000;
 
         // Register callbacks — null check ensures no injection when not needed
         if (us_drv_cb != null)
             uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.u_vip.tx_agent.drv, us_drv_cb);
         else if (us_seq_cb != null)
-            uvm_callbacks #(pcie_base_seq, pcie_seq_cb)::add(top_env.u_vip.tx_agent.sqr.seq, us_seq_cb);
+            uvm_callbacks #(pcie_base_seq, pcie_seq_cb)::add(null, us_seq_cb);
 
         if (ds_drv_cb != null)
             uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.u_vip.tx_agent.drv, ds_drv_cb);
         else if (ds_seq_cb != null)
-            uvm_callbacks #(pcie_base_seq, pcie_seq_cb)::add(top_env.u_vip.tx_agent.sqr.seq, ds_seq_cb);
+            uvm_callbacks #(pcie_base_seq, pcie_seq_cb)::add(null, ds_seq_cb);
 
-        #500;
+        #5000;
 
         // Deregister driver callbacks after injection window
         if (us_drv_cb != null)
@@ -259,33 +259,10 @@ class pcie_top_test_base extends uvm_test;
         if (ds_drv_cb != null)
             uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::delete(top_env.u_vip.tx_agent.drv, ds_drv_cb);
 
-        #500;
+        #5000;
         phase.drop_objection(this);
     endtask : run_phase
 
 endclass : pcie_top_test_base
 
 `endif
-
-// // Read sequence of the upper stream VIP
-// // 1. Setup Upstream
-// if (clp.get_arg_value("+SEQ_U=", seq_name_u)) begin
-//     // Override ONLY for the instance named "seq_u"
-//     uvm_factory::get().set_inst_override_by_name(
-//         "pcie_base_seq", seq_name_u, "uvm_test_top.seq_u" 
-//     );
-// end
-
-// // 2. Setup Downstream
-// if (clp.get_arg_value("+SEQ_D=", seq_name_d)) begin
-//     // Override ONLY for the instance named "seq_d"
-//     uvm_factory::get().set_inst_override_by_name(
-//         "pcie_base_seq", seq_name_d, "uvm_test_top.seq_d"
-//     );
-// end
-
-// we already created them in the sqr
-// Create sequences - The factory chooses based on the name argument
-// seq_u = pcie_base_seq::type_id::create("seq_u"); // Becomes SEQ_U type
-// seq_d = pcie_base_seq::type_id::create("seq_d"); // Becomes SEQ_D type
-
