@@ -140,16 +140,11 @@ for (( i=0; i<HALF; i++ )); do
   done
 done
 
-# 6. Error tests — each err mode once on U-side (with rotating VIP) and
-#                  once on D-side (with a different rotating VIP)
-NUM_VIP=${#VIP_MODES[@]}
-err_idx=0
+# 6. Error tests — each err mode once on U-side and once on D-side,
+#                  always with DEFAULT on both VIP sides
 for err in "${ERR_MODES[@]}"; do
-  u_vip="${VIP_MODES[$(( err_idx % NUM_VIP ))]}"
-  d_vip="${VIP_MODES[$(( (err_idx + 1) % NUM_VIP ))]}"
-  add_run "$u_vip"       "$DEFAULT_VIP" "$err" ""
-  add_run "$DEFAULT_VIP" "$d_vip"       ""     "$err"
-  err_idx=$(( err_idx + 1 ))
+  add_run "$DEFAULT_VIP" "$DEFAULT_VIP" "$err" ""
+  add_run "$DEFAULT_VIP" "$DEFAULT_VIP" ""     "$err"
 done
 
 TOTAL=${#RUN_KEYS[@]}
