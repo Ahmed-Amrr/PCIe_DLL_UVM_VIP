@@ -150,6 +150,13 @@ class pcie_top_test_base extends uvm_test;
         cfg.surprise_down_capable = (vip_mode == "surprise_down_capable_off") ? 0 : 1;
 
         // FC credit configuration — force 0 for infinite credit modes, random otherwise
+        cfg.local_fc_credits_register.hdr_credits [FC_COMPLETION] = $random();
+        cfg.local_fc_credits_register.data_credits[FC_COMPLETION] = $random();
+        cfg.local_fc_credits_register.hdr_credits [FC_POSTED]     = $random();
+        cfg.local_fc_credits_register.data_credits[FC_POSTED]     = $random();
+        cfg.local_fc_credits_register.hdr_credits [FC_NON_POSTED] = $random();
+        cfg.local_fc_credits_register.data_credits[FC_NON_POSTED] = $random();
+            
         if (vip_mode == "P_infinite_credits") begin
             cfg.local_fc_credits_register.hdr_credits [FC_POSTED] = 0;
             cfg.local_fc_credits_register.data_credits[FC_POSTED] = 0;
@@ -161,14 +168,6 @@ class pcie_top_test_base extends uvm_test;
         else if (vip_mode == "CPL_infinite_credits") begin
             cfg.local_fc_credits_register.hdr_credits [FC_COMPLETION] = 0;
             cfg.local_fc_credits_register.data_credits[FC_COMPLETION] = 0;
-        end
-        else begin
-            cfg.local_fc_credits_register.hdr_credits [FC_COMPLETION] = $random();
-            cfg.local_fc_credits_register.data_credits[FC_COMPLETION] = $random();
-            cfg.local_fc_credits_register.hdr_credits [FC_POSTED]     = $random();
-            cfg.local_fc_credits_register.data_credits[FC_POSTED]     = $random();
-            cfg.local_fc_credits_register.hdr_credits [FC_NON_POSTED] = $random();
-            cfg.local_fc_credits_register.data_credits[FC_NON_POSTED] = $random();
         end
     endfunction : configure_vip
 

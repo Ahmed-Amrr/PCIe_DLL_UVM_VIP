@@ -20,6 +20,7 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
     // Handles
     pcie_dllp_seq_item    seq_item_drv;
     pcie_vip_tx_sequencer sqr         ;
+    pcie_vip_config cfg;
 
     //==========================================================
     // Constructor
@@ -33,6 +34,9 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
     //==========================================================
     virtual function void build_phase(uvm_phase phase);
         super.build_phase(phase);
+        // Get the configuration object to access the configuration registers
+        if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG_ENV",cfg))
+          `uvm_fatal("build_phase","unable to get configuration object in sb")
     endfunction : build_phase
 
     //==========================================================
@@ -64,7 +68,7 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
 
             // drive DLLP and valid onto the interface
             lpif_vif.drv_cb.lp_data  <= seq_item_drv.dllp;
-            lpif_vif.drv_cb.lp_valid <= (sqr.state == DL_INACTIVE) ? 0 : 1;
+            lpif_vif.drv_cb.lp_valid <= (cfg.reset || !lpif_vif.pl_lnk_up) ? 0 : 1;
 
             @(lpif_vif.drv_cb);
 

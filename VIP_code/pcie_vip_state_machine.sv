@@ -168,6 +168,7 @@ class pcie_vip_state_machine extends uvm_component;
     // Function: state_transition
     // Processes the DLLP and decides our next state (FSM)
 	function void state_transition;
+		current_state = next_state;
 		case (current_state)
 			DL_INACTIVE	:	inactive_state();
 			DL_FEATURE	: 	feature_state();
@@ -177,8 +178,6 @@ class pcie_vip_state_machine extends uvm_component;
 
 			default 	:	inactive_state();
 		endcase
-
-		current_state = next_state;
 	endfunction : state_transition
 
 

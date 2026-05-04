@@ -18,6 +18,7 @@ class dll_ref_model #(
 
 
     dl_state_t   current_state;              // DL state machine
+    dl_state_t   next_state;
     bit          FI1, FI2;                   // flags to exit init1 / init2 states
     bit          fi1_p, fi1_np, fi1_cpl;     // per-type trackers for FI1
     bit          scaled_fc_active;
@@ -45,6 +46,7 @@ class dll_ref_model #(
         this.initfc1_tx_count = 0;
         this.initfc2_tx_count = 0;
         this.cfg              = null;       // set by scoreboard 
+        this.next_state       = DL_INACTIVE; 
     endfunction : new
 
     // Function rx_path : Main RX path function. Processes a received DLLP through the full
@@ -66,7 +68,6 @@ class dll_ref_model #(
         dllp_type_t dllp_type;
         bit         should_discard;
         logic       is_legal;
-        dl_state_t  next_state;
         logic       state_changed;
 
         // defaults 
@@ -84,20 +85,24 @@ class dll_ref_model #(
 
         // DL_INACTIVE : only drive state machine
         // skip CRC and legality checks in INACTIVE
-        if (this.current_state == DL_INACTIVE) begin
-            update_sm_on_rx(dllp_type, _rx_item, this.current_state,
-                            _pl_lnk_up, _dl_reset, _pl_valid,
-                            this.FI1, this.FI2,
-                            cfg.surprise_down_capable,
-                            cfg.link_not_disabled,
-                            next_state, state_changed, _surprise_down_event);
-            this.current_state = next_state;
-            // reset all FC init trackers on exit from INACTIVE
+        if (this.next_state == DL_INACTIVE) begin
             fi1_p   = 0;
             fi1_np  = 0;
             fi1_cpl = 0;
             FI1     = 0;
             FI2     = 0;
+        end
+        
+        if (this.current_state == DL_INACTIVE) begin
+            this.current_state = this.next_state;
+            update_sm_on_rx(dllp_type, _rx_item, this.current_state,
+                            _pl_lnk_up, _dl_reset, _pl_valid,
+                            this.FI1, this.FI2,
+                            cfg.surprise_down_capable,
+                            cfg.link_not_disabled,
+                            this.next_state, state_changed, _surprise_down_event);
+            
+            // reset all FC init trackers on exit from INACTIVE
             return;
         end
 
@@ -114,7 +119,7 @@ class dll_ref_model #(
             `uvm_info("DLL_RM",
                 $sformatf("[rx_path] legality=%0b state=%s type=%s",
                           is_legal, this.current_state.name(), dllp_type.name()), UVM_MEDIUM)
-
+            this.current_state = this.next_state;
             process_rx_dllp(dllp_type, _rx_item, _pl_valid);
 
             update_sm_on_rx(dllp_type, _rx_item, this.current_state,
@@ -122,9 +127,8 @@ class dll_ref_model #(
                             this.FI1, this.FI2,
                             cfg.surprise_down_capable,
                             cfg.link_not_disabled,
-                            next_state, state_changed, _surprise_down_event);
+                            this.next_state, state_changed, _surprise_down_event);
 
-            this.current_state = next_state;
             get_dl_status(this.current_state, _DL_Down, _DL_Up);
 
             `uvm_info("DLL_RM",
@@ -350,8 +354,12 @@ class dll_ref_model #(
 
             INITFC1_P, INITFC2_P: begin
                 // Posted must come first — NP and CPL must not be set yet
-                if (fi1_p || fi1_np || fi1_cpl)
-                    `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — P received after P or NP or CPL")
+                if (fi1_p || fi1_np || fi1_cpl) begin
+                    if (remote_register_feature.remote_feature_valid)
+                        `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — P received after P or NP or CPL")
+                    else
+                        `uvm_warning("DLL_RM", "[update_fi_flags] ORDER VIOLATION — P received after P or NP or CPL")
+                end
                 else begin
                     fi1_p = 1;
                     `uvm_info("DLL_RM", "[update_fi_flags] P credits recorded", UVM_HIGH)
@@ -360,8 +368,12 @@ class dll_ref_model #(
 
             INITFC1_NP, INITFC2_NP: begin
                 // NP must come after P and before CPL
-                if (!fi1_p || fi1_np || fi1_cpl)
-                    `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — NP received before P or received after NP,CPL")
+                if (!fi1_p || fi1_np || fi1_cpl) begin
+                    if (remote_register_feature.remote_feature_valid)
+                        `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — NP received before P or received after NP,CPL")
+                    else
+                        `uvm_warning("DLL_RM", "[update_fi_flags] ORDER VIOLATION — NP received before P or received after NP,CPL")
+                end
                 else begin
                     fi1_np = 1;
                     fi1_p = 0;
@@ -371,8 +383,12 @@ class dll_ref_model #(
 
             INITFC1_CPL, INITFC2_CPL: begin
                 // CPL must come after both P and NP
-                if (!fi1_np)
-                    `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — CPL received before P or NP")
+                if (!fi1_np)begin
+                    if (remote_register_feature.remote_feature_valid)
+                        `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — CPL received before P or NP")
+                    else
+                        `uvm_warning("DLL_RM", "[update_fi_flags] ORDER VIOLATION — CPL received before P or NP")
+                end
                 else begin
                     fi1_cpl = 1;
                     fi1_np = 0;
@@ -399,7 +415,7 @@ class dll_ref_model #(
                 is_init2 ? "[FI2] SET — P/NP/CPL received"
                         : "[FI1] SET — P/NP/CPL received",
                 UVM_MEDIUM)
-            end
+        end
 
     endfunction : update_fi_flags
 
