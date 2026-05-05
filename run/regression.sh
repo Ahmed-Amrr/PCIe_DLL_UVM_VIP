@@ -52,8 +52,8 @@ if [[ -n "$INSPECT_RUN" ]]; then
   echo "--- Error / Fatal lines ---"
   grep -niE 'UVM_ERROR|UVM_FATAL' "$log" | grep -v ':\s*0$' || echo "  (none)"
   echo ""
-  echo "--- Simulator fatal errors (Error-[...]) ---"
-  grep -nE 'Error-\[' "$log" || echo "  (none)"
+  echo "--- Simulator fatal errors (Error-[...] / Fatal-[...]) ---"
+  grep -nE '^(Error|Fatal)-\[' "$log" || echo "  (none)"
   echo ""
   exit 0
 fi
@@ -211,22 +211,29 @@ expects_pass_with_err() {
 # ─────────────────────────────────────────────────────────────────────────────
 # Parse a simulation log for UVM errors / fatal messages
 # Returns 0 if errors found, 1 if clean
-#
-# Also detects simulator-level crashes (e.g. FCIBH illegal bin hit) that abort
-# the sim before the UVM summary is ever written.
+# Prints a short reason string to stdout when errors are found:
+#   "ILLEGAL_BIN"  — sim aborted due to illegal bin hit (FCIBH)
+#   "SIM_CRASH"    — sim aborted with another Error-[...] / Fatal-[...] tag
+#   "UVM_ERRORS"   — UVM_ERROR or UVM_FATAL count > 0
 # ─────────────────────────────────────────────────────────────────────────────
 log_has_errors() {
   local log="$1"
   if [[ ! -f "$log" ]]; then
     echo "  WARNING: log not found: $log" >&2
+    echo "NO_LOG"
     return 0   # no log = something went wrong = treat as error
   fi
 
   # Detect simulator abort before UVM summary is written.
   # Anchored to line-start to avoid matching mid-line DUT/testbench prints.
-  # Covers both "Error-[...]" (e.g. FCIBH) and "Fatal-[...]" simulator messages.
+  if grep -qE '^(Error|Fatal)-\[FCIBH\]' "$log"; then
+    echo "ILLEGAL_BIN"
+    return 0
+  fi
+
   if grep -qE '^(Error|Fatal)-\[' "$log"; then
-    return 0   # treat as error — sim crashed before UVM summary
+    echo "SIM_CRASH"
+    return 0
   fi
 
   # Check UVM_ERROR / UVM_FATAL counts — match "UVM_ERROR : <N>" where N > 0
@@ -234,7 +241,11 @@ log_has_errors() {
   err_count=$(grep -iE 'UVM_ERROR\s*:\s*[0-9]+' "$log"   | grep -oE '[0-9]+$' | awk '{s+=$1} END{print s+0}')
   fatal_count=$(grep -iE 'UVM_FATAL\s*:\s*[0-9]+' "$log" | grep -oE '[0-9]+$' | awk '{s+=$1} END{print s+0}')
 
-  [[ "$err_count" -gt 0 || "$fatal_count" -gt 0 ]] && return 0
+  if [[ "$err_count" -gt 0 || "$fatal_count" -gt 0 ]]; then
+    echo "UVM_ERRORS"
+    return 0
+  fi
+
   return 1
 }
 
@@ -288,20 +299,22 @@ run_one() {
   echo "  [DBG] expecting log at: $log" >&2
 
   local status
+  local reason
   if [[ "$run_ok" -eq 0 ]]; then
     # make run itself failed — check log for extra context but always fail
     # unless it was an expected-error run and the log confirms UVM errors
-    if log_has_errors "$log" && [[ "$expected_err" -eq 1 ]]; then
-      status="XFAIL"
+    reason=$(log_has_errors "$log")
+    if [[ -n "$reason" && "$expected_err" -eq 1 ]]; then
+      status="XFAIL:${reason}"
     else
-      status="FAIL"   # sim didn't exit cleanly → real failure regardless of log
+      status="FAIL:${reason:-SIM_EXIT}"
     fi
-  elif log_has_errors "$log"; then
+  elif reason=$(log_has_errors "$log"); then
     # make run exited cleanly but log contains errors
     if [[ "$expected_err" -eq 1 ]]; then
-      status="XFAIL"
+      status="XFAIL:${reason}"
     else
-      status="FAIL"
+      status="FAIL:${reason}"
     fi
   else
     # make run exited cleanly and log is clean
@@ -419,12 +432,25 @@ PASS_UNEXP_COUNT=0
 
 for entry in "${RESULTS[@]}"; do
   IFS='|' read -r label status <<< "$entry"
+  local_reason=""
+  [[ "$status" == *:* ]] && local_reason="${status#*:}" && status="${status%%:*}"
+
+  # Human-readable reason suffix
+  reason_str=""
+  case "$local_reason" in
+    ILLEGAL_BIN) reason_str=" ← illegal bin hit (FCIBH)" ;;
+    SIM_CRASH)   reason_str=" ← simulator crash (Error/Fatal-[...])" ;;
+    UVM_ERRORS)  reason_str=" ← UVM_ERROR / UVM_FATAL in log" ;;
+    SIM_EXIT)    reason_str=" ← make run returned non-zero, no log" ;;
+    NO_LOG)      reason_str=" ← log not found" ;;
+  esac
+
   case "$status" in
     PASS)        pass  "$(printf '%-90s' "$label")  PASSED"
                  PASS_COUNT=$((PASS_COUNT+1)) ;;
-    XFAIL)       xfail "$(printf '%-90s' "$label")  FAILED (expected)"
+    XFAIL)       xfail "$(printf '%-90s' "$label")  FAILED (expected)${reason_str}"
                  XFAIL_COUNT=$((XFAIL_COUNT+1)) ;;
-    FAIL)        fail  "$(printf '%-90s' "$label")  FAILED ← UNEXPECTED"
+    FAIL)        fail  "$(printf '%-90s' "$label")  FAILED ← UNEXPECTED${reason_str}"
                  FAIL_COUNT=$((FAIL_COUNT+1)) ;;
     PASS_UNEXP)  echo -e "  ${YELLOW}[PASS-UNEXP]${RESET} $(printf '%-90s' "$label")  PASSED UNEXPECTEDLY (error injected but no UVM errors found)"
                  PASS_UNEXP_COUNT=$((PASS_UNEXP_COUNT+1)) ;;
