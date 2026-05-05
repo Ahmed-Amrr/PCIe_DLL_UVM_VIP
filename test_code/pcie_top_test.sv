@@ -247,7 +247,7 @@ class pcie_top_test_base extends uvm_test;
             uvm_callbacks #(pcie_base_seq, pcie_seq_cb)::add(null, us_seq_cb);
 
         if (ds_drv_cb != null)
-            uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.u_vip.tx_agent.drv, ds_drv_cb);
+            uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.d_vip.tx_agent.drv, ds_drv_cb);
         else if (ds_seq_cb != null)
             uvm_callbacks #(pcie_base_seq, pcie_seq_cb)::add(null, ds_seq_cb);
 
@@ -257,7 +257,7 @@ class pcie_top_test_base extends uvm_test;
         if (us_drv_cb != null)
             uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::delete(top_env.u_vip.tx_agent.drv, us_drv_cb);
         if (ds_drv_cb != null)
-            uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::delete(top_env.u_vip.tx_agent.drv, ds_drv_cb);
+            uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::delete(top_env.d_vip.tx_agent.drv, ds_drv_cb);
 
         #5000;
         phase.drop_objection(this);
