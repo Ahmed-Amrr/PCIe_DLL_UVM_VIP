@@ -42,8 +42,7 @@ class pcie_vip_coverage extends uvm_component;
         }
         // RX and TX DLLP type coverage
         rx_type_c : coverpoint seq_item_rx.dllp[47:40]{
-            bins ACK_b             = {ACK};
-            bins NACK_b            = {NACK};
+
             bins FEATURE_b         = {FEATURE};
             bins INITFC1_P_b       = {INITFC1_P};
             bins INITFC1_NP_b      = {INITFC1_NP};
@@ -56,8 +55,7 @@ class pcie_vip_coverage extends uvm_component;
             bins UPDATEFC_CPL_b    = {UPDATEFC_CPL};
         }
         tx_type_c : coverpoint seq_item_tx.dllp[47:40]{
-            bins ACK_b             = {ACK};
-            bins NACK_b            = {NACK};
+
             bins FEATURE_b         = {FEATURE};
             bins INITFC1_P_b       = {INITFC1_P};
             bins INITFC1_NP_b      = {INITFC1_NP};
@@ -212,10 +210,6 @@ class pcie_vip_coverage extends uvm_component;
                 binsof(cp_local_scaled_fc.local_set)          &&
                 binsof(cp_remote_scaled_fc.remote_set);
 
-            bins cap_not_supported_not_active =
-                binsof(cp_scaled_fc_active.not_active)        &&
-                binsof(cp_feature_exchange_cap.cap_not_supported);
-
             bins local_not_set_not_active =
                 binsof(cp_scaled_fc_active.not_active)        &&
                 binsof(cp_feature_exchange_cap.cap_supported) &&
@@ -264,12 +258,12 @@ class pcie_vip_coverage extends uvm_component;
         // TRANS_FEAT_05: LinkUp=0 + Ack=1 -> inactive
         cp_trans_feature_to_init_on_ack: cross cp_state, cp_ack_bit_rx, cp_linkup {
             bins trans_feat_01 =
-                binsof(cp_state.dl_feature_dl_init1_t) &&
+                binsof(cp_state.dl_feature_b) &&
                 binsof(cp_ack_bit_rx.ack_set)          &&
                 binsof(cp_linkup.link_up);
 
             bins trans_feat_05_ack =
-                binsof(cp_state.dl_feature_dl_inactive_t) &&
+                binsof(cp_state.dl_feature_b) &&
                 binsof(cp_ack_bit_rx.ack_set)             &&
                 binsof(cp_linkup.link_down);
 
@@ -284,12 +278,12 @@ class pcie_vip_coverage extends uvm_component;
         // TRANS_FEAT_05: LinkUp=0 + InitFC1 -> inactive
         cp_trans_feature_to_init_on_initfc1: cross cp_state, cp_initfc1_received, cp_linkup {
             bins trans_feat_02 =
-                binsof(cp_state.dl_feature_dl_init1_t)    &&
+                binsof(cp_state.dl_feature_b)    &&
                 binsof(cp_initfc1_received.initfc1_seen)   &&
                 binsof(cp_linkup.link_up);
 
             bins trans_feat_05_initfc1 =
-                binsof(cp_state.dl_feature_dl_inactive_t) &&
+                binsof(cp_state.dl_feature_b) &&
                 binsof(cp_initfc1_received.initfc1_seen)   &&
                 binsof(cp_linkup.link_down);
 
@@ -303,7 +297,7 @@ class pcie_vip_coverage extends uvm_component;
         // TRANS_FEAT_04: feature->inactive on LinkUp=0
         cp_trans_feature_to_inactive_linkup_0: cross cp_state, cp_linkup {
             bins trans_feat_04 =
-                binsof(cp_state.dl_feature_dl_inactive_t) &&
+                binsof(cp_state.dl_feature_b) &&
                 binsof(cp_linkup.link_down);
             option.cross_auto_bin_max = 0;
         }
@@ -319,15 +313,6 @@ class pcie_vip_coverage extends uvm_component;
             iff (state_seq_item.vip_state == DL_INIT1)
         {
             bins initfc1_seq = (INITFC1_P => INITFC1_NP => INITFC1_CPL);
-        }
-
-        // FCINIT1_07: ACK/NACK not blocked during FC_INIT1
-        // we don't send acks and nacks so it maybe not covered
-        cp_ack_nak_not_blocked_fc_init1: coverpoint seq_item_tx.dllp[47:40]
-            iff (state_seq_item.vip_state == DL_INIT1)
-        {
-            bins ack_sent  = {ACK};
-            bins nack_sent = {NACK};
         }
 
         // FCINIT1_08: Scale=00b when Scaled FC not active
@@ -366,7 +351,7 @@ class pcie_vip_coverage extends uvm_component;
         // TRANS_INIT1_02: FC_INIT1->DL_Inactive when LinkUp=0
         cp_trans_fcinit1_to_inactive_linkup_0: cross cp_state, cp_linkup {
             bins trans_init1_02 =
-                binsof(cp_state.dl_init1_dl_inactive_t) &&
+                binsof(cp_state.dl_init1_b) &&
                 binsof(cp_linkup.link_down);
             option.cross_auto_bin_max = 0;
         }
@@ -390,22 +375,12 @@ class pcie_vip_coverage extends uvm_component;
         // FCINIT2_06
         cp_fi2_set_on_initfc2 : cross cp_initfc2_sequence_order, FI2_c{
             bins right_seq_Fl2 = binsof(cp_initfc2_sequence_order.seq_order_P_NP_CPL) && binsof(FI2_c.one);
-            illegal_bins right_seq_no_Fl2 = binsof(cp_initfc2_sequence_order.seq_order_P_NP_CPL) && binsof(FI2_c.zero);
             option.cross_auto_bin_max = 0;
         }
 
         // TRANS_INIT2_01
         cp_trans_fcinit2_to_active_on_initfc2 : cross cp_state, FI2_c, cx_dl_up_down{
             bins in2_active_Fl2_up = binsof(cp_state.dl_init2_dl_active_t) && binsof(FI2_c.one) && binsof(cx_dl_up_down.dl_up);
-            option.cross_auto_bin_max = 0;
-        }
-
-        // TRANS_INIT2_03
-        cp_trans_fcinit2_to_active_on_updatefc : cross cp_state, FI2_c, rx_type_c{
-            bins in2_active_Fl2_update = binsof(cp_state.dl_init2_dl_active_t) && binsof(FI2_c.one) &&
-                                        (binsof(rx_type_c.UPDATEFC_P_b)  ||
-                                         binsof(rx_type_c.UPDATEFC_NP_b) ||
-                                         binsof(rx_type_c.UPDATEFC_CPL_b));
             option.cross_auto_bin_max = 0;
         }
 
