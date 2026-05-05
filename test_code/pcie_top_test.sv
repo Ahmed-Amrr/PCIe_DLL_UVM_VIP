@@ -71,6 +71,16 @@ class pcie_top_test_base extends uvm_test;
                 `uvm_info("TEST_CFG", $sformatf("Creating UpdateFC scale error callback: %s", name), UVM_LOW)
                 return cb;
             end
+            "fcupdate_init2_cb" : begin
+                pcie_fcupdate_init2_cb cb = pcie_fcupdate_init2_cb::type_id::create(name);
+                `uvm_info("TEST_CFG", $sformatf("Creating UpdateFC init2 callback: %s", name), UVM_LOW)
+                return cb;
+            end
+            "fc2_init1_cb" : begin
+                pcie_fc2_init1_cb cb = pcie_fc2_init1_cb::type_id::create(name);
+                `uvm_info("TEST_CFG", $sformatf("Creating fc2_dllp init1 callback: %s", name), UVM_LOW)
+                return cb;
+            end
             default : begin
                 `uvm_info("TEST_CFG", $sformatf("No driver error injection for mode: %s", err_mode), UVM_LOW)
                 return null;
@@ -192,12 +202,12 @@ class pcie_top_test_base extends uvm_test;
             `uvm_info("TEST_CFG", $sformatf("Down error mode: %s",  down_err_mode), UVM_LOW)
 
         // Create driver-level callbacks for applicable error modes
-        if (up_err_mode   inside {"updatefc_scale_err", "crc_err", "dllp_type_err", "feature_err", "feature_ack_bit_err"})
+        if (up_err_mode   inside {"updatefc_scale_err", "crc_err", "dllp_type_err", "feature_err", "feature_ack_bit_err", "fc2_init1_cb", "fcupdate_init2_cb"})
             us_drv_cb = create_driver_callback(up_err_mode,   "us_drv_cb");
         else if (up_err_mode inside {"dropped_fc_err", "out_of_order_fc_err"})
             us_seq_cb = create_seq_callback(up_err_mode,      "us_seq_cb");
 
-        if (down_err_mode inside {"updatefc_scale_err", "crc_err", "dllp_type_err", "feature_err", "feature_ack_bit_err"})
+        if (down_err_mode inside {"updatefc_scale_err", "crc_err", "dllp_type_err", "feature_err", "feature_ack_bit_err",  "fc2_init1_cb", "fcupdate_init2_cb"})
             ds_drv_cb = create_driver_callback(down_err_mode, "ds_drv_cb");
         else if (down_err_mode inside {"dropped_fc_err", "out_of_order_fc_err"})
             ds_seq_cb = create_seq_callback(down_err_mode,    "ds_seq_cb");
@@ -238,7 +248,7 @@ class pcie_top_test_base extends uvm_test;
         super.run_phase(phase);
         phase.raise_objection(this);
 
-        #5000;
+        #4000;
 
         // Register callbacks — null check ensures no injection when not needed
         if (us_drv_cb != null)
@@ -251,7 +261,7 @@ class pcie_top_test_base extends uvm_test;
         else if (ds_seq_cb != null)
             uvm_callbacks #(pcie_base_seq, pcie_seq_cb)::add(null, ds_seq_cb);
 
-        #5000;
+        #4000;
 
         // Deregister driver callbacks after injection window
         if (us_drv_cb != null)
@@ -259,7 +269,7 @@ class pcie_top_test_base extends uvm_test;
         if (ds_drv_cb != null)
             uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::delete(top_env.d_vip.tx_agent.drv, ds_drv_cb);
 
-        #5000;
+        #4000;
         phase.drop_objection(this);
     endtask : run_phase
 

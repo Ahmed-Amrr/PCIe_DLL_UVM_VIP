@@ -755,5 +755,68 @@ interface passive_interface (input logic lclk);
     assert property (p_rx_dllp_known_when_valid)
         else `uvm_error("ASSERT_LPIF_03", "DLLP_LPIF_03: pl_valid = 1 but pl_data is unknown");
 
+    // ============================================================
+    // DLLP TYPE LEGALITY ASSERTIONS
+    // ============================================================
+    // ============================================================
+    // TYPE_LEGAL_06 : In DL_FEATURE, only FEATURE is legal TX DLLP
+    // ============================================================
+    property p_tx_dllp_type_legal_feature;
+        @(posedge lclk) disable iff (reset || !lp_valid || !pl_lnk_up)
+        (state == DL_FEATURE) |=>
+        (tx_is_feature);
+    endproperty
+
+    assert_type_legal_06_tx: assert property (p_tx_dllp_type_legal_feature)
+        else `uvm_error("ASSERT_TYPE_LEGAL_06",
+            $sformatf("TYPE_LEGAL_06_TX: Illegal TX DLLP type 0x%0h in DL_FEATURE state (expected FEATURE)", 
+                tx_dllp[47:40]))
+    cov_type_legal_06_tx: cover property (p_tx_dllp_type_legal_feature);
+
+    // ============================================================
+    // TYPE_LEGAL_08 : In DL_INIT1, only InitFC1 types are legal TX DLLPs
+    // ============================================================
+    property p_tx_dllp_type_legal_init1;
+        @(posedge lclk) disable iff (reset || !lp_valid || !pl_lnk_up)
+        (state == DL_INIT1) |=>
+        (tx_is_initfc1);
+    endproperty
+
+    assert_type_legal_08_tx: assert property (p_tx_dllp_type_legal_init1)
+        else `uvm_error("ASSERT_TYPE_LEGAL_08",
+            $sformatf("TYPE_LEGAL_08_TX: Illegal TX DLLP type 0x%0h in DL_INIT1 state (expected INITFC1)", 
+                tx_dllp[47:40]))
+    cov_type_legal_08_tx: cover property (p_tx_dllp_type_legal_init1);
+
+    // ============================================================
+    // TYPE_LEGAL_09 : In DL_INIT2, only InitFC2  types are legal TX DLLPs
+    // ============================================================
+    property p_tx_dllp_type_legal_init2;
+        @(posedge lclk) disable iff (reset || !lp_valid || !pl_lnk_up)
+        (state == DL_INIT2) |=>
+        (tx_is_initfc2);
+    endproperty
+
+    assert_type_legal_09_tx: assert property (p_tx_dllp_type_legal_init2)
+        else `uvm_error("ASSERT_TYPE_LEGAL_09",
+            $sformatf("TYPE_LEGAL_09_TX: Illegal TX DLLP type 0x%0h in DL_INIT2 state (expected INITFC2)", 
+                tx_dllp[47:40]))
+    cov_type_legal_09_tx: cover property (p_tx_dllp_type_legal_init2);
+
+    // ============================================================
+    // TYPE_LEGAL_10 : In DL_ACTIVE, only UpdateFC types are legal TX DLLPs (besides ACK/NACK)
+    // ============================================================
+    property p_tx_dllp_type_legal_active;
+        @(posedge lclk) disable iff (reset || !lp_valid || !pl_lnk_up)
+        (state == DL_ACTIVE) |=>
+        (tx_dllp[47:40] inside {UPDATEFC_P, UPDATEFC_NP, UPDATEFC_CPL, ACK, NACK});
+    endproperty
+
+    assert_type_legal_10_tx: assert property (p_tx_dllp_type_legal_active)
+        else `uvm_error("ASSERT_TYPE_LEGAL_10",
+            $sformatf("TYPE_LEGAL_10_TX: Illegal TX DLLP type 0x%0h in DL_ACTIVE state (expected UPDATEFC)", 
+                tx_dllp[47:40]))
+    cov_type_legal_10_tx: cover property (p_tx_dllp_type_legal_active);
+
 endinterface : passive_interface
 `endif

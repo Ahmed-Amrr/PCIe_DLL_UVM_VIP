@@ -92,16 +92,6 @@ class pcie_top_env extends uvm_env;
             assert(top_cfg.randomize());
             u_vip.cfg.reset = top_cfg.common_reset;
             d_vip.cfg.reset = top_cfg.common_reset;
-
-            ///////////////for vcs/////////////////////
-            u_vip.passive_driver.state_ref = u_vip.scoreboard.ref_model.current_state;
-            d_vip.passive_driver.state_ref = d_vip.scoreboard.ref_model.current_state;
-
-            u_vip.passive_driver.FI1_ref = u_vip.scoreboard.ref_model.FI1;
-            d_vip.passive_driver.FI1_ref = d_vip.scoreboard.ref_model.FI1;
-
-            u_vip.passive_driver.FI2_ref = u_vip.scoreboard.ref_model.FI2;
-            d_vip.passive_driver.FI2_ref = d_vip.scoreboard.ref_model.FI2;
         end
     endtask : run_phase
 

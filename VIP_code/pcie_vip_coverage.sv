@@ -384,6 +384,15 @@ class pcie_vip_coverage extends uvm_component;
             option.cross_auto_bin_max = 0;
         }
 
+	// TRANS_INIT2_03
+        cp_trans_fcinit2_to_active_on_updatefc : cross cp_state, FI2_c, rx_type_c{
+            bins in2_active_Fl2_update = binsof(cp_state.dl_init2_dl_active_t) && binsof(FI2_c.one) &&
+                                        (binsof(rx_type_c.UPDATEFC_P_b)  ||
+                                         binsof(rx_type_c.UPDATEFC_NP_b) ||
+                                         binsof(rx_type_c.UPDATEFC_CPL_b));
+            option.cross_auto_bin_max = 0;
+        }
+
         // TRANS_INIT2_04
         cp_trans_fcinit2_to_inactive_linkup_0 : cross cp_state, cx_dl_up_down{
             bins in2_inactive_down = binsof(cp_state.dl_init2_dl_inactive_t) && binsof(cx_dl_up_down.dl_down);
@@ -437,3 +446,4 @@ class pcie_vip_coverage extends uvm_component;
 endclass : pcie_vip_coverage
 
 `endif
+

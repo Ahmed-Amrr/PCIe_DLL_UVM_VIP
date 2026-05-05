@@ -52,8 +52,7 @@ class pcie_active_seq extends pcie_base_seq;
             if (needs_updatefc(FC_COMPLETION))
                 send_updatefc(UPDATEFC_CPL, FC_COMPLETION);
 
-            assert(std::randomize(delay) with {delay > 0; delay < 34;});
-            #(delay);
+            #0;
         end
 
         `uvm_info(get_type_name(), "Active seq complete", UVM_MEDIUM)

@@ -104,7 +104,8 @@ package dll_pkg;
     `include "pcie_crc_err_cb.sv"
     `include "pcie_updateFC_scale_err_cb.sv"
     `include "pcie_vip_sequencer.sv"
-
+    `include "pcie_fc2_init1_cb.sv"
+    `include "pcie_fcupdate_init2_cb.sv"
 
     // =======================
     // 5) Drivers / Monitors / Agents / Sequencers
