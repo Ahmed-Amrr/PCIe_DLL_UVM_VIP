@@ -6,10 +6,6 @@ interface passive_interface (input logic lclk);
     import uvm_pkg::*;
     `include "uvm_macros.svh"
 
-    ///////////////////////vcs/////////////////////
-    dl_state_t   state_ref;              // DL state machine
-    bit          FI1_ref, FI2_ref;                   // flags to exit init1 / init2 states
-
     // DLLP buses 
     bit [47:0] tx_dllp;   // DLLP being transmitted by local side
     bit [47:0] rx_dllp;   // DLLP received from remote side
@@ -88,6 +84,11 @@ interface passive_interface (input logic lclk);
     logic [22:0] rx_feature_field;    // Feature supported bits from RX
     logic        tx_ack_bit;          // ACK bit in TX Feature DLLP
     logic        rx_ack_bit;          // ACK bit in RX Feature DLLP
+
+    //These flags used for getting DLLP with INITFC1 type in order
+    bit init1_p_f;              //Posetd
+    bit init1_np_f;             //Non-Posted
+    bit init1_cpl_f;            //Compeletion       
 
     // ============================================================
     // Continuous assignments — decode DLLPs
@@ -253,7 +254,7 @@ interface passive_interface (input logic lclk);
     // ============================================================
     property p_tx_field_matches_local;
         @(posedge lclk) disable iff (reset || !pl_valid)
-        tx_is_feature |->
+        (tx_is_feature && state==DL_FEATURE) |->
         (tx_feature_field == local_register_feature.local_feature_supported);
     endproperty
 
@@ -282,22 +283,22 @@ interface passive_interface (input logic lclk);
     // FEATURE_06/07 : On first received Feature DLLP (valid=0),
     //                 remote_feature_supported must be recorded and valid set next cycle
     // ============================================================
-    // property p_remote_field_recorded_on_first_dllp;
-    //     @(posedge lclk) disable iff (reset || !pl_lnk_up)
-    //     // Trigger: first Feature DLLP arrives when valid is still clear
-    //     (rx_is_feature && !$past(remote_register_feature.remote_feature_valid) && (state==DL_FEATURE) && pl_valid)
-    //     // Next cycle: supported field updated and valid set
-    //     |=> ((remote_register_feature.remote_feature_supported == (rx_feature_field)) &&
-    //          (remote_register_feature.remote_feature_valid == 1));
-    // endproperty
+    property p_remote_field_recorded_on_first_dllp;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up)
+        // Trigger: first Feature DLLP arrives when valid is still clear
+        (rx_is_feature && !$past(remote_register_feature.remote_feature_valid) && (state==DL_FEATURE) && ($past(state)!=DL_INACTIVE) && pl_valid)
+        // Next cycle: supported field updated and valid set
+        |=> ((remote_register_feature.remote_feature_supported == (rx_feature_field)) &&
+             (remote_register_feature.remote_feature_valid == 1));
+    endproperty
 
-    // assert_feature_06_07: assert property (p_remote_field_recorded_on_first_dllp)
-    //     else `uvm_error("ASSERT_FEATURE_06_07",
-    //         $sformatf("FEATURE_06_07: remote_feature_supported not updated on first DLLP. Expected 0x%0h got 0x%0h, valid=0x%0h",
-    //             (rx_feature_field),
-    //             remote_register_feature.remote_feature_supported,
-    //             remote_register_feature.remote_feature_valid))
-    // cov_feature_06_07: cover property (p_remote_field_recorded_on_first_dllp);
+    assert_feature_06_07: assert property (p_remote_field_recorded_on_first_dllp)
+        else `uvm_error("ASSERT_FEATURE_06_07",
+            $sformatf("FEATURE_06_07: remote_feature_supported not updated on first DLLP. Expected 0x%0h got 0x%0h, valid=0x%0h",
+                (rx_feature_field),
+                remote_register_feature.remote_feature_supported,
+                remote_register_feature.remote_feature_valid))
+    cov_feature_06_07: cover property (p_remote_field_recorded_on_first_dllp);
 
     // ============================================================
     // FEATURE_08 : After valid=1, remote_feature_supported must NOT change on subsequent Feature DLLPs
@@ -361,6 +362,7 @@ interface passive_interface (input logic lclk);
     property p_feature_to_init_on_initfc1;
         @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
         (state == DL_FEATURE &&
+         $past(state) != DL_INACTIVE &&
          rx_dllp[47:40] == INITFC1_P)
         |=> (state == DL_INIT1);
     endproperty
@@ -457,7 +459,7 @@ interface passive_interface (input logic lclk);
     // Posted credits (P type) recorded from hdr[37:30] and data[27:16]
     property p_initfc_p_recorded;
         @(posedge lclk) disable iff (reset || !pl_valid)
-        (state == DL_INIT1 && (rx_is_initfc1_p || rx_is_initfc2_p))
+        (state == DL_INIT1 && (rx_is_initfc1_p || rx_is_initfc2_p) && init1_p_f)
         |=> (remote_fc_credits_register.hdr_credits[FC_POSTED]  == $past(rx_dllp[37:30]) &&
              remote_fc_credits_register.data_credits[FC_POSTED] == $past(rx_dllp[27:16]));
     endproperty
@@ -465,7 +467,7 @@ interface passive_interface (input logic lclk);
     // Non-Posted credits (NP type)
     property p_initfc_np_recorded;
         @(posedge lclk) disable iff (reset || !pl_valid)
-        (state == DL_INIT1 && (rx_is_initfc1_np || rx_is_initfc2_np))
+        (state == DL_INIT1 && (rx_is_initfc1_np || rx_is_initfc2_np) && init1_np_f)
         |=> (remote_fc_credits_register.hdr_credits[FC_NON_POSTED]  == $past(rx_dllp[37:30]) &&
              remote_fc_credits_register.data_credits[FC_NON_POSTED] == $past(rx_dllp[27:16]));
     endproperty
@@ -536,19 +538,19 @@ interface passive_interface (input logic lclk);
     // fi1_flag set after receiving InitFC1 P -> NP -> CPL in DL_INIT1
     property p_fi1_set_after_P_NP_CPL_init1;
         @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
-        (state == DL_INIT1 && rx_is_initfc1_p)
+        (state == DL_INIT1 && rx_is_initfc1_p && ($past(state)!=DL_INACTIVE))
         |=> (state == DL_INIT1 && rx_is_initfc1_np)
-        |=> (state == DL_INIT2 && rx_is_initfc1_cpl)
-        |-> (fi1_flag)
+        |=> (state == DL_INIT1 && rx_is_initfc1_cpl)
+        |-> fi1_flag
     endproperty
 
     // fi1_flag set after receiving InitFC2 P -> NP -> CPL while still in DL_INIT1
     property p_fi1_set_after_P_NP_CPL_init2;
         @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
-        (state == DL_INIT1 && rx_is_initfc2_p)
+        (state == DL_INIT1 && rx_is_initfc2_p && ($past(state)!=DL_INACTIVE))
         |=> (state == DL_INIT1 && rx_is_initfc2_np)
-        |=> (state == DL_INIT2 && rx_is_initfc2_cpl)
-        |-> (fi1_flag)
+        |=> (state == DL_INIT1 && rx_is_initfc2_cpl)
+        |-> fi1_flag
     endproperty
 
     assert_fcinit1_12_initfc1: assert property (p_fi1_set_after_P_NP_CPL_init1)
@@ -607,7 +609,7 @@ interface passive_interface (input logic lclk);
         @(posedge lclk) disable iff (reset || !pl_valid)
         (state == DL_INIT2 && (rx_is_initfc1 || rx_is_initfc2))
         // All four credit/scale fields must remain stable
-        |=> (remote_fc_credits_register.hdr_credits  == $past(remote_fc_credits_register.hdr_credits)  &&
+        |-> (remote_fc_credits_register.hdr_credits  == $past(remote_fc_credits_register.hdr_credits)  &&
              remote_fc_credits_register.data_credits == $past(remote_fc_credits_register.data_credits) &&
              remote_fc_credits_register.hdr_scale    == $past(remote_fc_credits_register.hdr_scale)    &&
              remote_fc_credits_register.data_scale   == $past(remote_fc_credits_register.data_scale));

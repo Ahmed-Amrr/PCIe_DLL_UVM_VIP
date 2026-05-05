@@ -27,10 +27,6 @@ class pcie_feature_sequence extends pcie_base_seq;
         `uvm_info(get_type_name(), "Starting Feature Exchange Sequence", UVM_LOW)
 
         while (p_sequencer.state == DL_FEATURE) begin
- 
-            // Enable feature exchange before sending
-            cfg.feature_exchange_cap                           = 1;
-            cfg.local_register_feature.feature_exchange_enable = 1;
 
             send_feat_dllp(FEATURE, item);
 

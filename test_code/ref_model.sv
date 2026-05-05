@@ -82,33 +82,26 @@ class dll_ref_model #(
 
         // decode DLLP type 
         dllp_type = get_dllp_type(_rx_item);
+        this.current_state = this.next_state;
+
+        if (_dl_reset || !_pl_lnk_up) begin
+            this.next_state = DL_INACTIVE;
+        end
 
         // DL_INACTIVE : only drive state machine
         // skip CRC and legality checks in INACTIVE
-        if (this.next_state == DL_INACTIVE) begin
+        if (this.current_state == DL_INACTIVE) begin
             fi1_p   = 0;
             fi1_np  = 0;
             fi1_cpl = 0;
             FI1     = 0;
             FI2     = 0;
         end
-        
-        if (this.current_state == DL_INACTIVE) begin
-            this.current_state = this.next_state;
-            update_sm_on_rx(dllp_type, _rx_item, this.current_state,
-                            _pl_lnk_up, _dl_reset, _pl_valid,
-                            this.FI1, this.FI2,
-                            cfg.surprise_down_capable,
-                            cfg.link_not_disabled,
-                            this.next_state, state_changed, _surprise_down_event);
-            
-            // reset all FC init trackers on exit from INACTIVE
-            return;
-        end
 
-        // CRC verification 
+         // CRC verification 
         should_discard = verify_rx_crc(_rx_item);
-        if (should_discard) begin
+        if (should_discard && (this.next_state != DL_INACTIVE)) begin
+            get_dl_status(this.current_state, _DL_Down, _DL_Up);
             `uvm_error("DLL_RM",
                 $sformatf("[rx_path] CRC discard: state=%s type=%s pl_lnk_up=%0b reset=%0b dllp=0x%012h",
                           this.current_state.name(), dllp_type.name(), _pl_lnk_up, _dl_reset, _rx_item))
@@ -119,8 +112,8 @@ class dll_ref_model #(
             `uvm_info("DLL_RM",
                 $sformatf("[rx_path] legality=%0b state=%s type=%s",
                           is_legal, this.current_state.name(), dllp_type.name()), UVM_MEDIUM)
-            this.current_state = this.next_state;
-            process_rx_dllp(dllp_type, _rx_item, _pl_valid);
+            if (this.current_state != DL_INACTIVE)
+                process_rx_dllp(dllp_type, _rx_item, _pl_valid);
 
             update_sm_on_rx(dllp_type, _rx_item, this.current_state,
                             _pl_lnk_up, _dl_reset, _pl_valid,
@@ -151,7 +144,7 @@ class dll_ref_model #(
         rx_crc = _rx_item[CRC_WIDTH-1:0];
         calc_crc = crc_calc(payload_wo_crc);
 
-        if (rx_crc !== calc_crc) begin
+        if (rx_crc != calc_crc) begin
             verify_rx_crc = 1'b1;
             `uvm_info("DLL_RM",
                 $sformatf("[verify_rx_crc] CRC mismatch. Calculated=0x%04h Received=0x%04h FullDLLP=0x%012h Payload[31:0]=0x%08h TypeByte=0x%02h",
@@ -359,6 +352,9 @@ class dll_ref_model #(
                         `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — P received after P or NP or CPL")
                     else
                         `uvm_warning("DLL_RM", "[update_fi_flags] ORDER VIOLATION — P received after P or NP or CPL")
+                    fi1_p = 1;
+                    fi1_np = 0;
+                    fi1_cpl =0;
                 end
                 else begin
                     fi1_p = 1;
@@ -373,6 +369,8 @@ class dll_ref_model #(
                         `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — NP received before P or received after NP,CPL")
                     else
                         `uvm_warning("DLL_RM", "[update_fi_flags] ORDER VIOLATION — NP received before P or received after NP,CPL")
+                    fi1_np = 0;
+                    fi1_cpl =0;
                 end
                 else begin
                     fi1_np = 1;

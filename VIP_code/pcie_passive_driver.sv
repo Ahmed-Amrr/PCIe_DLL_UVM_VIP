@@ -10,11 +10,6 @@
 
         `uvm_component_utils(pcie_passive_driver)
 
-        ///////////////////////vcs/////////////////////
-        dl_state_t   state_ref;              // DL state machine
-        bit          FI1_ref, FI2_ref;                   // flags to exit init1 / init2 states
-        ///////////////////////////////////////////////
-
         virtual passive_interface passive_vif;
         virtual lpif_if    lpif_vif;
         pcie_vip_config    cfg;
@@ -80,10 +75,11 @@
                     passive_vif.lp_valid                   <= lpif_vif.lp_valid;
                     passive_vif.pl_valid                   <= lpif_vif.pl_valid;
                     passive_vif.pl_data                    <= lpif_vif.pl_data;
-    ///////////////////////////vcs/////////////////////////
-                    passive_vif.state_ref                  <=state_ref;
-                    passive_vif.FI1_ref                    <=FI1_ref;
-                    passive_vif.FI2_ref                    <=FI2_ref;
+
+                    passive_vif.init1_p_f                  <=s_item_sm.init1_p_f;
+                    passive_vif.init1_np_f                 <=s_item_sm.init1_np_f;
+                    passive_vif.init1_cpl_f                <=s_item_sm.init1_cpl_f;
+
                 end
             end
             

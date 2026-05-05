@@ -12,6 +12,11 @@ class pcie_state_seq_item extends uvm_sequence_item;
 	int         FI1                ;   // Flag indicating if the INIT1 has done
 	int         FI2                ;   // Flag indicating if the INIT2 has done
 
+	//These flags used for getting DLLP with INITFC1 type in order
+	bit init1_p_f;				//Posetd
+	bit init1_np_f;				//Non-Posted
+	bit init1_cpl_f;			//Compeletion		
+
 
 	`uvm_object_utils_begin(pcie_state_seq_item)
         `uvm_field_enum (dl_state_t, vip_state,           UVM_ALL_ON)

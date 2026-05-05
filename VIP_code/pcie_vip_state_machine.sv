@@ -142,8 +142,14 @@ class pcie_vip_state_machine extends uvm_component;
 			get_type_sm(.received_rx(seq_item_rx.dllp), .type_rx(received_type));			//Get type
 			CRC_generation(.dllp_before_crc(received_dllp_payload), .crc(crc_expected));	//Calculate the expected crc
 
+			current_state = next_state;
+
+			if (cfg.reset || !seq_item_rx.pl_lnk_up) begin
+				next_state=DL_INACTIVE;
+			end
+
 			//State transition from INACTIVE doesn't depend on CRC
-			if ((received_crc == crc_expected) || (current_state == DL_INACTIVE)) begin 	//Check on crc before state transition
+			if ((received_crc == crc_expected) || (next_state==DL_INACTIVE)) begin 	//Check on crc before state transition
 				type_legal_check(.current_state_r(current_state), .type_rx_r(received_type), .illegal_type_r(illegal_type_bit));	//Check the legallity
 				prev_state = current_state;	
 				
@@ -168,7 +174,6 @@ class pcie_vip_state_machine extends uvm_component;
     // Function: state_transition
     // Processes the DLLP and decides our next state (FSM)
 	function void state_transition;
-		current_state = next_state;
 		case (current_state)
 			DL_INACTIVE	:	inactive_state();
 			DL_FEATURE	: 	feature_state();
@@ -588,6 +593,11 @@ class pcie_vip_state_machine extends uvm_component;
 		state_seq_item.FI1 					= FI1;
 		state_seq_item.FI2 					= FI2;
 		state_seq_item.surprise_down_event 	= surprise_down_event;
+
+		state_seq_item.init1_p_f 			=init1_p_f;
+		state_seq_item.init1_np_f			=init1_np_f;
+		state_seq_item.init1_cpl_f 			=init1_cpl_f;		
+		
 	endfunction : save_seq_item
 
 
