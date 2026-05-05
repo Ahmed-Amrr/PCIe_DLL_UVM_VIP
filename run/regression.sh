@@ -52,6 +52,9 @@ if [[ -n "$INSPECT_RUN" ]]; then
   echo "--- Error / Fatal lines ---"
   grep -niE 'UVM_ERROR|UVM_FATAL' "$log" | grep -v ':\s*0$' || echo "  (none)"
   echo ""
+  echo "--- Simulator fatal errors (Error-[...]) ---"
+  grep -nE 'Error-\[' "$log" || echo "  (none)"
+  echo ""
   exit 0
 fi
 
@@ -170,10 +173,10 @@ record() { RESULTS+=("$1|$2"); }
 # ─────────────────────────────────────────────────────────────────────────────
 # Error mode behaviour lists
 #
-# PASS_ERR_MODES  — injected but simulation is expected to stay clean (PASS)
-# (all other non-empty error modes are expected to produce UVM errors → XFAIL)
+# All error modes are expected to produce UVM errors (XFAIL when errors found).
+# PASS_ERR_MODES is intentionally empty — dllp_type_err is NOT a special case.
 # ─────────────────────────────────────────────────────────────────────────────
-PASS_ERR_MODES=("dllp_type_err")
+PASS_ERR_MODES=()
 
 # Returns 0 if the run is expected to produce UVM errors, 1 if expected clean
 expects_error() {
@@ -184,7 +187,7 @@ expects_error() {
   for mode in "$u_err" "$d_err"; do
     [[ -z "$mode" ]] && continue
     local is_pass_mode=0
-    for pass_mode in "${PASS_ERR_MODES[@]}"; do
+    for pass_mode in "${PASS_ERR_MODES[@]+"${PASS_ERR_MODES[@]}"}"; do
       [[ "$mode" == "$pass_mode" ]] && is_pass_mode=1 && break
     done
     [[ "$is_pass_mode" -eq 0 ]] && return 0   # at least one error-producing mode
@@ -198,7 +201,7 @@ expects_pass_with_err() {
   [[ -z "$u_err" && -z "$d_err" ]] && return 1
   for mode in "$u_err" "$d_err"; do
     [[ -z "$mode" ]] && continue
-    for pass_mode in "${PASS_ERR_MODES[@]}"; do
+    for pass_mode in "${PASS_ERR_MODES[@]+"${PASS_ERR_MODES[@]}"}"; do
       [[ "$mode" == "$pass_mode" ]] && return 0
     done
   done
@@ -209,22 +212,27 @@ expects_pass_with_err() {
 # Parse a simulation log for UVM errors / fatal messages
 # Returns 0 if errors found, 1 if clean
 #
-# UVM summary lines look like:
-#   UVM_ERROR :    0      <- clean, must NOT trigger failure
-#   UVM_ERROR :    3      <- real failure
-# So we parse the count after the colon rather than just grepping the keyword.
+# Also detects simulator-level crashes (e.g. FCIBH illegal bin hit) that abort
+# the sim before the UVM summary is ever written.
 # ─────────────────────────────────────────────────────────────────────────────
 log_has_errors() {
   local log="$1"
   if [[ ! -f "$log" ]]; then
     echo "  WARNING: log not found: $log" >&2
-    return 1   # can't confirm errors -> treat as clean, don't false-fail
+    return 0   # no log = something went wrong = treat as error
   fi
 
-  # Check UVM_ERROR count — match "UVM_ERROR : <N>" where N > 0
+  # Detect simulator abort before UVM summary is written.
+  # Anchored to line-start to avoid matching mid-line DUT/testbench prints.
+  # Covers both "Error-[...]" (e.g. FCIBH) and "Fatal-[...]" simulator messages.
+  if grep -qE '^(Error|Fatal)-\[' "$log"; then
+    return 0   # treat as error — sim crashed before UVM summary
+  fi
+
+  # Check UVM_ERROR / UVM_FATAL counts — match "UVM_ERROR : <N>" where N > 0
   local err_count fatal_count
-  err_count=$(grep -iE 'UVM_ERROR\s*:\s*[0-9]+' "$log"               | grep -oE '[0-9]+$' | awk '{s+=$1} END{print s+0}')
-  fatal_count=$(grep -iE 'UVM_FATAL\s*:\s*[0-9]+' "$log"                 | grep -oE '[0-9]+$' | awk '{s+=$1} END{print s+0}')
+  err_count=$(grep -iE 'UVM_ERROR\s*:\s*[0-9]+' "$log"   | grep -oE '[0-9]+$' | awk '{s+=$1} END{print s+0}')
+  fatal_count=$(grep -iE 'UVM_FATAL\s*:\s*[0-9]+' "$log" | grep -oE '[0-9]+$' | awk '{s+=$1} END{print s+0}')
 
   [[ "$err_count" -gt 0 || "$fatal_count" -gt 0 ]] && return 0
   return 1
@@ -263,6 +271,7 @@ run_one() {
   fi
 
   # Run simulation (compile already done)
+  local run_ok
   if $MAKE run "${make_args[@]}" >/dev/null 2>&1; then
     run_ok=1
   else
@@ -279,21 +288,27 @@ run_one() {
   echo "  [DBG] expecting log at: $log" >&2
 
   local status
-  if log_has_errors "$log"; then
-    # Errors found in log
-    if [[ "$expected_err" -eq 1 ]]; then
-      status="XFAIL"       # error injected + UVM errors in log → expected failure
+  if [[ "$run_ok" -eq 0 ]]; then
+    # make run itself failed — check log for extra context but always fail
+    # unless it was an expected-error run and the log confirms UVM errors
+    if log_has_errors "$log" && [[ "$expected_err" -eq 1 ]]; then
+      status="XFAIL"
     else
-      status="FAIL"        # no error injected + UVM errors in log → real failure
+      status="FAIL"   # sim didn't exit cleanly → real failure regardless of log
+    fi
+  elif log_has_errors "$log"; then
+    # make run exited cleanly but log contains errors
+    if [[ "$expected_err" -eq 1 ]]; then
+      status="XFAIL"
+    else
+      status="FAIL"
     fi
   else
-    # No errors in log
+    # make run exited cleanly and log is clean
     if [[ "$expected_err" -eq 1 ]]; then
-      status="PASS_UNEXP"  # error injected but no UVM errors → passed unexpectedly
-    elif expects_pass_with_err "$u_err" "$d_err"; then
-      status="PASS"        # pass-through error mode (e.g. dllp_type_err) → expected clean
+      status="PASS_UNEXP"   # error injected but no errors seen → unexpected
     else
-      status="PASS"        # no error injected + clean log → normal pass
+      status="PASS"
     fi
   fi
 
