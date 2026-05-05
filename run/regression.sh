@@ -78,6 +78,8 @@ ERR_MODES=(
   "updatefc_scale_err"
   "dropped_fc_err"
   "out_of_order_fc_err"
+  "fcupdate_init2_cb"
+  "fc2_init1_cb"
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -92,13 +94,13 @@ ERR_MODES=(
 #   4. VIP diagonal — each VIP paired with the next VIP   (6 runs)
 #   5. VIP cross    — first 3 VIPs vs last 3 VIPs, both   (12 runs)
 #      directions, no error injection
-#   6. Error tests  — each of 7 err modes once on U-side  (14 runs)
+#   6. Error tests  — each of 9 err modes once on U-side  (18 runs)
 #      (with a rotating VIP) and once on D-side
 #      (with a different rotating VIP), DEFAULT on other side
 #
 #   Baseline total = 6+6+1+6+12 = 31 ... dedup gives 35
-#   Error total    = 14
-#   Grand total    = 49
+#   Error total    = 18
+#   Grand total    = 53
 # ─────────────────────────────────────────────────────────────────────────────
 DEFAULT_VIP="default"
 
