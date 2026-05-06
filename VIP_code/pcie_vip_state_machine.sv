@@ -586,7 +586,8 @@ class pcie_vip_state_machine extends uvm_component;
 
 		DL_Up = ((current_state == DL_INIT2) || (current_state == DL_ACTIVE));
 		DL_Down = ~DL_Up;
-		
+		surprise_down_event = ((current_state == DL_ACTIVE) && (!seq_item_rx.pl_lnk_up) && (cfg.surprise_down_capable));
+
 		state_seq_item.vip_state 			= current_state;
 		state_seq_item.DL_Up 				= DL_Up;
 		state_seq_item.DL_Down 				= DL_Down;
