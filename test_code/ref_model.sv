@@ -72,7 +72,7 @@ class dll_ref_model #(
 
         // defaults 
         _surprise_down_event = 1'b0;
-        get_dl_status(this.current_state, _DL_Down, _DL_Up);
+        get_dl_status(this.current_state, _pl_lnk_up, cfg.surprise_down_capable, _DL_Down, _DL_Up, _surprise_down_event);
 
         // cfg guard 
         if (cfg == null) begin
@@ -101,7 +101,7 @@ class dll_ref_model #(
          // CRC verification 
         should_discard = verify_rx_crc(_rx_item);
         if (should_discard && (this.next_state != DL_INACTIVE)) begin
-            get_dl_status(this.current_state, _DL_Down, _DL_Up);
+            get_dl_status(this.current_state, _pl_lnk_up, cfg.surprise_down_capable, _DL_Down, _DL_Up, _surprise_down_event);
             `uvm_error("DLL_RM",
                 $sformatf("[rx_path] CRC discard: state=%s type=%s pl_lnk_up=%0b reset=%0b dllp=0x%012h",
                           this.current_state.name(), dllp_type.name(), _pl_lnk_up, _dl_reset, _rx_item))
@@ -118,11 +118,10 @@ class dll_ref_model #(
             update_sm_on_rx(dllp_type, _rx_item, this.current_state,
                             _pl_lnk_up, _dl_reset, _pl_valid,
                             this.FI1, this.FI2,
-                            cfg.surprise_down_capable,
                             cfg.link_not_disabled,
-                            this.next_state, state_changed, _surprise_down_event);
+                            this.next_state, state_changed);
 
-            get_dl_status(this.current_state, _DL_Down, _DL_Up);
+            get_dl_status(this.current_state, _pl_lnk_up, cfg.surprise_down_capable, _DL_Down, _DL_Up, _surprise_down_event);
 
             `uvm_info("DLL_RM",
                 $sformatf("[rx_path] next_state=%s DL_Up=%0b DL_Down=%0b surprise_down=%0b",
@@ -487,17 +486,14 @@ class dll_ref_model #(
         bit                  FI1,
         bit                  FI2,
         // read from cfg 
-        bit                  surprise_down_Error_Reporting_capable,
         bit                  link_not_disabled,
         // outputs
         output dl_state_t           next_state,
-        output bit                  state_changed,
-        output bit                  surprise_down_event
+        output bit                  state_changed
     );
 
         // Defaults
         state_changed       = 1'b0;
-        surprise_down_event = 1'b0;
         next_state          = _current_state;
 
         // RESET handling (highest priority)
@@ -530,8 +526,6 @@ class dll_ref_model #(
 
             if (_current_state != DL_INACTIVE) begin
                 // Only report surprise-down for ACTIVE -> INACTIVE when supported.
-                if (_current_state == DL_ACTIVE && surprise_down_Error_Reporting_capable)
-                    surprise_down_event = 1'b1;
 
                 next_state    = DL_INACTIVE;
                 state_changed = 1'b1;
@@ -640,13 +634,20 @@ class dll_ref_model #(
     //            DL_Up status   -> asserted in (INIT2, ACTIVE) states 
     function void get_dl_status (
         input  dl_state_t _state,
+        input  bit        _pl_lnk_up,
+        input  bit        surprise_down_Error_Reporting_capable,
         output bit        _DL_Down,
-        output bit        _DL_Up
+        output bit        _DL_Up,
+        output bit        _surprise_down_event
     );
 
         // Default both outputs low.
+        _surprise_down_event = 1'b0;
         _DL_Down = 1'b0;
         _DL_Up   = 1'b0;
+
+        if (_state == DL_ACTIVE && !_pl_lnk_up && surprise_down_Error_Reporting_capable)
+            _surprise_down_event = 1'b1;
 
         case (_state)
             DL_INACTIVE,
