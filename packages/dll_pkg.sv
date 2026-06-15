@@ -31,17 +31,27 @@ package dll_pkg;
         NOP             = 8'b0011_0001,
         VENDOR_SPECIFIC = 8'b0011_0000,
         FEATURE         = 8'b0000_0010,
-        // Flow-control initialisation
-        INITFC1_P       = 8'b0100_0000,   // VC bits [2:0] are masked
-        INITFC1_NP      = 8'b0101_0000,
-        INITFC1_CPL     = 8'b0110_0000,
-        INITFC2_P       = 8'b1100_0000,
-        INITFC2_NP      = 8'b1101_0000,
-        INITFC2_CPL     = 8'b1110_0000,
+        // Flow-control initialisation : shared-buffer (bit[3]=0) 
+        INITFC1_P_S       = 8'b0100_0000,   // VC bits [2:0] are masked
+        INITFC1_NP_S      = 8'b0101_0000,
+        INITFC1_CPL_S     = 8'b0110_0000,
+        INITFC2_P_S       = 8'b1100_0000,
+        INITFC2_NP_S      = 8'b1101_0000,
+        INITFC2_CPL_S     = 8'b1110_0000,
+        // FC initialisation : dedicated-buffer (bit[3]=1) 
+        INITFC1_P_D       = 8'b0100_1000,   // VC bits [2:0] are masked
+        INITFC1_NP_D      = 8'b0101_1000,
+        INITFC1_CPL_D     = 8'b0110_1000,
+        INITFC2_P_D       = 8'b1100_1000,
+        INITFC2_NP_D      = 8'b1101_1000,
+        INITFC2_CPL_D     = 8'b1110_1000,
         // Flow-control update
-        UPDATEFC_P      = 8'b1000_0000,
-        UPDATEFC_NP     = 8'b1001_0000,
-        UPDATEFC_CPL    = 8'b1010_0000
+        UPDATEFC_P_D      = 8'b1000_1000,
+        UPDATEFC_NP_D     = 8'b1001_1000,
+        UPDATEFC_CPL_D    = 8'b1010_1000,
+        UPDATEFC_P_S      = 8'b1000_0000,
+        UPDATEFC_NP_S     = 8'b1001_0000,
+        UPDATEFC_CPL_S    = 8'b1010_0000
     } dllp_type_t;
 
     //  fc_type_t
@@ -52,11 +62,23 @@ package dll_pkg;
         FC_COMPLETION
     } fc_type_t;
 
+    // Flow Control buffer type:
+    // FC_SHARED     : Shared Buffer   (bit[3] = 0)
+    // FC_DEDICATED : Dedicated Buffer (bit[3] = 1)
+    typedef enum {
+    FC_SHARED,
+    FC_DEDICATED
+    } fc_buffer_t;
+
+    // Flow Control information indexed as:
+    // [buffer][fc_type]
+    // buffer : FC_SHARED / FC_DEDICATED
+    // fc_type: FC_POSTED / FC_NON_POSTED / FC_COMPLETION
     typedef struct packed {
-        logic [2:0]  [7:0]  hdr_credits;   // [FC_POSTED], [FC_NON_POSTED], [FC_COMPLETION]
-        logic [2:0]  [11:0] data_credits;
-        logic [2:0]  [1:0]  hdr_scale;
-        logic [2:0]  [1:0]  data_scale;
+        logic [1:0]  [2:0]  [7:0]  hdr_credits;
+        logic [1:0]  [2:0]  [11:0] data_credits;
+        logic [1:0]  [2:0]  [1:0]  hdr_scale;
+        logic [1:0]  [2:0]  [1:0]  data_scale;
     } fc_credits_t;
 
     typedef struct packed {

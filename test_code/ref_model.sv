@@ -20,18 +20,16 @@ class dll_ref_model #(
     dl_state_t   current_state;              // DL state machine
     dl_state_t   next_state;
     bit          FI1, FI2;                   // flags to exit init1 / init2 states
-    bit          fi1_p, fi1_np, fi1_cpl;     // per-type trackers for FI1
+    bit          fi1_p_d, fi1_np_d, fi1_cpl_d, fi1_p_s, fi1_np_s, fi1_cpl_s;     // per-type trackers for FI1
     bit          scaled_fc_active;
     dl_feature_status_reg_t remote_register_feature; 
     fc_credits_t local_fc ;                  // credits advertised by this VIP
     fc_credits_t remote_fc;                  // credits received from peer
-    bit hdr_infinite [3];                    // infinite credits from initialization
-    bit data_infinite[3];
+    bit hdr_infinite [2][3];                    // infinite credits from initialization
+    bit data_infinite[2][3];
     
     bit [1:0] local_hdr_scale;               // scaling factor for header credits
     bit [1:0] local_data_scale;              // scaling factor for data credits
-    int       initfc1_tx_count;              // tracks P/NP/Cpl TX order in INIT1
-    int       initfc2_tx_count;              // tracks P/NP/Cpl TX order in INIT2
 
     function new();
         this.generator_polynomial = 'h100B;
@@ -43,8 +41,6 @@ class dll_ref_model #(
         this.FI2                  = 0;
         this.local_hdr_scale  = 2'b01; 
         this.local_data_scale = 2'b01; 
-        this.initfc1_tx_count = 0;
-        this.initfc2_tx_count = 0;
         this.cfg              = null;       // set by scoreboard 
         this.next_state       = DL_INACTIVE; 
     endfunction : new
@@ -91,9 +87,12 @@ class dll_ref_model #(
         // DL_INACTIVE : only drive state machine
         // skip CRC and legality checks in INACTIVE
         if (this.current_state == DL_INACTIVE) begin
-            fi1_p   = 0;
-            fi1_np  = 0;
-            fi1_cpl = 0;
+            fi1_p_d   = 0;
+            fi1_np_d  = 0;
+            fi1_cpl_d = 0;
+            fi1_p_s   = 0;
+            fi1_np_s  = 0;
+            fi1_cpl_s = 0;
             FI1     = 0;
             FI2     = 0;
         end
@@ -178,7 +177,8 @@ class dll_ref_model #(
 
                     // FEATURE and INITFC1 are allowed in DL_FEATURE.
                     DL_FEATURE: begin
-                        if (!(_dllp_type inside {FEATURE, INITFC1_P, INITFC1_NP, INITFC1_CPL})) begin
+                        if (!(_dllp_type inside {FEATURE, INITFC1_P_S, INITFC1_NP_S, INITFC1_CPL_S
+                                                 INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D})) begin
                             `uvm_info("DLL_RM",
                                 $sformatf("[check_rx_legality] Illegal DLLP in DL_FEATURE. received=%s allowed={FEATURE,INITFC1_P,INITFC1_NP,INITFC1_CPL}",
                                         _dllp_type.name()), UVM_LOW)
@@ -188,8 +188,10 @@ class dll_ref_model #(
 
                     // FEATURE, INITFC1, and INITFC2 are allowed in DL_INIT1.
                     DL_INIT1: begin
-                        if (!(_dllp_type inside {FEATURE, INITFC1_P, INITFC1_NP, INITFC1_CPL,
-                                                        INITFC2_P, INITFC2_NP, INITFC2_CPL})) begin
+                        if (!(_dllp_type inside {FEATURE, INITFC1_P_S, INITFC1_NP_S, INITFC1_CPL_S
+                                                 INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D
+                                                 INITFC2_P_S, INITFC2_NP_S, INITFC2_CPL_S
+                                                 INITFC2_P_D, INITFC2_NP_D, INITFC2_CPL_D})) begin
                             `uvm_info("DLL_RM",
                                 $sformatf("[check_rx_legality] Illegal DLLP in DL_INIT1. received=%s allowed={FEATURE,INITFC1_P,INITFC1_NP,INITFC1_CPL,INITFC2_P,INITFC2_NP,INITFC2_CPL}",
                                         _dllp_type.name()), UVM_LOW)
@@ -237,19 +239,21 @@ class dll_ref_model #(
         if (_pl_valid) begin
             case (_dllp_type)
 
-                INITFC1_P, INITFC1_NP, INITFC1_CPL: begin
+                INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D
+                INITFC1_P_S, INITFC1_NP_S, INITFC1_CPL_S: begin
                     if (this.current_state == DL_INIT1) begin
                         record_fc_values(_dllp);
-                         update_fi_flags(_dllp_type, 0); // FI1
+                        update_fi_flags(_dllp_type, 0); // FI1
                     end
                 end
 
-                INITFC2_P, INITFC2_NP, INITFC2_CPL: begin
+                INITFC2_P_D, INITFC2_NP_D, INITFC2_CPL_D
+                INITFC2_P_S, INITFC2_NP_S, INITFC2_CPL_S: begin
                     // In INIT1 : record credits and track reception order
                     if (this.current_state == DL_INIT1) begin
                         record_fc_values(_dllp);
                         update_fi_flags(_dllp_type, 0); // FI1
-                    // In INIT2 : any InitFC2 received asserts FI2
+                    // In INIT2 : Wait for InitFC2 1/2 triplets to assert FI2
                     end else if (this.current_state == DL_INIT2) begin
                         update_fi_flags(_dllp_type, 1); // FI2
                     end
@@ -266,7 +270,8 @@ class dll_ref_model #(
                     end
                 end
 
-                UPDATEFC_P, UPDATEFC_NP, UPDATEFC_CPL: begin
+                UPDATEFC_P_D, UPDATEFC_NP_D, UPDATEFC_CPL_D
+                UPDATEFC_P_S, UPDATEFC_NP_S, UPDATEFC_CPL_S: begin
                     // in INIT2 : any UpdateFC received asserts FI2
                     if (this.current_state == DL_INIT2)
                         this.FI2 = 1;
@@ -306,30 +311,31 @@ class dll_ref_model #(
     function void record_fc_values (bit [DLLP_WIDTH-1:0] _dllp);
 
         fc_type_t fc;
-
+        fc_buffer_t buffer;
         // Decode FC type (P / NP / CPL).
         fc = decode_fc_type(get_dllp_type(_dllp));
+        buffer = decode_buffer_type(get_dllp_type(_dllp));
 
         // Extract remote credit values.
-        remote_fc.hdr_credits [fc] = _dllp[37:30];
-        remote_fc.data_credits[fc] = _dllp[27:16];
+        remote_fc.hdr_credits [buffer][fc] = _dllp[37:30];
+        remote_fc.data_credits[buffer][fc] = _dllp[27:16];
 
         // Extract scale values when scaled flow control is active.
         if (scaled_fc_active) begin
-            remote_fc.hdr_scale [fc] = _dllp[39:38];
-            remote_fc.data_scale[fc] = _dllp[29:28];
+            remote_fc.hdr_scale [buffer][fc] = _dllp[39:38];
+            remote_fc.data_scale[buffer][fc] = _dllp[29:28];
         end
 
         // during initialization phase, detect infinite credit advertisement
         // infinite credit : hdr_credits = 00h or data_credits = 000h
         if (this.FI1 == 1 && this.FI2 == 0) begin
-            if (remote_fc.hdr_credits [fc] == 0) hdr_infinite[fc]  = 1;
-            if (remote_fc.data_credits[fc] == 0) data_infinite[fc] = 1;
+            if (remote_fc.hdr_credits [buffer][fc] == 0) hdr_infinite[buffer][fc]  = 1;
+            if (remote_fc.data_credits[buffer][fc] == 0) data_infinite[buffer][fc] = 1;
         end
 
         `uvm_info("DLL_RM",
             $sformatf("[record_fc_values] TYPE=%0d HDR=%0d DATA=%0d",
-                      fc, remote_fc.hdr_credits[fc], remote_fc.data_credits[fc]), UVM_MEDIUM)
+                      fc, remote_fc.hdr_credits[buffer][fc], remote_fc.data_credits[buffer][fc]), UVM_MEDIUM)
 
     endfunction : record_fc_values
 
@@ -344,51 +350,121 @@ class dll_ref_model #(
 
         case (_dllp_type)
 
-            INITFC1_P, INITFC2_P: begin
+            INITFC1_P_D, INITFC2_P_D: begin
                 // Posted must come first — NP and CPL must not be set yet
-                if (fi1_p || fi1_np || fi1_cpl) begin
+                if (fi1_p_d || fi1_np_d || fi1_cpl_d || fi1_p_s || fi1_np_s || fi1_cpl_s ) begin
                     if (remote_register_feature.remote_feature_valid)
                         `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — P received after P or NP or CPL")
                     else
                         `uvm_warning("DLL_RM", "[update_fi_flags] ORDER VIOLATION — P received after P or NP or CPL")
-                    fi1_p = 1;
-                    fi1_np = 0;
-                    fi1_cpl =0;
+                    fi1_p_d = 1;
+                    fi1_np_d = 0;
+                    fi1_cpl_d =0;
+                    fi1_p_s =0;
+                    fi1_np_s=0;
+                    fi1_cpl_s = 0;
                 end
                 else begin
-                    fi1_p = 1;
+                    fi1_p_d = 1;
                     `uvm_info("DLL_RM", "[update_fi_flags] P credits recorded", UVM_HIGH)
                 end
             end
 
-            INITFC1_NP, INITFC2_NP: begin
+            INITFC1_NP_D, INITFC2_NP_D: begin
                 // NP must come after P and before CPL
-                if (!fi1_p || fi1_np || fi1_cpl) begin
+                if (!fi1_p_d) begin
                     if (remote_register_feature.remote_feature_valid)
                         `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — NP received before P or received after NP,CPL")
                     else
                         `uvm_warning("DLL_RM", "[update_fi_flags] ORDER VIOLATION — NP received before P or received after NP,CPL")
-                    fi1_np = 0;
-                    fi1_cpl =0;
+                    fi1_np_d = 0;
+                    fi1_cpl_d =0;
+                    fi1_p_s =0;
+                    fi1_np_s=0;
+                    fi1_cpl_s = 0;
                 end
                 else begin
-                    fi1_np = 1;
-                    fi1_p = 0;
+                    fi1_np_d = 1;
+                    fi1_p_d = 0;
                     `uvm_info("DLL_RM", "[update_fi_flags] NP credits recorded", UVM_HIGH)
                 end
             end
 
-            INITFC1_CPL, INITFC2_CPL: begin
+            INITFC1_CPL_D, INITFC2_CPL_D: begin
                 // CPL must come after both P and NP
-                if (!fi1_np)begin
+                if (!fi1_np_d)begin
                     if (remote_register_feature.remote_feature_valid)
                         `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — CPL received before P or NP")
                     else
                         `uvm_warning("DLL_RM", "[update_fi_flags] ORDER VIOLATION — CPL received before P or NP")
+                    fi1_p_d = 0;
+                    fi1_cpl_d =0;
+                    fi1_p_s =0;
+                    fi1_np_s=0;
+                    fi1_cpl_s = 0;
                 end
                 else begin
-                    fi1_cpl = 1;
-                    fi1_np = 0;
+                    fi1_cpl_d = 1;
+                    fi1_np_d = 0;
+                    `uvm_info("DLL_RM", "[update_fi_flags] CPL credits recorded", UVM_HIGH)
+                end
+            end
+            INITFC1_P_S, INITFC2_P_S: begin
+                // Posted shared must come first — NP and CPL must not be set yet
+                if (!fi1_cpl_d) begin
+                    if (remote_register_feature.remote_feature_valid)
+                        `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — P received after P or NP or CPL")
+                    else
+                        `uvm_warning("DLL_RM", "[update_fi_flags] ORDER VIOLATION — P received after P or NP or CPL")
+                    fi1_p_d = 0;
+                    fi1_np_d =0;
+                    fi1_p_s =0;
+                    fi1_np_s=0;
+                    fi1_cpl_s = 0;
+                end
+                else begin
+                    fi1_p_s = 1;
+                    fi1_cpl_d =0;
+                    `uvm_info("DLL_RM", "[update_fi_flags] P credits recorded", UVM_HIGH)
+                end
+            end
+
+            INITFC1_NP_S, INITFC2_NP_S: begin
+                // NP must come after P and before CPL
+                if (!fi1_p_s) begin
+                    if (remote_register_feature.remote_feature_valid)
+                        `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — NP received before P or received after NP,CPL")
+                    else
+                        `uvm_warning("DLL_RM", "[update_fi_flags] ORDER VIOLATION — NP received before P or received after NP,CPL")
+                    fi1_p_d = 0;
+                    fi1_np_d =0;
+                    fi1_cpl_d =0;
+                    fi1_np_s=0;
+                    fi1_cpl_s = 0;
+                end
+                else begin
+                    fi1_np_s = 1;
+                    fi1_p_s = 0;
+                    `uvm_info("DLL_RM", "[update_fi_flags] NP credits recorded", UVM_HIGH)
+                end
+            end
+
+            INITFC1_CPL_S, INITFC2_CPL_S: begin
+                // CPL must come after both P and NP
+                if (!fi1_np_s)begin
+                    if (remote_register_feature.remote_feature_valid)
+                        `uvm_error("DLL_RM", "[update_fi_flags] ORDER VIOLATION — CPL received before P or NP")
+                    else
+                        `uvm_warning("DLL_RM", "[update_fi_flags] ORDER VIOLATION — CPL received before P or NP")
+                    fi1_p_d = 0;
+                    fi1_np_d =0;
+                    fi1_cpl_d =0;
+                    fi1_p_s=0;
+                    fi1_cpl_s = 0;
+                end
+                else begin
+                    fi1_cpl_s = 1;
+                    fi1_np_s = 0;
                     `uvm_info("DLL_RM", "[update_fi_flags] CPL credits recorded", UVM_HIGH)
                 end
             end
@@ -396,17 +472,32 @@ class dll_ref_model #(
         endcase
 
         // FI1/FI2 set only when all three received in order
-        if (fi1_cpl) begin
-
-            if (is_init2)
-                this.FI2 = 1;
-            else
-                this.FI1 = 1;
-
-            // Reset the ordering trackers.
-            fi1_p   = 0;
-            fi1_np  = 0;
-            fi1_cpl = 0;
+        if (cfg.flit_mode_enable) begin
+            if (fi1_cpl_s) begin
+                 if (is_init2)
+                     this.FI2 = 1;
+                else
+                     this.FI1 = 1;
+            fi1_p_d   = 0;
+            fi1_np_d  = 0;
+            fi1_cpl_d = 0;
+            fi1_p_s   = 0;
+            fi1_np_s  = 0;
+            fi1_cpl_s = 0;
+            end
+        else 
+            if (fi1_cpl_d) begin
+                 if (is_init2)
+                     this.FI2 = 1;
+                else
+                     this.FI1 = 1;
+            fi1_p_d   = 0;
+            fi1_np_d  = 0;
+            fi1_cpl_d = 0;
+            fi1_p_s   = 0;
+            fi1_np_s  = 0;
+            fi1_cpl_s = 0;
+            end
 
             `uvm_info("DLL_RM",
                 is_init2 ? "[FI2] SET — P/NP/CPL received"
@@ -427,17 +518,19 @@ class dll_ref_model #(
         bit [11:0] data;
         bit        fcpe_detected;
         fc_type_t  fc;
+        fc_buffer_t buffer;
 
         // Decode FC type (P / NP / CPL).
         fc = decode_fc_type(get_dllp_type(_dllp));
-
+        // Decode buffer type (dedicated / shared).
+        buffer = decode_buffer_type(get_dllp_type(_dllp));
         // Extract UpdateFC credit values.
         hdr           = _dllp[37:30];
         data          = _dllp[27:16];
         fcpe_detected = 0;
 
         // If both credits were advertised as zero during init, updates must stay zero.
-        if (hdr_infinite[fc] && data_infinite[fc]) begin
+        if (hdr_infinite[buffer][fc] && data_infinite[buffer][fc]) begin
             if (hdr != 0 || data != 0) begin
                 `uvm_error("DLL_RM", "FCPE: UpdateFC must contain zero credits after infinite advertisement")
                 fcpe_detected = 1;
@@ -445,20 +538,20 @@ class dll_ref_model #(
         end
 
         // If header was advertised as zero during init, it must stay zero.
-        if (hdr_infinite[fc] && hdr != 0) begin
+        if (hdr_infinite[buffer][fc] && hdr != 0) begin
             `uvm_error("DLL_RM", "FCPE: Header must remain zero")
             fcpe_detected = 1;
         end
 
         // If data was advertised as zero during init, it must stay zero.
-        if (data_infinite[fc] && data != 0) begin
+        if (data_infinite[buffer][fc] && data != 0) begin
             `uvm_error("DLL_RM", "FCPE: Data must remain zero")
             fcpe_detected = 1;
         end
 
         // When scaled FC is active, the scale fields must match the initialized values.
         if (scaled_fc_active) begin
-            if (remote_fc.hdr_scale[fc] != _dllp[39:38] || remote_fc.data_scale[fc] != _dllp[29:28]) begin
+            if (remote_fc.hdr_scale[buffer][fc] != _dllp[39:38] || remote_fc.data_scale[buffer][fc] != _dllp[29:28]) begin
                 `uvm_error("DLL_RM", "FCPE: Scale mismatch in UpdateFC")
                 fcpe_detected = 1;
             end
@@ -580,7 +673,7 @@ class dll_ref_model #(
             
                 // Feature exchange completes when:
                 // (1) any INITFC1 (P / NP / CPL) is received, OR
-                if (_dllp_type == INITFC1_P && _pl_valid) begin
+                if (_dllp_type == INITFC1_P_D && _pl_valid) begin
                     next_state    = DL_INIT1;
                     state_changed = 1'b1;
                 // (2) a FEATURE DLLP with Feature_Ack bit [39] = 1 is received
@@ -725,9 +818,12 @@ class dll_ref_model #(
     function fc_type_t decode_fc_type (dllp_type_t _dllp_type);
 
         case (_dllp_type)
-            INITFC1_P,   INITFC2_P,   UPDATEFC_P   : return FC_POSTED;
-            INITFC1_NP,  INITFC2_NP,  UPDATEFC_NP  : return FC_NON_POSTED;
-            INITFC1_CPL, INITFC2_CPL, UPDATEFC_CPL : return FC_COMPLETION;
+            INITFC1_P_S,   INITFC2_P_S,   UPDATEFC_P_S,
+            INITFC1_P_D,   INITFC2_P_D,   UPDATEFC_P_D  : return FC_POSTED;
+            INITFC1_NP_S,  INITFC2_NP_S,  UPDATEFC_NP_S, 
+            INITFC1_NP_D,  INITFC2_NP_D,  UPDATEFC_NP_D : return FC_NON_POSTED;
+            INITFC1_CPL_S, INITFC2_CPL_S, UPDATEFC_CPL_S,
+            INITFC1_CPL_D, INITFC2_CPL_D, UPDATEFC_CPL_D  : return FC_COMPLETION;
             default: begin
                 `uvm_error("DLL_RM", "decode_fc_type: Invalid FC DLLP type")
                 return FC_POSTED; // safe fallback
@@ -735,6 +831,16 @@ class dll_ref_model #(
         endcase
 
     endfunction : decode_fc_type
+    // Function decode_fc_type : Decodes a DLLP type into its buffer category (DEDICATED, SHARED).
+    // Input   : type of received DLLP
+    // Returns : fc_type_t (FC_DEDICATED / FC_SHARED )
+    function fc_buffer_t decode_buffer_type(dllp_type_t _dllp_type);
+
+    return _dllp_type[3] ?
+           FC_DEDICATED :
+           FC_SHARED;
+
+endfunction
 
 endclass 
 
