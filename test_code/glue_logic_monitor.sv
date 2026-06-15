@@ -10,10 +10,10 @@
         virtual lpif_if lpif_vif;
 
         // Handles
-        pcie_dllp_seq_item s_item;
+        pcie_flit_seq_item s_item;
 
         // Analysis port — broadcasts observed transactions to connected subscribers
-        uvm_analysis_port #(pcie_dllp_seq_item) mon_ap;
+        uvm_analysis_port #(pcie_flit_seq_item) mon_ap;
 
         //==========================================================
         // Constructor
@@ -37,8 +37,8 @@
             super.run_phase(phase);
             forever begin
                 @(lpif_vif.mon_cb)
-                    s_item          = pcie_dllp_seq_item::type_id::create("s_item");
-                    s_item.dllp     = lpif_vif.mon_cb.lp_data ;
+                    s_item          = pcie_flit_seq_item::type_id::create("s_item");
+                    s_item.flit     = lpif_vif.mon_cb.lp_data ;
                     s_item.lp_valid = lpif_vif.mon_cb.lp_valid;
                     mon_ap.write(s_item);
             end

@@ -1,7 +1,7 @@
 `ifndef GLUE_LOGIC_DRIVER_SV
 `define GLUE_LOGIC_DRIVER_SV
 
-    class glue_logic_driver extends uvm_driver #(pcie_dllp_seq_item);
+    class glue_logic_driver extends uvm_driver #(pcie_flit_seq_item);
 
         // UVM Factory register
         `uvm_component_utils(glue_logic_driver)
@@ -10,12 +10,12 @@
         virtual lpif_if lpif_vif;
 
         // Handles
-        pcie_dllp_seq_item s_item ;
+        pcie_flit_seq_item s_item ;
         pcie_top_cfg       cfg    ;
 
         // TLM Analysis Export and FIFO — receives transactions from the paired monitor
-        uvm_analysis_export  #(pcie_dllp_seq_item) drv_ex  ;
-        uvm_tlm_analysis_fifo#(pcie_dllp_seq_item) drv_fifo;
+        uvm_analysis_export  #(pcie_flit_seq_item) drv_ex  ;
+        uvm_tlm_analysis_fifo#(pcie_flit_seq_item) drv_fifo;
 
         //==========================================================
         // Constructor
@@ -53,7 +53,7 @@
             forever begin
                 @(lpif_vif.drv_cb)
                 drv_fifo.get(s_item);
-                lpif_vif.drv_cb.pl_data <= s_item.dllp;
+                lpif_vif.drv_cb.pl_data <= s_item.flit;
 
                 // Drive pl_lnk_up low only during link-down test cases
                 if (cfg.link_down_test == 1)

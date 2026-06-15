@@ -13,14 +13,12 @@ class pcie_top_cfg extends uvm_object;
     virtual passive_interface d_p_vif  ;
 
     // Randomizable test-control flags
-    rand bit link_down_test;   // Enable link-down test scenario
-    rand bit pl_valid_off  ;   // Deassert pl_valid for valid-off test scenarios
-    rand bit common_reset  ;   // Assert reset on both sides simultaneously
-
+    rand bit link_down_test  ;   // Enable link-down test scenario
+    rand bit common_reset    ;   // Assert reset on both sides simultaneously
+    rand bit flit_mode_enable;
     // Constraints — keep error scenarios rare to favour normal operation
     constraint c {
         link_down_test dist {0:=95, 1:=5};
-        pl_valid_off        == 0          ;
         common_reset   dist {0:=95, 1:=5};
     }
 

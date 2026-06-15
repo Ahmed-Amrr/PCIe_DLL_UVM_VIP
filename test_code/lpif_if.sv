@@ -9,13 +9,13 @@ interface lpif_if (
     // Signal Declarations
     //==========================================================
 
-    bit          pl_lnk_up  ;   // Physical link is up and active
+    bit            pl_lnk_up  ;   // Physical link is up and active
     
-    bit          lp_valid   ;   // lp_data contains valid data from Link Partner
-    logic [63:0] lp_data    ;   // 64-bit data bus from Link Partner (DLLP / TLP)
+    bit            lp_valid   ;   // lp_data contains valid data from Link Partner
+    logic [2047:0] lp_data    ;   // 64-bit data bus from Link Partner (DLLP / TLP)
 
-    bit          pl_valid   ;   // pl_data contains valid data from Physical Layer
-    logic [63:0] pl_data    ;   // 64-bit data bus from Physical Layer
+    bit            pl_valid   ;   // pl_data contains valid data from Physical Layer
+    logic [2047:0] pl_data    ;   // 64-bit data bus from Physical Layer
 
     //==========================================================
     // Driver Clocking Block - Synchronous outputs, zero skew
