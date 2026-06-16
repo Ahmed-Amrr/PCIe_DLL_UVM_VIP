@@ -67,6 +67,10 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
             `uvm_do_callbacks(pcie_vip_driver, pcie_vip_driver_cb, crc_drive(seq_item_drv, sqr))
 
             // drive DLLP and valid onto the interface
+            if(cfg.flit_mode_enable) begin
+                lpif_vif.drv_cb.lp_data [0:235]    <= '0;
+                lpif_vif.drv_cb.lp_data [250:255]  <= fec;
+            end
             lpif_vif.drv_cb.lp_data  <= seq_item_drv.dllp;
             lpif_vif.drv_cb.lp_valid <= (cfg.reset || !lpif_vif.pl_lnk_up) ? 0 : 1;
 

@@ -239,7 +239,7 @@ class dll_ref_model #(
         if (_pl_valid) begin
             case (_dllp_type)
 
-                INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D
+                INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D,
                 INITFC1_P_S, INITFC1_NP_S, INITFC1_CPL_S: begin
                     if (this.current_state == DL_INIT1) begin
                         record_fc_values(_dllp);
@@ -247,7 +247,7 @@ class dll_ref_model #(
                     end
                 end
 
-                INITFC2_P_D, INITFC2_NP_D, INITFC2_CPL_D
+                INITFC2_P_D, INITFC2_NP_D, INITFC2_CPL_D,
                 INITFC2_P_S, INITFC2_NP_S, INITFC2_CPL_S: begin
                     // In INIT1 : record credits and track reception order
                     if (this.current_state == DL_INIT1) begin
@@ -270,7 +270,7 @@ class dll_ref_model #(
                     end
                 end
 
-                UPDATEFC_P_D, UPDATEFC_NP_D, UPDATEFC_CPL_D
+                UPDATEFC_P_D, UPDATEFC_NP_D, UPDATEFC_CPL_D,
                 UPDATEFC_P_S, UPDATEFC_NP_S, UPDATEFC_CPL_S: begin
                     // in INIT2 : any UpdateFC received asserts FI2
                     if (this.current_state == DL_INIT2)
