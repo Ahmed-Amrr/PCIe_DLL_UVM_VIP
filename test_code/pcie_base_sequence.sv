@@ -62,7 +62,7 @@ endtask : send_feat_dllp
 //==========================================================
 // Task  : Packs scaled credit values from the local_fc_credits_register into the DLLP
 // Inputs: the type of FC DLLP to send (pkt_type) and the type of FC to index the credit arrays (fc_type)
-task pcie_base_seq::send_fc_dllp(input dllp_type_t pkt_type, input fc_type_t fc_type, input pcie_dllp_seq_item item);
+task pcie_base_seq::send_fc_dllp(input dllp_type_t pkt_type, input fc_type_t fc_type, input pcie_dllp_seq_item item, input fc_buffer_t buffer);
     item = pcie_dllp_seq_item::type_id::create("item");
 
     start_item(item);
@@ -70,12 +70,12 @@ task pcie_base_seq::send_fc_dllp(input dllp_type_t pkt_type, input fc_type_t fc_
             item.dllp[47:40] = pkt_type;
 
             // Scale fields
-            item.dllp[39:38] = cfg.local_fc_credits_register.hdr_scale  [fc_type];
-            item.dllp[29:28] = cfg.local_fc_credits_register.data_scale [fc_type];
+            item.dllp[39:38] = cfg.local_fc_credits_register.hdr_scale  [buffer][fc_type];
+            item.dllp[29:28] = cfg.local_fc_credits_register.data_scale [buffer][fc_type];
 
             // Credit fields
-            item.dllp[37:30] = cfg.local_fc_credits_register.hdr_credits [fc_type];
-            item.dllp[27:16] = cfg.local_fc_credits_register.data_credits[fc_type];
+            item.dllp[37:30] = cfg.local_fc_credits_register.hdr_credits [buffer][fc_type];
+            item.dllp[27:16] = cfg.local_fc_credits_register.data_credits[buffer][fc_type];
         end
     finish_item(item);
 endtask : send_fc_dllp

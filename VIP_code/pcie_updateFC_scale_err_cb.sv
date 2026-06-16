@@ -25,7 +25,7 @@ class pcie_updatefc_scale_err_cb extends pcie_vip_driver_cb;
             return;
         end
 
-        if (item.dllp[47:40] inside {UPDATEFC_P, UPDATEFC_NP, UPDATEFC_CPL}) begin
+        if (item.dllp[47:40] inside {UPDATEFC_P_D, UPDATEFC_NP_D, UPDATEFC_CPL_D}) begin
             item.dllp[39:38] = $random();   // Random header scale
             item.dllp[29:28] = $random();   // Random data scale   
         end

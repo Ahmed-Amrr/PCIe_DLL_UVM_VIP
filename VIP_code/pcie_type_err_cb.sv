@@ -30,37 +30,37 @@ class pcie_dllp_type_err_cb extends pcie_vip_driver_cb;
         case (sqr.state)
             DL_FEATURE : begin
                 randcase
-                    1 : wrong_type = INITFC1_P  ;
-                    1 : wrong_type = INITFC1_NP ;
-                    1 : wrong_type = INITFC1_CPL;
-                    1 : wrong_type = INITFC2_P  ;
-                    1 : wrong_type = INITFC2_NP ;
-                    1 : wrong_type = INITFC2_CPL;
-                    1 : wrong_type = UPDATEFC_P ;
-                    1 : wrong_type = UPDATEFC_NP;
-                    1 : wrong_type = UPDATEFC_CPL;
+                    1 : wrong_type = INITFC1_P_D  ;
+                    1 : wrong_type = INITFC1_NP_D ;
+                    1 : wrong_type = INITFC1_CPL_D;
+                    1 : wrong_type = INITFC2_P_D  ;
+                    1 : wrong_type = INITFC2_NP_D ;
+                    1 : wrong_type = INITFC2_CPL_D;
+                    1 : wrong_type = UPDATEFC_P_D ;
+                    1 : wrong_type = UPDATEFC_NP_D;
+                    1 : wrong_type = UPDATEFC_CPL_D;
                 endcase
             end
             DL_INIT1 : begin
                 randcase
-                    1 : wrong_type = FEATURE    ;
-                    1 : wrong_type = INITFC2_P  ;
-                    1 : wrong_type = INITFC2_NP ;
-                    1 : wrong_type = INITFC2_CPL;
-                    1 : wrong_type = UPDATEFC_P ;
-                    1 : wrong_type = UPDATEFC_NP;
-                    1 : wrong_type = UPDATEFC_CPL;
+                    1 : wrong_type = FEATURE       ;
+                    1 : wrong_type = INITFC2_P_D   ;
+                    1 : wrong_type = INITFC2_NP_D  ;
+                    1 : wrong_type = INITFC2_CPL_D ;
+                    1 : wrong_type = UPDATEFC_P_D  ;
+                    1 : wrong_type = UPDATEFC_NP_D ;
+                    1 : wrong_type = UPDATEFC_CPL_D;
                 endcase
             end
             DL_INIT2 : begin
                 randcase
-                    1 : wrong_type = FEATURE    ;
-                    1 : wrong_type = INITFC1_P  ;
-                    1 : wrong_type = INITFC1_NP ;
-                    1 : wrong_type = INITFC1_CPL;
-                    1 : wrong_type = UPDATEFC_P ;
-                    1 : wrong_type = UPDATEFC_NP;
-                    1 : wrong_type = UPDATEFC_CPL;
+                    1 : wrong_type = FEATURE       ;
+                    1 : wrong_type = INITFC1_P_D   ;
+                    1 : wrong_type = INITFC1_NP_D  ;
+                    1 : wrong_type = INITFC1_CPL_D ;
+                    1 : wrong_type = UPDATEFC_P_D  ;
+                    1 : wrong_type = UPDATEFC_NP_D ;
+                    1 : wrong_type = UPDATEFC_CPL_D;
                 endcase
             end
             DL_ACTIVE : begin
@@ -76,19 +76,19 @@ class pcie_dllp_type_err_cb extends pcie_vip_driver_cb;
             end
             DL_INACTIVE : begin
                 randcase
-                    1 : wrong_type = ACK        ;
-                    1 : wrong_type = NACK       ;
-                    1 : wrong_type = NOP        ;
-                    1 : wrong_type = FEATURE    ;
-                    1 : wrong_type = INITFC1_P  ;
-                    1 : wrong_type = INITFC1_NP ;
-                    1 : wrong_type = INITFC1_CPL;
-                    1 : wrong_type = INITFC2_P  ;
-                    1 : wrong_type = INITFC2_NP ;
-                    1 : wrong_type = INITFC2_CPL;
-                    1 : wrong_type = UPDATEFC_P ;
-                    1 : wrong_type = UPDATEFC_NP;
-                    1 : wrong_type = UPDATEFC_CPL;
+                    1 : wrong_type = ACK           ;
+                    1 : wrong_type = NACK          ;
+                    1 : wrong_type = NOP           ;
+                    1 : wrong_type = FEATURE       ;
+                    1 : wrong_type = INITFC1_P_D   ;
+                    1 : wrong_type = INITFC1_NP_D  ;
+                    1 : wrong_type = INITFC1_CPL_D ;
+                    1 : wrong_type = INITFC2_P_D   ;
+                    1 : wrong_type = INITFC2_NP_D  ;
+                    1 : wrong_type = INITFC2_CPL_D ;
+                    1 : wrong_type = UPDATEFC_P_D  ;
+                    1 : wrong_type = UPDATEFC_NP_D ;
+                    1 : wrong_type = UPDATEFC_CPL_D;
                 endcase
             end
         endcase

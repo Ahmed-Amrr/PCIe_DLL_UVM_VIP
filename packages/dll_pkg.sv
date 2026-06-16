@@ -66,8 +66,8 @@ package dll_pkg;
     // FC_SHARED     : Shared Buffer   (bit[3] = 0)
     // FC_DEDICATED : Dedicated Buffer (bit[3] = 1)
     typedef enum {
-    FC_SHARED,
-    FC_DEDICATED
+        FC_SHARED,
+        FC_DEDICATED
     } fc_buffer_t;
 
     // Flow Control information indexed as:

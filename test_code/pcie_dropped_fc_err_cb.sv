@@ -29,25 +29,25 @@ class pcie_dropped_fc_cb extends pcie_seq_cb;
             `uvm_info("DROP_CB", "DROPPED FC", UVM_LOW)
             randcase
                 1: begin // DROP_NP  — send P and CPL, omit NP
-                    seq.send_fc_dllp(INITFC1_P,   FC_POSTED,     item);
-                    seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
+                    seq.send_fc_dllp(INITFC1_P_D,   FC_POSTED,     item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_CPL_D, FC_COMPLETION, item);
                 end
                 1: begin // DROP_CPL — send P and NP, omit CPL
-                    seq.send_fc_dllp(INITFC1_P,  FC_POSTED,     item);
-                    seq.send_fc_dllp(INITFC1_NP, FC_NON_POSTED, item);
+                    seq.send_fc_dllp(INITFC1_P_D,  FC_POSTED,     item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_NP_D, FC_NON_POSTED, item, FC_DEDICATED);
                 end
                 1: begin // DROP_P   — send NP and CPL, omit P
-                    seq.send_fc_dllp(INITFC1_NP,  FC_NON_POSTED, item);
-                    seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
+                    seq.send_fc_dllp(INITFC1_NP_D,  FC_NON_POSTED, item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_CPL_D, FC_COMPLETION, item, FC_DEDICATED);
                 end
                 1: begin // ONLY_P   — send P only
-                    seq.send_fc_dllp(INITFC1_P, FC_POSTED, item);
+                    seq.send_fc_dllp(INITFC1_P_D, FC_POSTED, item, FC_DEDICATED);
                 end
                 1: begin // ONLY_NP  — send NP only
-                    seq.send_fc_dllp(INITFC1_NP, FC_NON_POSTED, item);
+                    seq.send_fc_dllp(INITFC1_NP_D, FC_NON_POSTED, item, FC_DEDICATED);
                 end
                 1: begin // ONLY_CPL — send CPL only
-                    seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
+                    seq.send_fc_dllp(INITFC1_CPL_D, FC_COMPLETION, item, FC_DEDICATED);
                 end
             endcase
             current_cycle++;

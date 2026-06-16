@@ -34,12 +34,19 @@ class pcie_fc_init1_seq extends pcie_base_seq;
             `uvm_do_callbacks(pcie_base_seq, pcie_seq_cb, do_send_pattern(this, p_sequencer.state))
 
             if (p_sequencer.state == DL_INIT1)
-            send_fc_dllp(INITFC1_P,   FC_POSTED,     item);
+            send_fc_dllp(INITFC1_P_D,   FC_POSTED,     item, FC_DEDICATED);
             if (p_sequencer.state == DL_INIT1)
-            send_fc_dllp(INITFC1_NP,  FC_NON_POSTED, item);
+            send_fc_dllp(INITFC1_NP_D,  FC_NON_POSTED, item, FC_DEDICATED);
             if (p_sequencer.state == DL_INIT1)
-            send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item);
-
+            send_fc_dllp(INITFC1_CPL_D, FC_COMPLETION, item, FC_DEDICATED);
+            if (cfg.flit_mode_enable) begin
+                if (p_sequencer.state == DL_INIT1)
+                send_fc_dllp(INITFC1_P_S,   FC_POSTED,     item, FC_SHARED);
+                if (p_sequencer.state == DL_INIT1)
+                send_fc_dllp(INITFC1_NP_S,  FC_NON_POSTED, item, FC_SHARED);
+                if (p_sequencer.state == DL_INIT1)
+                send_fc_dllp(INITFC1_CPL_S, FC_COMPLETION, item, FC_SHARED);
+            end
             i++;
             if (i == 1000) begin
                 `uvm_error(get_type_name(), "Timeout in DL_INIT1")

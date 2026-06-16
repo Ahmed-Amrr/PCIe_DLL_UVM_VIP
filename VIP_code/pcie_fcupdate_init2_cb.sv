@@ -29,9 +29,9 @@ class pcie_fcupdate_init2_cb extends pcie_vip_driver_cb;
         // Pick a type that is not valid for the current state
         if (sqr.state == DL_INIT2) begin
             randcase
-                1 : wrong_type = UPDATEFC_P ;
-                1 : wrong_type = UPDATEFC_NP;
-                1 : wrong_type = UPDATEFC_CPL;
+                1 : wrong_type = UPDATEFC_P_D ;
+                1 : wrong_type = UPDATEFC_NP_D;
+                1 : wrong_type = UPDATEFC_CPL_D;
             endcase
 		// Overwrite DLLP type field with the illegal type
 		item.dllp[47:40] = wrong_type;  
