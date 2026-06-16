@@ -39,21 +39,30 @@ class pcie_vip_state_machine extends uvm_component;
 
 /*------------------Flags------------------*/
 	//These flags used for getting DLLP with INITFC1 type in order
-	bit init1_p_f;				//Posetd
-	bit init1_np_f;				//Non-Posted
-	bit init1_cpl_f;			//Compeletion							
+	bit init1_p_f_d;			//Posetd
+	bit init1_np_f_d;			//Non-Posted
+	bit init1_cpl_f_d;			//Compeletion	
+    bit init1_p_f_s;			//Posetd
+	bit init1_np_f_s;			//Non-Posted
+	bit init1_cpl_f_s;			//Compeletion							
 	bit FI1;					//FI1 : INITFC1 flag
 
 	//These flags used for getting DLLP with INITFC2 type in order
-	bit init2_p_f;				//Posetd
-	bit init2_np_f;				//Non-Posted
-	bit init2_cpl_f;			//Compeletion
+	bit init2_p_f_d;			//Posetd
+	bit init2_np_f_d;			//Non-Posted
+	bit init2_cpl_f_d;			//Compeletion
+	bit init2_p_f_s;			//Posetd
+	bit init2_np_f_s;			//Non-Posted
+	bit init2_cpl_f_s;			//Compeletion
 	bit FI2;					//FI1 : initfc2 flag
 
 	//These flags used for getting DLLP with UPDATE type in order
-	bit update_p_f;				//Posetd
-	bit update_np_f;			//Non-Posted
-	bit update_cpl_f;			//Compeletion
+	bit update_p_f_d;			//Posetd
+	bit update_np_f_d;			//Non-Posted
+	bit update_cpl_f_d;			//Compeletion
+	bit update_p_f_s;			//Posetd
+	bit update_np_f_s;			//Non-Posted
+	bit update_cpl_f_s;			//Compeletion
 
 	bit scaled_fc_cfg_done;		//Used for generating the scaled FC registers
 	bit illegal_type_bit;		//Check the legallity of received DLLP depending on the state
@@ -145,11 +154,11 @@ class pcie_vip_state_machine extends uvm_component;
 			current_state = next_state;
 
 			if (cfg.reset || !seq_item_rx.pl_lnk_up) begin
-				next_state=DL_INACTIVE;
+				next_state = DL_INACTIVE;
 			end
 
 			//State transition from INACTIVE doesn't depend on CRC
-			if ((received_crc == crc_expected) || (next_state==DL_INACTIVE)) begin 	//Check on crc before state transition
+			if ((received_crc == crc_expected) || (next_state == DL_INACTIVE)) begin 	//Check on crc before state transition
 				type_legal_check(.current_state_r(current_state), .type_rx_r(received_type), .illegal_type_r(illegal_type_bit));	//Check the legallity
 				prev_state = current_state;	
 				
@@ -215,7 +224,7 @@ class pcie_vip_state_machine extends uvm_component;
 		end else if (!seq_item_rx.pl_lnk_up) begin
 			next_state = DL_INACTIVE;
 			`uvm_info("SM_STATUS", "Waiting for Physical Layer (pl_lnk_up)", UVM_HIGH)
-		end else if (received_type == INITFC1_P && seq_item_rx.pl_valid) begin
+		end else if (received_type == INITFC1_P_D && seq_item_rx.pl_valid) begin
 			//If we received DLLP INITFC1 then the remote link doesn't support feature exchange
 			next_state = DL_INIT1;
 		end else if (((received_type == FEATURE) && (seq_item_rx.dllp[39] == 1)) && seq_item_rx.pl_valid) begin
@@ -243,47 +252,100 @@ class pcie_vip_state_machine extends uvm_component;
 		if (!seq_item_rx.pl_lnk_up) begin
 			next_state = DL_INACTIVE;
 			`uvm_info("SM_STATUS", "Waiting for Physical Layer (pl_lnk_up)", UVM_HIGH)
-		end else if (((received_type == INITFC1_P)||(received_type == INITFC2_P)) && seq_item_rx.pl_valid) begin
-			init1_p_f 	= 1;	//First in order
-			init1_np_f 	= 0;
-			init1_cpl_f = 0;
+		end else if (((received_type == INITFC1_P_D)||(received_type == INITFC2_P_D)) && seq_item_rx.pl_valid) begin
+			init1_p_f_d 	= 1;	//First in order
+			init1_np_f_d 	= 0;
+			init1_cpl_f_d   = 0;
+            init1_p_f_s 	= 0;	
+			init1_np_f_s 	= 0;
+			init1_cpl_f_s   = 0;
 
 			//To store the scale and creadits received (POSTED)
 			fc_type = FC_POSTED;
-			save_conf_scale_reg(fc_type);
-			save_conf_credits_reg(fc_type);
+			save_conf_scale_reg(fc_type, FC_DEDICATED);
+			save_conf_credits_reg(fc_type, FC_DEDICATED);
 
 			next_state = DL_INIT1;
-		end else if (((received_type == INITFC1_NP)||(received_type == INITFC2_NP)) && init1_p_f && seq_item_rx.pl_valid) begin
-			init1_p_f 	= 0;
-			init1_np_f 	= 1;	//Second in order
-			init1_cpl_f = 0;
-
+		end else if (((received_type == INITFC1_NP_D)||(received_type == INITFC2_NP_D)) && init1_p_f_d && seq_item_rx.pl_valid) begin
+			init1_p_f_d     = 0;
+			init1_np_f_d 	= 1;	//Second in order
+			init1_cpl_f_d   = 0;
+			init1_p_f_s     = 0;
+			init1_np_f_s 	= 0;	
+			init1_cpl_f_s   = 0;
 			//To store the scale and creadits received (NON-POSTED)
 			fc_type = FC_NON_POSTED;
-			save_conf_scale_reg(fc_type);
-			save_conf_credits_reg(fc_type);
+			save_conf_scale_reg(fc_type, FC_DEDICATED);
+			save_conf_credits_reg(fc_type, FC_DEDICATED);
 
 			next_state = DL_INIT1;
-		end else if (((received_type == INITFC1_CPL)||(received_type == INITFC2_CPL)) && init1_np_f && seq_item_rx.pl_valid) begin
-			init1_p_f 	= 0;
-			init1_np_f 	= 0;
-			init1_cpl_f = 1;	//Third in order
+		end else if (((received_type == INITFC1_CPL_D)||(received_type == INITFC2_CPL_D)) && init1_np_f_d && seq_item_rx.pl_valid) begin
+			init1_p_f_d     = 0;
+			init1_np_f_d 	= 0;
+			init1_cpl_f_d   = 1;	
+			init1_p_f_s     = 0;
+			init1_np_f_s 	= 0;	
+			init1_cpl_f_s   = 0;
+			//To store the scale and creadits received (COMPELETION)
+			fc_type = FC_COMPLETION;
+			save_conf_scale_reg(fc_type, FC_DEDICATED);
+			save_conf_credits_reg(fc_type, FC_DEDICATED);
+
+			next_state = DL_INIT2;
+		end else if (((received_type == INITFC1_P_S)||(received_type == INITFC2_P_S)) && init1_cpl_f_d && seq_item_rx.pl_valid && cfg.flit_mode_enable) begin
+			init1_p_f_d     = 0;
+			init1_np_f_d 	= 0;
+			init1_cpl_f_d   = 0;
+			init1_p_f_s     = 1;
+			init1_np_f_s 	= 0;	
+			init1_cpl_f_s   = 0;	
+
+			//To store the scale and creadits received (POSTED)
+			save_conf_scale_reg(fc_type, FC_SHARED);
+			save_conf_credits_reg(fc_type, FC_SHARED);
+
+			next_state = DL_INIT2;
+		end 
+        else if (((received_type == INITFC1_NP_S)||(received_type == INITFC2_NP_S)) && init1_p_f_s && seq_item_rx.pl_valid && cfg.flit_mode_enable) begin
+			init1_p_f_d     = 0;
+			init1_np_f_d 	= 0;
+			init1_cpl_f_d   = 0;
+			init1_p_f_s     = 0;
+			init1_np_f_s 	= 1;	
+			init1_cpl_f_s   = 0;	
+
+			//To store the scale and creadits received (NON_POSTED)
+			fc_type = FC_NON_POSTED;
+			save_conf_scale_reg(fc_type, FC_SHARED);
+			save_conf_credits_reg(fc_type, FC_SHARED);
+
+			next_state = DL_INIT2;
+		end 
+        else if (((received_type == INITFC1_CPL_S)||(received_type == INITFC2_CPL_S)) && init1_np_f_s && seq_item_rx.pl_valid && cfg.flit_mode_enable) begin
+			init1_p_f_d     = 0;
+			init1_np_f_d 	= 0;
+			init1_cpl_f_d   = 0;
+			init1_p_f_s     = 0;
+			init1_np_f_s 	= 0;	
+			init1_cpl_f_s   = 1;	
 
 			//To store the scale and creadits received (COMPELETION)
 			fc_type = FC_COMPLETION;
-			save_conf_scale_reg(fc_type);
-			save_conf_credits_reg(fc_type);
+			save_conf_scale_reg(fc_type, FC_SHARED);
+			save_conf_credits_reg(fc_type, FC_SHARED);
 
 			next_state = DL_INIT2;
 		end else begin
 			//In case the sequence was wrong, start from the beginning
-			init1_p_f = 0;
-			init1_np_f = 0;
-			init1_cpl_f = 0;
+			init1_p_f_d     = 0;
+			init1_np_f_d 	= 0;
+			init1_cpl_f_d   = 0;
+			init1_p_f_s     = 0;
+			init1_np_f_s 	= 0;	
+			init1_cpl_f_s   = 0;	
 			next_state = DL_INIT1;
 		end
-		FI1 = init1_cpl_f;	//Raise flag for initfc1
+		FI1 = cfg.flit_mode_enable? init1_cpl_f_s:init1_cpl_f_d;	//Raise flag for initfc1
 	endfunction : init1_state
 
 
@@ -296,54 +358,118 @@ class pcie_vip_state_machine extends uvm_component;
 		end else if (!seq_item_rx.pl_lnk_up) begin
 			next_state = DL_INACTIVE;
 			`uvm_info("SM_STATUS", "Waiting for Physical Layer (pl_lnk_up)", UVM_HIGH)
-		end else if (((received_type == UPDATEFC_P)||(received_type == UPDATEFC_NP)||(received_type == UPDATEFC_CPL)) && seq_item_rx.pl_valid) begin
+		end else if (((received_type == UPDATEFC_P_D)||(received_type == UPDATEFC_NP_D)||(received_type == UPDATEFC_CPL_D)||(received_type == UPDATEFC_P_S)||(received_type == UPDATEFC_NP_S)||(received_type == UPDATEFC_CPL_S)) && seq_item_rx.pl_valid) begin
 			//If received any update in initefc_2 raise Fl2 and next state is Active
-			init2_p_f 	= 0;
-			init2_np_f 	= 0;
-			init2_cpl_f = 1;
+			init2_p_f_d     = 0;
+			init2_np_f_d 	= 0;
+			init2_p_f_s     = 0;
+			init2_np_f_s 	= 0;	
+
+            if (cfg.flit_mode_enable) begin
+                init2_cpl_f_s   = 1;
+                init2_cpl_f_d   = 0;
+            end
+            else begin
+                init2_cpl_f_d   = 1;
+                init2_cpl_f_s   = 0;
+            end
 
 			next_state 	= DL_ACTIVE;
-		end else if (received_type == INITFC2_P && seq_item_rx.pl_valid) begin
-			init2_p_f 	= 1;	//First in order
-			init2_np_f 	= 0;
-			init2_cpl_f = 0;
+		end else if (received_type == INITFC2_P_D && seq_item_rx.pl_valid) begin
+			init2_p_f_d 	= 1;	//First in order
+			init2_np_f_d 	= 0;
+			init2_cpl_f_d   = 0;
+			init2_p_f_s     = 0;
+			init2_np_f_s 	= 0;
+            init2_cpl_f_s   = 0;
 
 			//Checks if the DLLP has the correct scale and credits values
 			fc_type 	= FC_POSTED;
-			check_conf_scale_reg(fc_type);
-			check_conf_credits_reg(fc_type);
+			check_conf_scale_reg(fc_type, FC_DEDICATED);
+			check_conf_credits_reg(fc_type, FC_DEDICATED);
 
 			next_state = DL_INIT2;
-		end else if ((received_type == INITFC2_NP) && init2_p_f && seq_item_rx.pl_valid) begin
-			init2_p_f 	= 0;
-			init2_np_f 	= 1;	//Second in order
-			init2_cpl_f = 0;
+		end else if ((received_type == INITFC2_NP_D) && init2_p_f_d && seq_item_rx.pl_valid) begin
+			init2_p_f_d  	= 0;
+			init2_np_f_d 	= 1;	//Second in order
+			init2_cpl_f_d   = 0;
+			init2_p_f_s     = 0;
+			init2_np_f_s 	= 0;
+            init2_cpl_f_s   = 0;
 
 			//Checks if the DLLP has the correct scale and credits values
 			fc_type 	= FC_NON_POSTED;
-			check_conf_scale_reg(fc_type);
-			check_conf_credits_reg(fc_type);
+			check_conf_scale_reg(fc_type, FC_DEDICATED);
+			check_conf_credits_reg(fc_type, FC_DEDICATED);
 
 			next_state = DL_INIT2;
-		end else if ((received_type == INITFC2_CPL) && init2_np_f && seq_item_rx.pl_valid) begin
-			init2_p_f 	= 0;
-			init2_np_f 	= 0;
-			init2_cpl_f = 1;	//Third in order
+		end else if ((received_type == INITFC2_CPL_D) && init2_np_f_d && seq_item_rx.pl_valid) begin
+			init2_p_f_d 	= 0;
+			init2_np_f_d 	= 0;
+			init2_cpl_f_d   = 1;	//Third in order
+			init2_p_f_s     = 0;
+			init2_np_f_s 	= 0;
+            init2_cpl_f_s   = 0;
 
 			//Checks if the DLLP has the correct scale and credits values
 			fc_type = FC_COMPLETION;
-			check_conf_scale_reg(fc_type);
-			check_conf_credits_reg(fc_type);
+			check_conf_scale_reg(fc_type, FC_DEDICATED);
+			check_conf_credits_reg(fc_type, FC_DEDICATED);
+
+			next_state = DL_ACTIVE;
+		end else if (received_type == INITFC2_P_S && init2_cpl_f_d && seq_item_rx.pl_valid && cfg.flit_mode_enable) begin
+			init2_p_f_d 	= 0;	
+			init2_np_f_d 	= 0;
+			init2_cpl_f_d   = 0;
+			init2_p_f_s     = 1;
+			init2_np_f_s 	= 0;
+            init2_cpl_f_s   = 0;
+
+			//Checks if the DLLP has the correct scale and credits values
+			fc_type 	= FC_POSTED;
+			check_conf_scale_reg(fc_type, FC_SHARED);
+			check_conf_credits_reg(fc_type, FC_SHARED);
+
+			next_state = DL_INIT2;
+		end else if ((received_type == INITFC2_NP_S) && init2_p_f_s && seq_item_rx.pl_valid && cfg.flit_mode_enable) begin
+			init2_p_f_d  	= 0;
+			init2_np_f_d 	= 0;	
+			init2_cpl_f_d   = 0;
+			init2_p_f_s     = 0;
+			init2_np_f_s 	= 1;
+            init2_cpl_f_s   = 0;
+
+			//Checks if the DLLP has the correct scale and credits values
+			fc_type 	= FC_NON_POSTED;
+			check_conf_scale_reg(fc_type, FC_SHARED);
+			check_conf_credits_reg(fc_type, FC_SHARED);
+
+			next_state = DL_INIT2;
+		end else if ((received_type == INITFC2_CPL_S) && init2_np_f_s && seq_item_rx.pl_valid && cfg.flit_mode_enable) begin
+			init2_p_f_d 	= 0;
+			init2_np_f_d 	= 0;
+			init2_cpl_f_d   = 0;	
+			init2_p_f_s     = 0;
+			init2_np_f_s 	= 0;
+            init2_cpl_f_s   = 1;
+
+			//Checks if the DLLP has the correct scale and credits values
+			fc_type = FC_COMPLETION;
+			check_conf_scale_reg(fc_type, FC_SHARED);
+			check_conf_credits_reg(fc_type, FC_SHARED);
 
 			next_state = DL_ACTIVE;
 		end else begin
 			//In case the sequence was wrong, start from the beginning
-			init2_p_f = 0;
-			init2_np_f = 0;
-			init2_cpl_f = 0;
+			init2_p_f_d     = 0;
+			init2_np_f_d 	= 0;
+			init2_cpl_f_d   = 0;
+			init2_p_f_s     = 0;
+			init2_np_f_s 	= 0;	
+			init2_cpl_f_s   = 0;
 			next_state = DL_INIT2;
 		end
-		FI2 = init2_cpl_f; //Raise flag for initfc2
+		FI1 = cfg.flit_mode_enable? init2_cpl_f_s:init2_cpl_f_d; //Raise flag for initfc2
 	endfunction : init2_state
 
 
@@ -357,41 +483,92 @@ class pcie_vip_state_machine extends uvm_component;
 			surprise_down_event = 1;
 			next_state = DL_INACTIVE;
 			`uvm_info("SM_STATUS", "Waiting for Physical Layer (pl_lnk_up)", UVM_HIGH)
-		end else if (received_type == UPDATEFC_P && seq_item_rx.pl_valid) begin
-			update_p_f 	= 1;	//First in order
-			update_np_f = 0;
-			update_cpl_f= 0;
+		end else if (received_type == UPDATEFC_P_D && seq_item_rx.pl_valid) begin
+			update_p_f_d 	= 1;
+			update_np_f_d   = 0;
+			update_cpl_f_d  = 0;
+			update_p_f_s 	= 0;
+			update_np_f_s   = 0;
+			update_cpl_f_s  = 0;
 
 			//Save the updated credits
 			fc_type 	= FC_POSTED;
-			save_conf_credits_reg(fc_type);
+			save_conf_credits_reg(fc_type, FC_DEDICATED);
 
 			next_state = DL_ACTIVE;
-		end else if ((received_type == UPDATEFC_NP) && update_p_f && seq_item_rx.pl_valid) begin
-			update_p_f 	= 0;
-			update_np_f = 1;	//Second in order
-			update_cpl_f= 0;
+		end else if ((received_type == UPDATEFC_NP_D) && update_p_f_d && seq_item_rx.pl_valid) begin
+			update_p_f_d 	= 0;
+			update_np_f_d   = 1;
+			update_cpl_f_d  = 0;
+			update_p_f_s 	= 0;
+			update_np_f_s   = 0;
+			update_cpl_f_s  = 0;
 
 			//Save the updated credits
 			fc_type 	= FC_NON_POSTED;
-			save_conf_credits_reg(fc_type);
+			save_conf_credits_reg(fc_type, FC_DEDICATED);
 
 			next_state = DL_ACTIVE;
-		end else if ((received_type == UPDATEFC_CPL) && update_np_f && seq_item_rx.pl_valid) begin
-			update_p_f 	= 0;
-			update_np_f = 0;
-			update_cpl_f= 1;
+		end else if ((received_type == UPDATEFC_CPL) && update_np_f_d && seq_item_rx.pl_valid) begin
+			update_p_f_d 	= 0;
+			update_np_f_d   = 0;
+			update_cpl_f_d  = 1;
+			update_p_f_s 	= 0;
+			update_np_f_s   = 0;
+			update_cpl_f_s  = 0;
 
 			//Save the updated credits
 			fc_type 	= FC_COMPLETION;
-			save_conf_credits_reg(fc_type);
+			save_conf_credits_reg(fc_type, FC_DEDICATED);
+
+			next_state = DL_ACTIVE;
+		end else if (received_type == UPDATEFC_P_S && update_cpl_f_d && seq_item_rx.pl_valid && cfg.flit_mode_enable) begin
+			update_p_f_d 	= 0;
+			update_np_f_d   = 0;
+			update_cpl_f_d  = 0;
+			update_p_f_s 	= 1;
+			update_np_f_s   = 0;
+			update_cpl_f_s  = 0;
+
+			//Save the updated credits
+			fc_type 	= FC_POSTED;
+			save_conf_credits_reg(fc_type, FC_SHARED);
+
+			next_state = DL_ACTIVE;
+		end else if ((received_type == UPDATEFC_NP_S) && update_p_f_d && seq_item_rx.pl_valid && cfg.flit_mode_enable) begin
+			update_p_f_d 	= 0;
+			update_np_f_d   = 0;
+			update_cpl_f_d  = 0;
+			update_p_f_s 	= 0;
+			update_np_f_s   = 1;
+			update_cpl_f_s  = 0;
+
+			//Save the updated credits
+			fc_type 	= FC_NON_POSTED;
+			save_conf_credits_reg(fc_type, FC_SHARED);
+
+			next_state = DL_ACTIVE;
+		end else if ((received_type == UPDATEFC_CPL_S) && update_np_f_s && seq_item_rx.pl_valid && cfg.flit_mode_enable) begin
+			update_p_f_d 	= 0;
+			update_np_f_d   = 0;
+			update_cpl_f_d  = 0;
+			update_p_f_s 	= 0;
+			update_np_f_s   = 0;
+			update_cpl_f_s  = 1;
+
+			//Save the updated credits
+			fc_type 	= FC_COMPLETION;
+			save_conf_credits_reg(fc_type, FC_SHARED);
 
 			next_state = DL_ACTIVE;
 		end else begin
 			//In case the sequence was wrong, start from the beginning
-			update_p_f 	= 0;
-			update_np_f = 0;
-			update_cpl_f= 0;
+			update_p_f_d 	= 0;
+			update_np_f_d   = 0;
+			update_cpl_f_d  = 0;
+			update_p_f_s 	= 0;
+			update_np_f_s   = 0;
+			update_cpl_f_s  = 0;
 			next_state 	= DL_ACTIVE;
 		end
 	endfunction : active_state
@@ -435,14 +612,14 @@ class pcie_vip_state_machine extends uvm_component;
 					illegal_type_r = 1;	//We can't receive DLLP in inactive state
 				 end
 			    DL_FEATURE: begin
-					if(!(type_rx_r inside {FEATURE,INITFC1_P,INITFC1_NP,INITFC1_CPL})) begin
+					if(!(type_rx_r inside {FEATURE , INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D, INITFC2_P_S, INITFC2_NP_S, INITFC2_CPL_S, INITFC1_P_S, INITFC1_NP_S, INITFC1_CPL_S, INITFC2_P_S, INITFC2_NP_S, INITFC2_CPL_S})) begin
 						illegal_type_r = 1;
 						`uvm_info("State_Machine rx_type error (Illegal DLLP receiving in state DL_FEATURE)",
 							$sformatf("received type is : %s",type_rx_r), UVM_LOW)
 					end
 				end
 			    DL_INIT1: begin
-					if(!(type_rx_r inside {FEATURE, INITFC1_P, INITFC1_NP, INITFC1_CPL, INITFC2_P, INITFC2_NP, INITFC2_CPL})) begin
+					if(!(type_rx_r inside {FEATURE, INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D, INITFC2_P_S, INITFC2_NP_S, INITFC2_CPL_S, INITFC1_P_S, INITFC1_NP_S, INITFC1_CPL_S, INITFC2_P_S, INITFC2_NP_S, INITFC2_CPL_S})) begin
 						illegal_type_r = 1;
 						`uvm_info("State_Machine rx_type error (Illegal DLLP receiving in state DL_INIT1)",
 							$sformatf("received type is : %s",type_rx_r), UVM_LOW)
@@ -470,19 +647,28 @@ class pcie_vip_state_machine extends uvm_component;
     // Function: reset_conf_regs
     // Reset all configurations, registers and flags
 	function void reset_conf_regs;
-		init1_p_f 	= 0;
-		init1_np_f 	= 0;
-		init1_cpl_f = 0;
-		FI1 		= 0;
+		init1_p_f_d 	= 0;
+		init1_np_f_d 	= 0;
+		init1_cpl_f_d   = 0;
+		init1_p_f_s 	= 0;
+		init1_np_f_s 	= 0;
+		init1_cpl_f_s   = 0;
+		FI1 		    = 0;
 
-		init2_p_f 	= 0;
-		init2_np_f 	= 0;
-		init2_cpl_f = 0;
-		FI2 		= 0;
+		init2_p_f_d 	= 0;
+		init2_np_f_d 	= 0;
+		init2_cpl_f_d   = 0;
+        init2_p_f_s 	= 0;
+		init2_np_f_s 	= 0;
+		init2_cpl_f_s   = 0;
+		FI2 		    = 0;
 
-		update_p_f 	= 0;
-		update_np_f = 0;
-		update_cpl_f= 0;
+		update_p_f_d 	= 0;
+		update_np_f_d   = 0;
+		update_cpl_f_d  = 0;
+		update_p_f_s 	= 0;
+		update_np_f_s   = 0;
+		update_cpl_f_s  = 0;
 
 		surprise_down_event = 0;
 		scaled_fc_cfg_done 	= 0;
@@ -491,15 +677,14 @@ class pcie_vip_state_machine extends uvm_component;
 		cfg.local_fc_credits_register.hdr_scale  = '0;
 		cfg.local_fc_credits_register.data_scale = '0;
 
-		cfg.remote_register_feature.remote_feature_valid 	= 0;
-		cfg.remote_register_feature.remote_feature_supported= 0;
+        cfg.remote_fc_credits_register.hdr_scale  = '0;
+		cfg.remote_fc_credits_register.data_scale = '0;
 
-		 for (int i = 0; i < 3; i++) begin
-			cfg.remote_fc_credits_register.hdr_scale[i] 	= 2'b00;
-			cfg.remote_fc_credits_register.hdr_credits[i] 	= {8{1'b0}};
-			cfg.remote_fc_credits_register.data_scale[i] 	= 2'b00;
-			cfg.remote_fc_credits_register.data_credits[i] 	= {12{1'b0}};
-		end
+        cfg.remote_fc_credits_register.hdr_credits  = '0;
+		cfg.remote_fc_credits_register.data_credits = '0;
+
+		cfg.remote_register_feature.remote_feature_valid 	 = 0;
+		cfg.remote_register_feature.remote_feature_supported = 0;
 	endfunction : reset_conf_regs
 
 
@@ -513,12 +698,19 @@ class pcie_vip_state_machine extends uvm_component;
 
 		if (cfg.remote_register_feature.remote_feature_supported[0] & cfg.local_register_feature.local_feature_supported[0]) begin
 			cfg.scaled_fc_active = 1;	//Both local and remote links support scaled fc
-			cfg.local_fc_credits_register.hdr_scale[0] 	= $urandom_range(1,3);
-			cfg.local_fc_credits_register.hdr_scale[1] 	= $urandom_range(1,3);
-			cfg.local_fc_credits_register.hdr_scale[2] 	= $urandom_range(1,3);
-			cfg.local_fc_credits_register.data_scale[0] = $urandom_range(1,3);
-			cfg.local_fc_credits_register.data_scale[1] = $urandom_range(1,3);
-			cfg.local_fc_credits_register.data_scale[2] = $urandom_range(1,3);
+			cfg.local_fc_credits_register.hdr_scale[0][0] 	= $urandom_range(1,3);
+			cfg.local_fc_credits_register.hdr_scale[0][1] 	= $urandom_range(1,3);
+			cfg.local_fc_credits_register.hdr_scale[0][2] 	= $urandom_range(1,3);
+			cfg.local_fc_credits_register.data_scale[0][0] = $urandom_range(1,3);
+			cfg.local_fc_credits_register.data_scale[0][1] = $urandom_range(1,3);
+			cfg.local_fc_credits_register.data_scale[0][2] = $urandom_range(1,3);
+
+			cfg.local_fc_credits_register.hdr_scale[1][0] 	= $urandom_range(1,3);
+			cfg.local_fc_credits_register.hdr_scale[1][1] 	= $urandom_range(1,3);
+			cfg.local_fc_credits_register.hdr_scale[1][2] 	= $urandom_range(1,3);
+			cfg.local_fc_credits_register.data_scale[1][0] = $urandom_range(1,3);
+			cfg.local_fc_credits_register.data_scale[1][1] = $urandom_range(1,3);
+			cfg.local_fc_credits_register.data_scale[1][2] = $urandom_range(1,3);
 			`uvm_info("FC_CREDITS", "Scaled FC enabled after remote Feature capture", UVM_LOW)
 		end else begin
 			cfg.scaled_fc_active = 0;
@@ -535,8 +727,9 @@ class pcie_vip_state_machine extends uvm_component;
     // Stores the Hdrscale and Datascale of the received DLLP
 	function void save_conf_scale_reg;
 		input fc_type_t fc_type;
-		cfg.remote_fc_credits_register.hdr_scale[fc_type] 	= seq_item_rx.dllp[39:38];
-		cfg.remote_fc_credits_register.data_scale[fc_type] 	= seq_item_rx.dllp[29:28];
+		input fc_buffer_t buffer;
+		cfg.remote_fc_credits_register.hdr_scale[buffer][fc_type] 	= seq_item_rx.dllp[39:38];
+		cfg.remote_fc_credits_register.data_scale[buffer][fc_type] 	= seq_item_rx.dllp[29:28];
 	endfunction : save_conf_scale_reg
 
 
@@ -545,8 +738,9 @@ class pcie_vip_state_machine extends uvm_component;
     // Stores the Hdrcredits and Datacredits of the received DLLP
 	function void save_conf_credits_reg;
 		input fc_type_t fc_type;
-		cfg.remote_fc_credits_register.hdr_credits[fc_type] 	= seq_item_rx.dllp[37:30];
-		cfg.remote_fc_credits_register.data_credits[fc_type] 	= seq_item_rx.dllp[27:16];
+        input fc_buffer_t buffer;
+		cfg.remote_fc_credits_register.hdr_credits[buffer][fc_type] 	= seq_item_rx.dllp[37:30];
+		cfg.remote_fc_credits_register.data_credits[buffer][fc_type] 	= seq_item_rx.dllp[27:16];
 	endfunction : save_conf_credits_reg
 
 
@@ -555,8 +749,9 @@ class pcie_vip_state_machine extends uvm_component;
     // Checks on the received Hdrscale and Datascale to match the one in the registers
 	function void check_conf_scale_reg;
 		input fc_type_t fc_type;
-		if(	(cfg.remote_fc_credits_register.hdr_scale[fc_type]   != seq_item_rx.dllp[39:38]) ||
-			(cfg.remote_fc_credits_register.data_scale[fc_type]  != seq_item_rx.dllp[29:28])) begin
+        input fc_buffer_t buffer;
+		if(	(cfg.remote_fc_credits_register.hdr_scale[buffer][fc_type]   != seq_item_rx.dllp[39:38]) ||
+			(cfg.remote_fc_credits_register.data_scale[buffer][fc_type]  != seq_item_rx.dllp[29:28])) begin
 				
 				`uvm_error("FC_init2 or FC_update scale doesn't match",
        			 $sformatf("unmatche_type: %s",fc_type))
@@ -569,8 +764,9 @@ class pcie_vip_state_machine extends uvm_component;
     // Checks on the received Hdrcredits and Datacredits to match the one in the registers
 	function void check_conf_credits_reg;
 		input fc_type_t fc_type;
-		if( (cfg.remote_fc_credits_register.hdr_credits[fc_type] != seq_item_rx.dllp[37:30]) ||
-			(cfg.remote_fc_credits_register.data_credits[fc_type]!= seq_item_rx.dllp[27:16])) begin
+        input fc_buffer_t buffer;
+		if( (cfg.remote_fc_credits_register.hdr_credits[buffer][fc_type] != seq_item_rx.dllp[37:30]) ||
+			(cfg.remote_fc_credits_register.data_credits[buffer][fc_type]!= seq_item_rx.dllp[27:16])) begin
 				
 				`uvm_error("FC_init2 credits doesn't match",
        			 $sformatf("unmatche_type: %s",fc_type))
@@ -595,9 +791,12 @@ class pcie_vip_state_machine extends uvm_component;
 		state_seq_item.FI2 					= FI2;
 		state_seq_item.surprise_down_event 	= surprise_down_event;
 
-		state_seq_item.init1_p_f 			=init1_p_f;
-		state_seq_item.init1_np_f			=init1_np_f;
-		state_seq_item.init1_cpl_f 			=init1_cpl_f;		
+		state_seq_item.init1_p_f_d 			    =init1_p_f_d;
+		state_seq_item.init1_np_f_d			    =init1_np_d;
+		state_seq_item.init1_cpl_f_d 			=init1_cpl_d;	
+		state_seq_item.init1_p_f_s 			    =init1_p_f_s;
+		state_seq_item.init1_np_f_s		        =init1_np_s;
+		state_seq_item.init1_cpl_f_s 			=init1_cpl_s;		
 		
 	endfunction : save_seq_item
 
