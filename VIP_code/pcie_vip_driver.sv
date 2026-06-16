@@ -22,6 +22,11 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
     pcie_vip_tx_sequencer sqr         ;
     pcie_vip_config cfg;
 
+    pcie_gen6_fec FEC;
+
+    logic [7:0] flit_payload [0:242];
+    logic [7:0] FLIT [0:255];
+
     //==========================================================
     // Constructor
     //==========================================================
@@ -37,6 +42,10 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
         // Get the configuration object to access the configuration registers
         if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG_ENV",cfg))
           `uvm_fatal("build_phase","unable to get configuration object in sb")
+
+        if (cfg.flit_mode) begin
+            FEC = new();
+        end
     endfunction : build_phase
 
     //==========================================================
@@ -67,12 +76,17 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
             `uvm_do_callbacks(pcie_vip_driver, pcie_vip_driver_cb, crc_drive(seq_item_drv, sqr))
 
             // drive DLLP and valid onto the interface
-            if(cfg.flit_mode_enable) begin
-                lpif_vif.drv_cb.lp_data [0:235]    <= '0;
-                lpif_vif.drv_cb.lp_data [250:255]  <= fec;
+            if(cfg.flit_mode) begin
+                flit_payload = {cfg.TLP, seq_item_drv.dllp};
+                FEC.crc_flit_calc(flit_payload, FLIT[238:245]);
+                FEC.encode_flit(FLIT, FLIT);
+                lpif_vif.drv_cb.lp_data  <= FLIT;
+            end else begin
+                lpif_vif.drv_cb.lp_data[236:241] <= seq_item_drv.dllp;
             end
-            lpif_vif.drv_cb.lp_data  <= seq_item_drv.dllp;
+            
             lpif_vif.drv_cb.lp_valid <= (cfg.reset || !lpif_vif.pl_lnk_up) ? 0 : 1;
+
 
             @(lpif_vif.drv_cb);
 
@@ -125,6 +139,9 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
         crc = ~crc_calc;
 
     endfunction : CRC_generation
+
+
+
 
 endclass : pcie_vip_driver
 

@@ -26,7 +26,9 @@ class pcie_vip_config extends uvm_object;
     // Randomizable capability flags
     rand bit surprise_down_capable;
     rand bit link_not_disabled    ;
-    rand bit flit_mode_enable     ;
+    bit flit_mode     ;
+
+    logic [7:0] TLP [0:235];
 
     // Constraints — keep disabled/incapable scenarios rare
     constraint c {
@@ -39,6 +41,7 @@ class pcie_vip_config extends uvm_object;
     //==========================================================
     function new(string name = "pcie_vip_config");
         super.new(name);
+        this.TLP = '0;
     endfunction : new
 
 endclass

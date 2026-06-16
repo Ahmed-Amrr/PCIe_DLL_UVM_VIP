@@ -1,5 +1,5 @@
-`ifndef PCIE_GEN6_ECC_SV
-`define PCIE_GEN6_ECC_SV
+`ifndef PCIE_GEN6_FEC_SV
+`define PCIE_GEN6_FEC_SV
 
 import uvm_pkg::*;
 `include "uvm_macros.svh"
@@ -10,7 +10,11 @@ typedef enum logic [1:0] {
     ECC_UNCORRECTABLE = 2'b10
 } ecc_status_t;
 
-class pcie_gen6_ecc;
+class pcie_gen6_fec;
+
+    // parameters for crc calculation
+    localparam int FLIT_PAYLOAD_BYTES = 242;   // Bytes 0..241 -> a(x)
+    localparam int CRC_BYTES          = 8;     // B0..B7
 
     //  EXP table : i → α^i 
     bit [7:0] GF_EXP [0:255] = {
@@ -52,6 +56,10 @@ class pcie_gen6_ecc;
         /* F0-FF */ 8'h4F, 8'hAE, 8'hD5, 8'hE9, 8'hE6, 8'hE7, 8'hAD, 8'hE8, 8'h74, 8'hD6, 8'hF4, 8'hEA, 8'hA8, 8'h50, 8'h58, 8'hAF
     };
 
+    // g-coefficients g0..g7 (each a fixed GF(2^8) element, derived from the spec exponents)
+    //   g0 = a^36 , g1 = a^199 , g2 = a^134 , g3 = a^195 , g4 = a^172 , g5 = a^186 , g6 = a^116 , g7 = a^172
+    bit [7:0] G [8] = '{8'h69, 8'h4D, 8'h41, 8'h33, 8'hD5, 8'hFE, 8'h68, 8'hD5};
+
     // Function gf_mul : multiply two GF(2^8) elements with log/exp tables
     //                   Returns 0 if either operand is 0 
     // Inputs  : a, b -> multiplied operands
@@ -62,6 +70,43 @@ class pcie_gen6_ecc;
         sum = (GF_LOG[a] + GF_LOG[b]) % 255; // modulo 255
         return GF_EXP[sum[7:0]];
     endfunction : gf_mul
+
+    // Function crc_flit_calc : Computes the 8 CRC bytes (B0..B7) over a 242-byte Flit payload,
+    //                          implementing the Figure 4-53 LFSR exactly (Fibonacci-style shift
+    //                          register: feedback = B7 XOR new_byte ; each Bi shifts from B(i-1),
+    //                          XORed with gi*feedback ; B0 takes g0*feedback only).
+    // Input   : data[0:241] -> Flit information Bytes 0..241 , fed in MSB-byte-first order
+    //                          (i.e. call with data[0]=Byte241 ... data[241]=Byte0, matching
+    //                          the spec's a(x) convention / Appendix-K bit ordering)
+    // Output  : crc_bytes[0:7] -> B0..B7 (B0 = crc_bytes[0] ... B7 = crc_bytes[7])
+    function void crc_flit_calc (
+        input  bit [7:0] data [FLIT_PAYLOAD_BYTES],
+        output bit [7:0] crc_bytes [CRC_BYTES]
+    );
+        bit [7:0] B [CRC_BYTES];
+        bit [7:0] new_B [CRC_BYTES];
+        bit [7:0] feedback;
+
+        foreach (B[i]) B[i] = 8'h00;
+
+        for (int n = 0; n < FLIT_PAYLOAD_BYTES; n++) begin
+            feedback = B[7] ^ data[n];
+
+            new_B[0] = gf_mul(G[0], feedback);
+            for (int i = 1; i < CRC_BYTES; i++)
+                new_B[i] = B[i-1] ^ gf_mul(G[i], feedback);
+
+            foreach (B[i]) B[i] = new_B[i];
+        end
+
+        foreach (crc_bytes[i]) crc_bytes[i] = B[i];
+
+        `uvm_info("FLIT_CRC",
+            $sformatf("[crc_flit_calc] B0..B7 = %02h %02h %02h %02h %02h %02h %02h %02h",
+                      crc_bytes[0], crc_bytes[1], crc_bytes[2], crc_bytes[3],
+                      crc_bytes[4], crc_bytes[5], crc_bytes[6], crc_bytes[7]), UVM_MEDIUM)
+    endfunction : crc_flit_calc
+
 
     //  encode_ecc_group : compute the two ECC bytes for one 84-byte code word
     //  Inputs  : data[0:83] –> information bytes
@@ -169,8 +214,8 @@ class pcie_gen6_ecc;
     //  Input  : flit_in[0:255]  –> from 250 to 255 are overwritten 
     //  Output : flit_out[0:255] –> from 0 to 249 unchanged input and from 250 to 255 equals calculated ECC bytes
     function void encode_flit (
-        input  bit [7:0] flit_in  [256],
-        output bit [7:0] flit_out [256]
+        input  bit [7:0] flit_in  [0:255],
+        output bit [7:0] flit_out [0:255]
     );
         bit [7:0] grp     [3][86];      // ecc three groups
         bit [7:0] check     [3];        // computed B[84] per group
@@ -210,8 +255,8 @@ class pcie_gen6_ecc;
     //  Output : flit_out[0:255]  –> corrected flit
     //           group_status[3]  –> per-group ECC status
     function void decode_flit (
-        input  bit [7:0]  flit_in  [256],
-        output bit [7:0]  flit_out [256],
+        input  bit [7:0]  flit_in  [0:255],
+        output bit [7:0]  flit_out [0:255],
         output ecc_status_t group_status  [3]
     );
         bit [7:0] grp             [3][86];           // received code words
@@ -262,4 +307,4 @@ class pcie_gen6_ecc;
 
 endclass 
 
-`endif 
+`endif
