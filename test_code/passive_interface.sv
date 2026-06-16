@@ -103,24 +103,24 @@ interface passive_interface (input logic lclk);
     assign rx_ack_bit       = rx_dllp[39];
 
     // TX InitFC1 type detection
-    assign tx_is_initfc1_p   = (tx_dllp[47:40] == INITFC1_P);
-    assign tx_is_initfc1_np  = (tx_dllp[47:40] == INITFC1_NP);
-    assign tx_is_initfc1_cpl = (tx_dllp[47:40] == INITFC1_CPL);
+    assign tx_is_initfc1_p   = (tx_dllp[47:40] == INITFC1_P_D);
+    assign tx_is_initfc1_np  = (tx_dllp[47:40] == INITFC1_NP_D);
+    assign tx_is_initfc1_cpl = (tx_dllp[47:40] == INITFC1_CPL_D);
 
     // TX InitFC2 type detection
-    assign tx_is_initfc2_p   = (tx_dllp[47:40] == INITFC2_P);
-    assign tx_is_initfc2_np  = (tx_dllp[47:40] == INITFC2_NP);
-    assign tx_is_initfc2_cpl = (tx_dllp[47:40] == INITFC2_CPL);
+    assign tx_is_initfc2_p   = (tx_dllp[47:40] == INITFC2_P_D);
+    assign tx_is_initfc2_np  = (tx_dllp[47:40] == INITFC2_NP_D);
+    assign tx_is_initfc2_cpl = (tx_dllp[47:40] == INITFC2_CPL_D);
 
     // RX InitFC1 type detection
-    assign rx_is_initfc1_p   = (rx_dllp[47:40] == INITFC1_P);
-    assign rx_is_initfc1_np  = (rx_dllp[47:40] == INITFC1_NP);
-    assign rx_is_initfc1_cpl = (rx_dllp[47:40] == INITFC1_CPL);
+    assign rx_is_initfc1_p   = (rx_dllp[47:40] == INITFC1_P_D);
+    assign rx_is_initfc1_np  = (rx_dllp[47:40] == INITFC1_NP_D);
+    assign rx_is_initfc1_cpl = (rx_dllp[47:40] == INITFC1_CPL_D);
 
     // RX InitFC2 type detection
-    assign rx_is_initfc2_p   = (rx_dllp[47:40] == INITFC2_P);
-    assign rx_is_initfc2_np  = (rx_dllp[47:40] == INITFC2_NP);
-    assign rx_is_initfc2_cpl = (rx_dllp[47:40] == INITFC2_CPL);
+    assign rx_is_initfc2_p   = (rx_dllp[47:40] == INITFC2_P_D);
+    assign rx_is_initfc2_np  = (rx_dllp[47:40] == INITFC2_NP_D);
+    assign rx_is_initfc2_cpl = (rx_dllp[47:40] == INITFC2_CPL_D);
 
     // Scale fields — bits 39:38 = HdrScale, bits 29:28 = DataScale
     assign tx_hdr_scale  = tx_dllp[39:38];
@@ -129,10 +129,10 @@ interface passive_interface (input logic lclk);
     assign rx_data_scale = rx_dllp[29:28];
 
     // Grouped any-type checks using 'inside'
-    assign tx_is_initfc1 = (tx_dllp[47:40] inside {INITFC1_P, INITFC1_NP, INITFC1_CPL});
-    assign tx_is_initfc2 = (tx_dllp[47:40] inside {INITFC2_P, INITFC2_NP, INITFC2_CPL});
-    assign rx_is_initfc1 = (rx_dllp[47:40] inside {INITFC1_P, INITFC1_NP, INITFC1_CPL});
-    assign rx_is_initfc2 = (rx_dllp[47:40] inside {INITFC2_P, INITFC2_NP, INITFC2_CPL});
+    assign tx_is_initfc1 = (tx_dllp[47:40] inside {INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D});
+    assign tx_is_initfc2 = (tx_dllp[47:40] inside {INITFC2_P_D, INITFC2_NP_D, INITFC2_CPL_D});
+    assign rx_is_initfc1 = (rx_dllp[47:40] inside {INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D});
+    assign rx_is_initfc2 = (rx_dllp[47:40] inside {INITFC2_P_D, INITFC2_NP_D, INITFC2_CPL_D});
 
     // ============================================================
     // RESET BEHAVIOR
@@ -254,7 +254,7 @@ interface passive_interface (input logic lclk);
     // ============================================================
     property p_tx_field_matches_local;
         @(posedge lclk) disable iff (reset || !pl_valid)
-        (tx_is_feature && state==DL_FEATURE) |->
+        (tx_is_feature && state == DL_FEATURE) |->
         (tx_feature_field == local_register_feature.local_feature_supported);
     endproperty
 
@@ -286,7 +286,7 @@ interface passive_interface (input logic lclk);
     property p_remote_field_recorded_on_first_dllp;
         @(posedge lclk) disable iff (reset || !pl_lnk_up)
         // Trigger: first Feature DLLP arrives when valid is still clear
-        (rx_is_feature && !$past(remote_register_feature.remote_feature_valid) && (state==DL_FEATURE) && ($past(state)!=DL_INACTIVE) && pl_valid)
+        (rx_is_feature && !$past(remote_register_feature.remote_feature_valid) && (state == DL_FEATURE) && ($past(state)!=DL_INACTIVE) && pl_valid)
         // Next cycle: supported field updated and valid set
         |=> ((remote_register_feature.remote_feature_supported == (rx_feature_field)) &&
              (remote_register_feature.remote_feature_valid == 1));
@@ -363,7 +363,7 @@ interface passive_interface (input logic lclk);
         @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
         (state == DL_FEATURE &&
          $past(state) != DL_INACTIVE &&
-         rx_dllp[47:40] == INITFC1_P)
+         rx_dllp[47:40] == INITFC1_P_D)
         |=> (state == DL_INIT1);
     endproperty
 
@@ -460,24 +460,24 @@ interface passive_interface (input logic lclk);
     property p_initfc_p_recorded;
         @(posedge lclk) disable iff (reset || !pl_valid)
         (state == DL_INIT1 && (rx_is_initfc1_p || rx_is_initfc2_p) && init1_p_f)
-        |=> (remote_fc_credits_register.hdr_credits[FC_POSTED]  == $past(rx_dllp[37:30]) &&
-             remote_fc_credits_register.data_credits[FC_POSTED] == $past(rx_dllp[27:16]));
+        |=> (remote_fc_credits_register.hdr_credits[FC_DEDICATED][FC_POSTED]  == $past(rx_dllp[37:30]) &&
+             remote_fc_credits_register.data_credits[FC_DEDICATED][FC_POSTED] == $past(rx_dllp[27:16]));
     endproperty
 
     // Non-Posted credits (NP type)
     property p_initfc_np_recorded;
         @(posedge lclk) disable iff (reset || !pl_valid)
         (state == DL_INIT1 && (rx_is_initfc1_np || rx_is_initfc2_np) && init1_np_f)
-        |=> (remote_fc_credits_register.hdr_credits[FC_NON_POSTED]  == $past(rx_dllp[37:30]) &&
-             remote_fc_credits_register.data_credits[FC_NON_POSTED] == $past(rx_dllp[27:16]));
+        |=> (remote_fc_credits_register.hdr_credits[FC_DEDICATED][FC_NON_POSTED]  == $past(rx_dllp[37:30]) &&
+             remote_fc_credits_register.data_credits[FC_DEDICATED][FC_NON_POSTED] == $past(rx_dllp[27:16]));
     endproperty
 
     // Completion credits (CPL type)
     property p_initfc_cpl_recorded;
         @(posedge lclk) disable iff (reset || !pl_valid)
         ((state) == DL_INIT2 && (rx_is_initfc1_cpl || rx_is_initfc2_cpl))
-        |=> (remote_fc_credits_register.hdr_credits[FC_COMPLETION]  == $past(rx_dllp[37:30]) &&
-             remote_fc_credits_register.data_credits[FC_COMPLETION] == $past(rx_dllp[27:16]));
+        |=> (remote_fc_credits_register.hdr_credits[FC_DEDICATED][FC_COMPLETION]  == $past(rx_dllp[37:30]) &&
+             remote_fc_credits_register.data_credits[FC_DEDICATED][FC_COMPLETION] == $past(rx_dllp[27:16]));
     endproperty
 
     assert_fcinit1_10_fc_p:   assert property (p_initfc_p_recorded)
@@ -499,24 +499,24 @@ interface passive_interface (input logic lclk);
     property p_scale_recorded_p;
         @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
         (state == DL_INIT1 && (rx_is_initfc1_p || rx_is_initfc2_p) && scaled_fc_active)
-        |=> (remote_fc_credits_register.hdr_scale[FC_POSTED]  == $past(rx_dllp[39:38]) &&
-             remote_fc_credits_register.data_scale[FC_POSTED] == $past(rx_dllp[29:28]));
+        |=> (remote_fc_credits_register.hdr_scale[FC_DEDICATED][FC_POSTED]  == $past(rx_dllp[39:38]) &&
+             remote_fc_credits_register.data_scale[FC_DEDICATED][FC_POSTED] == $past(rx_dllp[29:28]));
     endproperty
 
     // Scale recorded from Non-Posted (NP) DLLP
     property p_scale_recorded_np;
         @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
         (state == DL_INIT1 && (rx_is_initfc1_np || rx_is_initfc2_np) && scaled_fc_active)
-        |=> (remote_fc_credits_register.hdr_scale[FC_NON_POSTED]  == $past(rx_dllp[39:38]) &&
-             remote_fc_credits_register.data_scale[FC_NON_POSTED] == $past(rx_dllp[29:28]));
+        |=> (remote_fc_credits_register.hdr_scale[FC_DEDICATED][FC_NON_POSTED]  == $past(rx_dllp[39:38]) &&
+             remote_fc_credits_register.data_scale[FC_DEDICATED][FC_NON_POSTED] == $past(rx_dllp[29:28]));
     endproperty
 
     // Scale recorded from Completion (CPL) DLLP
     property p_scale_recorded_cpl;
         @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
         ($past(state) == DL_INIT1 && (rx_is_initfc1_cpl || rx_is_initfc2_cpl) && scaled_fc_active)
-        |-> (remote_fc_credits_register.hdr_scale[FC_COMPLETION]  == (rx_dllp[39:38]) &&
-             remote_fc_credits_register.data_scale[FC_COMPLETION] == (rx_dllp[29:28]));
+        |-> (remote_fc_credits_register.hdr_scale[FC_DEDICATED][FC_COMPLETION]  == (rx_dllp[39:38]) &&
+             remote_fc_credits_register.data_scale[FC_DEDICATED][FC_COMPLETION] == (rx_dllp[29:28]));
     endproperty
 
     assert_fcinit1_11_p:   assert property (p_scale_recorded_p)
@@ -609,10 +609,10 @@ interface passive_interface (input logic lclk);
         @(posedge lclk) disable iff (reset || !pl_valid)
         (state == DL_INIT2 && (rx_is_initfc1 || rx_is_initfc2))
         // All four credit/scale fields must remain stable
-        |-> (remote_fc_credits_register.hdr_credits  == $past(remote_fc_credits_register.hdr_credits)  &&
-             remote_fc_credits_register.data_credits == $past(remote_fc_credits_register.data_credits) &&
-             remote_fc_credits_register.hdr_scale    == $past(remote_fc_credits_register.hdr_scale)    &&
-             remote_fc_credits_register.data_scale   == $past(remote_fc_credits_register.data_scale));
+        |-> (remote_fc_credits_register.hdr_credits[FC_DEDICATED]  == $past(remote_fc_credits_register.hdr_credits[FC_DEDICATED])  &&
+             remote_fc_credits_register.data_credits[FC_DEDICATED] == $past(remote_fc_credits_register.data_credits[FC_DEDICATED]) &&
+             remote_fc_credits_register.hdr_scale[FC_DEDICATED]    == $past(remote_fc_credits_register.hdr_scale[FC_DEDICATED])    &&
+             remote_fc_credits_register.data_scale[FC_DEDICATED]   == $past(remote_fc_credits_register.data_scale[FC_DEDICATED]));
     endproperty
 
     assert_fcinit2_04: assert property (p_initfc1_2_ignored)
@@ -686,25 +686,25 @@ interface passive_interface (input logic lclk);
     // Posted UpdateFC scale must match what was advertised in local_fc_credits_register
     property p_updatefc_scale_matches_init_p;
         @(posedge lclk) disable iff (reset || !pl_valid)
-        (state == DL_ACTIVE && tx_dllp[47:40] == UPDATEFC_P && scaled_fc_active)
-        |-> (tx_hdr_scale  == local_fc_credits_register.hdr_scale[FC_POSTED] &&
-             tx_data_scale == local_fc_credits_register.data_scale[FC_POSTED]);
+        (state == DL_ACTIVE && tx_dllp[47:40] == UPDATEFC_P_D && scaled_fc_active)
+        |-> (tx_hdr_scale  == local_fc_credits_register.hdr_scale[FC_DEDICATED][FC_POSTED] &&
+             tx_data_scale == local_fc_credits_register.data_scale[FC_DEDICATED][FC_POSTED]);
     endproperty
 
     // Non-Posted UpdateFC scale check
     property p_updatefc_scale_matches_init_np;
         @(posedge lclk) disable iff (reset || !pl_valid)
-        (state == DL_ACTIVE && tx_dllp[47:40] == UPDATEFC_NP && scaled_fc_active)
-        |-> (tx_hdr_scale  == local_fc_credits_register.hdr_scale[FC_NON_POSTED] &&
-             tx_data_scale == local_fc_credits_register.data_scale[FC_NON_POSTED]);
+        (state == DL_ACTIVE && tx_dllp[47:40] == UPDATEFC_NP_D && scaled_fc_active)
+        |-> (tx_hdr_scale  == local_fc_credits_register.hdr_scale[FC_DEDICATED][FC_NON_POSTED] &&
+             tx_data_scale == local_fc_credits_register.data_scale[FC_DEDICATED][FC_NON_POSTED]);
     endproperty
 
     // Completion UpdateFC scale check
     property p_updatefc_scale_matches_init_cpl;
         @(posedge lclk) disable iff (reset || !pl_valid)
-        (state == DL_ACTIVE && tx_dllp[47:40] == UPDATEFC_CPL && scaled_fc_active)
-        |-> (tx_hdr_scale  == local_fc_credits_register.hdr_scale[FC_COMPLETION] &&
-             tx_data_scale == local_fc_credits_register.data_scale[FC_COMPLETION]);
+        (state == DL_ACTIVE && tx_dllp[47:40] == UPDATEFC_CPL_D && scaled_fc_active)
+        |-> (tx_hdr_scale  == local_fc_credits_register.hdr_scale[FC_DEDICATED][FC_COMPLETION] &&
+             tx_data_scale == local_fc_credits_register.data_scale[FC_DEDICATED][FC_COMPLETION]);
     endproperty
 
     assert_fcinit2_11_p:   assert property (p_updatefc_scale_matches_init_p)
@@ -809,7 +809,7 @@ interface passive_interface (input logic lclk);
     property p_tx_dllp_type_legal_active;
         @(posedge lclk) disable iff (reset || !lp_valid || !pl_lnk_up)
         (state == DL_ACTIVE) |=>
-        (tx_dllp[47:40] inside {UPDATEFC_P, UPDATEFC_NP, UPDATEFC_CPL, ACK, NACK});
+        (tx_dllp[47:40] inside {UPDATEFC_P_D, UPDATEFC_NP_D, UPDATEFC_CPL_D, ACK, NACK});
     endproperty
 
     assert_type_legal_10_tx: assert property (p_tx_dllp_type_legal_active)

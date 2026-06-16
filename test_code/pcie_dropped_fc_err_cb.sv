@@ -30,7 +30,7 @@ class pcie_dropped_fc_cb extends pcie_seq_cb;
             randcase
                 1: begin // DROP_NP  — send P and CPL, omit NP
                     seq.send_fc_dllp(INITFC1_P_D,   FC_POSTED,     item, FC_DEDICATED);
-                    seq.send_fc_dllp(INITFC1_CPL_D, FC_COMPLETION, item);
+                    seq.send_fc_dllp(INITFC1_CPL_D, FC_COMPLETION, item, FC_DEDICATED);
                 end
                 1: begin // DROP_CPL — send P and NP, omit CPL
                     seq.send_fc_dllp(INITFC1_P_D,  FC_POSTED,     item, FC_DEDICATED);
