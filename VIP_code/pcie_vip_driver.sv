@@ -76,13 +76,16 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
             `uvm_do_callbacks(pcie_vip_driver, pcie_vip_driver_cb, crc_drive(seq_item_drv, sqr))
 
             // drive DLLP and valid onto the interface
-            if(cfg.flit_mode) begin
-                flit_payload = {cfg.TLP, seq_item_drv.dllp};
-                FEC.crc_flit_calc(flit_payload, FLIT[238:245]);
+            if(cfg.flit_mode_enable) begin
+                flit_payload[0:235] = cfg.TLP;
+                for (int i = 0; i < 6; i++)
+                    flit_payload[236+i] <= seq_item_drv.dllp[i*8 +: 8];
+                FEC.crc_flit_calc(flit_payload, FLIT[242:249]);
                 FEC.encode_flit(FLIT, FLIT);
                 lpif_vif.drv_cb.lp_data  <= FLIT;
             end else begin
-                lpif_vif.drv_cb.lp_data[236:241] <= seq_item_drv.dllp;
+                for (int i = 0; i < 6; i++)
+                    lpif_vif.drv_cb.lp_data[236+i] <= seq_item_drv.dllp[i*8 +: 8];
             end
             
             lpif_vif.drv_cb.lp_valid <= (cfg.reset || !lpif_vif.pl_lnk_up) ? 0 : 1;

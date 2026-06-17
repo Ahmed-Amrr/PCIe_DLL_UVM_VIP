@@ -98,6 +98,7 @@ package dll_pkg;
     // 3) Sequence Items
     // =======================
     `include "pcie_dllp_seq_item.sv"
+    `include "pcie_flit_seq_item.sv"
     `include "pcie_state_seq_item.sv"
 
     `include "pcie_vip_config.sv"
@@ -151,6 +152,7 @@ package dll_pkg;
     // 6) Scoreboards / Coverage / Models / Config
     // =======================
     `include "ref_model.sv"
+    `include "pcie_ecc.sv"
     `include "dll_vip_scoreboard.sv"
     `include "pcie_shared_scoreboard.sv"
     `include "pcie_vip_coverage.sv"

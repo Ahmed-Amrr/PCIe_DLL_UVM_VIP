@@ -248,55 +248,55 @@ class dll_vip_scoreboard extends uvm_scoreboard;
     protected virtual function void timing_check(pcie_dllp_seq_item txn);
         case(txn.dllp[47:40])
 
-            INITFC1_P: begin
+            INITFC1_P_D: begin
                 if(last_fc1_p != 0 && ($time - last_fc1_p) > FC_UPDATE_TIMEOUT)
                     `uvm_error("FC_TIMEOUT", $sformatf("InitFC1-P timeout: %0t", $time - last_fc1_p))
                 last_fc1_p = $time;
             end
 
-            INITFC1_NP: begin
+            INITFC1_NP_D: begin
                 if(last_fc1_np != 0 && ($time - last_fc1_np) > FC_UPDATE_TIMEOUT)
                     `uvm_error("FC_TIMEOUT", $sformatf("InitFC1-NP timeout: %0t", $time - last_fc1_np))
                 last_fc1_np = $time;
             end
 
-            INITFC1_CPL: begin
+            INITFC1_CPL_D: begin
                 if(last_fc1_cpl != 0 && ($time - last_fc1_cpl) > FC_UPDATE_TIMEOUT)
                     `uvm_error("FC_TIMEOUT", $sformatf("InitFC1-CPL timeout: %0t", $time - last_fc1_cpl))
                 last_fc1_cpl = $time;
             end
 
-            INITFC2_P: begin
+            INITFC2_P_D: begin
                 if(last_fc2_p != 0 && ($time - last_fc2_p) > FC_UPDATE_TIMEOUT)
                     `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-P timeout: %0t", $time - last_fc2_p))
                 last_fc2_p = $time;
             end
 
-            INITFC2_NP: begin
+            INITFC2_NP_D: begin
                 if(last_fc2_np != 0 && ($time - last_fc2_np) > FC_UPDATE_TIMEOUT)
                     `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-NP timeout: %0t", $time - last_fc2_np))
                 last_fc2_np = $time;
             end
 
-            INITFC2_CPL: begin
+            INITFC2_CPL_D: begin
                 if(last_fc2_cpl != 0 && ($time - last_fc2_cpl) > FC_UPDATE_TIMEOUT)
                     `uvm_error("FC_TIMEOUT", $sformatf("InitFC2-CPL timeout: %0t", $time - last_fc2_cpl))
                 last_fc2_cpl = $time;
             end
 
-            UPDATEFC_P: begin
+            UPDATEFC_P_D: begin
                 if(last_upfc_p != 0 && ($time - last_upfc_p) > FC_UPDATE_TIMEOUT)
                     `uvm_error("FC_TIMEOUT", $sformatf("UpdateFC-P timeout: %0t", $time - last_upfc_p))
                 last_upfc_p = $time;
             end
 
-            UPDATEFC_NP: begin
+            UPDATEFC_NP_D: begin
                 if(last_upfc_np != 0 && ($time - last_upfc_np) > FC_UPDATE_TIMEOUT)
                     `uvm_error("FC_TIMEOUT", $sformatf("UpdateFC-NP timeout: %0t", $time - last_upfc_np))
                 last_upfc_np = $time;
             end
 
-            UPDATEFC_CPL: begin
+            UPDATEFC_CPL_D: begin
                 if(last_upfc_cpl != 0 && ($time - last_upfc_cpl) > FC_UPDATE_TIMEOUT)
                     `uvm_error("FC_TIMEOUT", $sformatf("UpdateFC-CPL timeout: %0t", $time - last_upfc_cpl))
                 last_upfc_cpl = $time;

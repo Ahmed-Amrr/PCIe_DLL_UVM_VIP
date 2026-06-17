@@ -26,7 +26,7 @@ class pcie_vip_config extends uvm_object;
     // Randomizable capability flags
     rand bit surprise_down_capable;
     rand bit link_not_disabled    ;
-    bit flit_mode     ;
+    bit flit_mode_enable     ;
 
     logic [7:0] TLP [0:235];
 
