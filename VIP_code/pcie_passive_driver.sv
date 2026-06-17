@@ -79,6 +79,7 @@
                     passive_vif.init1_p_f                  <=s_item_sm.init1_p_f;
                     passive_vif.init1_np_f                 <=s_item_sm.init1_np_f;
                     passive_vif.init1_cpl_f                <=s_item_sm.init1_cpl_f;
+                    passive_vif.flit_mode_enable           <= cfg.flit_mode_enable;
 
                 end
             end

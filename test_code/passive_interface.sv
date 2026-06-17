@@ -86,9 +86,12 @@ interface passive_interface (input logic lclk);
     logic        rx_ack_bit;          // ACK bit in RX Feature DLLP
 
     //These flags used for getting DLLP with INITFC1 type in order
-    bit init1_p_f;              //Posetd
-    bit init1_np_f;             //Non-Posted
-    bit init1_cpl_f;            //Compeletion       
+    bit init1_p_f_d;              //Posetd
+    bit init1_np_f_d;             //Non-Posted
+    bit init1_cpl_f_d;            //Compeletion  
+    bit init1_p_f_s;              //Posetd
+    bit init1_np_f_s;             //Non-Posted
+    bit init1_cpl_f_s;            //Compeletion       
 
     // ============================================================
     // Continuous assignments — decode DLLPs
@@ -103,24 +106,36 @@ interface passive_interface (input logic lclk);
     assign rx_ack_bit       = rx_dllp[39];
 
     // TX InitFC1 type detection
-    assign tx_is_initfc1_p   = (tx_dllp[47:40] == INITFC1_P_D);
-    assign tx_is_initfc1_np  = (tx_dllp[47:40] == INITFC1_NP_D);
-    assign tx_is_initfc1_cpl = (tx_dllp[47:40] == INITFC1_CPL_D);
+    assign tx_is_initfc1_p_d   = (tx_dllp[47:40] == INITFC1_P_D);
+    assign tx_is_initfc1_np_d  = (tx_dllp[47:40] == INITFC1_NP_D);
+    assign tx_is_initfc1_cpl_d = (tx_dllp[47:40] == INITFC1_CPL_D);
+    assign tx_is_initfc1_p_s   = (tx_dllp[47:40] == INITFC1_P_S);
+    assign tx_is_initfc1_np_s  = (tx_dllp[47:40] == INITFC1_NP_S);
+    assign tx_is_initfc1_cpl_s = (tx_dllp[47:40] == INITFC1_CPL_S);
 
     // TX InitFC2 type detection
-    assign tx_is_initfc2_p   = (tx_dllp[47:40] == INITFC2_P_D);
-    assign tx_is_initfc2_np  = (tx_dllp[47:40] == INITFC2_NP_D);
-    assign tx_is_initfc2_cpl = (tx_dllp[47:40] == INITFC2_CPL_D);
+    assign tx_is_initfc2_p_d   = (tx_dllp[47:40] == INITFC2_P_D);
+    assign tx_is_initfc2_np_d  = (tx_dllp[47:40] == INITFC2_NP_D);
+    assign tx_is_initfc2_cpl_d = (tx_dllp[47:40] == INITFC2_CPL_D);
+    assign tx_is_initfc2_p_s   = (tx_dllp[47:40] == INITFC2_P_S);
+    assign tx_is_initfc2_np_s  = (tx_dllp[47:40] == INITFC2_NP_S);
+    assign tx_is_initfc2_cpl_s = (tx_dllp[47:40] == INITFC2_CPL_S);
 
     // RX InitFC1 type detection
-    assign rx_is_initfc1_p   = (rx_dllp[47:40] == INITFC1_P_D);
-    assign rx_is_initfc1_np  = (rx_dllp[47:40] == INITFC1_NP_D);
-    assign rx_is_initfc1_cpl = (rx_dllp[47:40] == INITFC1_CPL_D);
+    assign rx_is_initfc1_p_d   = (rx_dllp[47:40] == INITFC1_P_D);
+    assign rx_is_initfc1_np_d  = (rx_dllp[47:40] == INITFC1_NP_D);
+    assign rx_is_initfc1_cpl_d = (rx_dllp[47:40] == INITFC1_CPL_D);
+    assign rx_is_initfc1_p_s   = (rx_dllp[47:40] == INITFC1_P_S);
+    assign rx_is_initfc1_np_s  = (rx_dllp[47:40] == INITFC1_NP_S);
+    assign rx_is_initfc1_cpl_s = (rx_dllp[47:40] == INITFC1_CPL_S);
 
     // RX InitFC2 type detection
-    assign rx_is_initfc2_p   = (rx_dllp[47:40] == INITFC2_P_D);
-    assign rx_is_initfc2_np  = (rx_dllp[47:40] == INITFC2_NP_D);
-    assign rx_is_initfc2_cpl = (rx_dllp[47:40] == INITFC2_CPL_D);
+    assign rx_is_initfc2_p_d   = (rx_dllp[47:40] == INITFC2_P_D);
+    assign rx_is_initfc2_np_d  = (rx_dllp[47:40] == INITFC2_NP_D);
+    assign rx_is_initfc2_cpl_d = (rx_dllp[47:40] == INITFC2_CPL_D);
+    assign rx_is_initfc2_p_s   = (rx_dllp[47:40] == INITFC2_P_S);
+    assign rx_is_initfc2_np_s  = (rx_dllp[47:40] == INITFC2_NP_S);
+    assign rx_is_initfc2_cpl_s = (rx_dllp[47:40] == INITFC2_CPL_S);
 
     // Scale fields — bits 39:38 = HdrScale, bits 29:28 = DataScale
     assign tx_hdr_scale  = tx_dllp[39:38];
@@ -129,10 +144,14 @@ interface passive_interface (input logic lclk);
     assign rx_data_scale = rx_dllp[29:28];
 
     // Grouped any-type checks using 'inside'
-    assign tx_is_initfc1 = (tx_dllp[47:40] inside {INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D});
-    assign tx_is_initfc2 = (tx_dllp[47:40] inside {INITFC2_P_D, INITFC2_NP_D, INITFC2_CPL_D});
-    assign rx_is_initfc1 = (rx_dllp[47:40] inside {INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D});
-    assign rx_is_initfc2 = (rx_dllp[47:40] inside {INITFC2_P_D, INITFC2_NP_D, INITFC2_CPL_D});
+    assign tx_is_initfc1 = (tx_dllp[47:40] inside {INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D
+                                                   ,INITFC1_P_S,INITFC1_NP_S,INITFC1_CPL_S });
+    assign tx_is_initfc2 = (tx_dllp[47:40] inside {INITFC2_P_D, INITFC2_NP_D, INITFC2_CPL_D
+                                                   INITFC2_P_S, INITFC2_NP_S, INITFC2_CPL_S});
+    assign rx_is_initfc1 = (rx_dllp[47:40] inside {INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D
+                                                   ,INITFC1_P_S,INITFC1_NP_S,INITFC1_CPL_S});
+    assign rx_is_initfc2 = (rx_dllp[47:40] inside {INITFC2_P_D, INITFC2_NP_D, INITFC2_CPL_D
+                                                   INITFC2_P_S, INITFC2_NP_S, INITFC2_CPL_S});
 
     // ============================================================
     // RESET BEHAVIOR
@@ -390,37 +409,75 @@ interface passive_interface (input logic lclk);
     // FCINIT1_03 : InitFC1 triplet must be transmitted in strict order P -> NP -> CPL -> P -> ...
     // ============================================================
 
-    // P must be followed by NP
-    property p_InitFC1_triplet_correct_order_p_np;
+    // P_D must be followed by NP_D
+    property p_InitFC1_triplet_correct_order_p_np_d;
         @(posedge lclk) disable iff (reset || !pl_lnk_up)
-        (state == DL_INIT1 && tx_is_initfc1_p)
-        |=> if (state == DL_INIT1) tx_is_initfc1_np;
+        (state == DL_INIT1 && tx_is_initfc1_p_d)
+        |=> if (state == DL_INIT1) tx_is_initfc1_np_d;
     endproperty
 
-    // NP must be followed by CPL
-    property p_InitFC1_triplet_correct_order_np_cpl;
+    // NP_D must be followed by CPL_D
+    property p_InitFC1_triplet_correct_order_np_cpl_d;
         @(posedge lclk) disable iff (reset || !pl_lnk_up)
-        (state == DL_INIT1 && tx_is_initfc1_np)
-        |=> if (state == DL_INIT1) tx_is_initfc1_cpl;
+        (state == DL_INIT1 && tx_is_initfc1_np_d)
+        |=> if (state == DL_INIT1) tx_is_initfc1_cpl_d;
     endproperty
 
-    // CPL must be followed by P (cyclic)
-    property p_InitFC1_triplet_correct_order_cpl_p;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up)
-        (state == DL_INIT1 && tx_is_initfc1_cpl)
-        |=> if (state == DL_INIT1) tx_is_initfc1_p;
+    // CPL_D must be followed by P_D for flit mode disabled (cyclic)
+    property p_InitFC1_triplet_correct_order_cpl_p_d;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || flit_mode_enable )
+        (state == DL_INIT1 && tx_is_initfc1_cpl_d)
+        |=> if (state == DL_INIT1) tx_is_initfc1_p_d;
     endproperty
 
-    assert_fcinit1_03_p_np:   assert property (p_InitFC1_triplet_correct_order_p_np)
-        else `uvm_error("ASSERT_FCINIT1_03", "FCINIT1_03: InitFC1-P-NP did not follow CORRECT order")
-    assert_fcinit1_03_np_cpl: assert property (p_InitFC1_triplet_correct_order_np_cpl)
-        else `uvm_error("ASSERT_FCINIT1_03", "FCINIT1_03: InitFC1-NP-CPL did not follow CORRECT order")
-    assert_fcinit1_03_cpl_p:  assert property (p_InitFC1_triplet_correct_order_cpl_p)
-        else `uvm_error("ASSERT_FCINIT1_03", "FCINIT1_03: InitFC1-CPL-P did not follow CORRECT order")
+     // CPL_D must be followed by P_S for flit mode enabled 
+    property p_InitFC1_triplet_correct_order_cpl_p_s;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable )
+        (state == DL_INIT1 && tx_is_initfc1_cpl_d)
+        |=> if (state == DL_INIT1) tx_is_initfc1_p_s;
+    endproperty
+    // P_S must be followed by NP_S for flit mode enabled 
+    property p_InitFC1_triplet_correct_order_p_np_s;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable )
+        (state == DL_INIT1 && tx_is_initfc1_p_s)
+        |=> if (state == DL_INIT1) tx_is_initfc1_np_s;
+    endproperty
+    // NP_S must be followed by CPL_S for flit mode enabled 
+    property p_InitFC1_triplet_correct_order_np_cpl_s;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable )
+        (state == DL_INIT1 && tx_is_initfc1_np_s)
+        |=> if (state == DL_INIT1) tx_is_initfc1_cpl_s;
+    endproperty
+    // CPL_S must be followed by P_D (cyclic)
+    property p_InitFC1_triplet_correct_order_cpl_p_f;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable )
+        (state == DL_INIT1 && tx_is_initfc1_cpl_s)
+        |=> if (state == DL_INIT1) tx_is_initfc1_p_d;
+    endproperty
 
-    cov_fcinit1_03_p_np:   cover property (p_InitFC1_triplet_correct_order_p_np);
-    cov_fcinit1_03_np_cpl: cover property (p_InitFC1_triplet_correct_order_np_cpl);
-    cov_fcinit1_03_cpl_p:  cover property (p_InitFC1_triplet_correct_order_cpl_p);
+    assert_fcinit1_03_p_np_d:   assert property (p_InitFC1_triplet_correct_order_p_np_d)
+        else `uvm_error("ASSERT_FCINIT1_03", "FCINIT1_03: InitFC1 P_D must be followed by NP_D")
+    assert_fcinit1_03_np_cpl_d: assert property (p_InitFC1_triplet_correct_order_np_cpl_d)
+        else `uvm_error("ASSERT_FCINIT1_03", "FCINIT1_03: InitFC1 NP_D must be followed by CPL_D")
+    assert_fcinit1_03_cpl_p_d:  assert property (p_InitFC1_triplet_correct_order_cpl_p_d)
+        else `uvm_error("ASSERT_FCINIT1_03", "FCINIT1_03: InitFC1 CPL_D must be followed by P_D when flit mode is disabled")
+
+    assert_fcinit1_03_cpl_p_s:  assert property (p_InitFC1_triplet_correct_order_cpl_p_s)
+        else `uvm_error("ASSERT_FCINIT1_03", "FCINIT1_03: InitFC1 CPL_D must be followed by P_S when flit mode is enabled")
+    assert_fcinit1_03_p_np_s:   assert property (p_InitFC1_triplet_correct_order_p_np_s)
+        else `uvm_error("ASSERT_FCINIT1_03", "FCINIT1_03: InitFC1 P_S must be followed by NP_S when flit mode is enabled")
+    assert_fcinit1_03_np_cpl_s: assert property (p_InitFC1_triplet_correct_order_np_cpl_s)
+        else `uvm_error("ASSERT_FCINIT1_03", "FCINIT1_03: InitFC1 NP_S must be followed by CPL_S when flit mode is enabled")
+    assert_fcinit1_03_cpl_p_f:  assert property (p_InitFC1_triplet_correct_order_cpl_p_f)
+        else `uvm_error("ASSERT_FCINIT1_03", "FCINIT1_03: InitFC1 CPL_S must be followed by P_D when flit mode is enabled")
+
+    cov_fcinit1_03_p_np_d:   cover property (p_InitFC1_triplet_correct_order_p_np_d);
+    cov_fcinit1_03_np_cpl_d: cover property (p_InitFC1_triplet_correct_order_np_cpl_d);
+    cov_fcinit1_03_cpl_p_d:  cover property (p_InitFC1_triplet_correct_order_cpl_p_d);
+    cov_fcinit1_03_cpl_p_s:  cover property (p_InitFC1_triplet_correct_order_cpl_p_s);
+    cov_fcinit1_03_p_np_s:   cover property (p_InitFC1_triplet_correct_order_p_np_s);
+    cov_fcinit1_03_np_cpl_s: cover property (p_InitFC1_triplet_correct_order_np_cpl_s);
+    cov_fcinit1_03_cpl_p_f:  cover property (p_InitFC1_triplet_correct_order_cpl_p_f);
 
     // ============================================================
     // FCINIT1_08 : HdrScale and DataScale must be 00b in InitFC1 when Scaled FC is NOT active
@@ -459,7 +516,7 @@ interface passive_interface (input logic lclk);
     // Posted credits (P type) recorded from hdr[37:30] and data[27:16]
     property p_initfc_p_recorded;
         @(posedge lclk) disable iff (reset || !pl_valid)
-        (state == DL_INIT1 && (rx_is_initfc1_p || rx_is_initfc2_p) && init1_p_f)
+        (state == DL_INIT1 && (rx_is_initfc1_p_d || rx_is_initfc2_p_d) && init1_p_f_d)
         |=> (remote_fc_credits_register.hdr_credits[FC_DEDICATED][FC_POSTED]  == $past(rx_dllp[37:30]) &&
              remote_fc_credits_register.data_credits[FC_DEDICATED][FC_POSTED] == $past(rx_dllp[27:16]));
     endproperty
@@ -467,7 +524,7 @@ interface passive_interface (input logic lclk);
     // Non-Posted credits (NP type)
     property p_initfc_np_recorded;
         @(posedge lclk) disable iff (reset || !pl_valid)
-        (state == DL_INIT1 && (rx_is_initfc1_np || rx_is_initfc2_np) && init1_np_f)
+        (state == DL_INIT1 && (rx_is_initfc1_np_d || rx_is_initfc2_np_d) && init1_np_f_d)
         |=> (remote_fc_credits_register.hdr_credits[FC_DEDICATED][FC_NON_POSTED]  == $past(rx_dllp[37:30]) &&
              remote_fc_credits_register.data_credits[FC_DEDICATED][FC_NON_POSTED] == $past(rx_dllp[27:16]));
     endproperty
@@ -475,9 +532,33 @@ interface passive_interface (input logic lclk);
     // Completion credits (CPL type)
     property p_initfc_cpl_recorded;
         @(posedge lclk) disable iff (reset || !pl_valid)
-        ((state) == DL_INIT2 && (rx_is_initfc1_cpl || rx_is_initfc2_cpl))
+        ((state) == DL_INIT2 && (rx_is_initfc1_cpl_d || rx_is_initfc2_cpl_d))
         |=> (remote_fc_credits_register.hdr_credits[FC_DEDICATED][FC_COMPLETION]  == $past(rx_dllp[37:30]) &&
              remote_fc_credits_register.data_credits[FC_DEDICATED][FC_COMPLETION] == $past(rx_dllp[27:16]));
+    endproperty
+
+    // Shared-buffer Posted credits recorded from hdr[37:30] and data[27:16]
+    property p_initfc_p_recorded_s;
+        @(posedge lclk) disable iff (reset || !pl_valid)
+        (state == DL_INIT1 && (rx_is_initfc1_p_s || rx_is_initfc2_p_s) && init1_p_f_s)
+        |=> (remote_fc_credits_register.hdr_credits[FC_SHARED][FC_POSTED]  == $past(rx_dllp[37:30]) &&
+             remote_fc_credits_register.data_credits[FC_SHARED][FC_POSTED] == $past(rx_dllp[27:16]));
+    endproperty
+
+    // Shared-buffer Non-Posted credits 
+    property p_initfc_np_recorded_s;
+        @(posedge lclk) disable iff (reset || !pl_valid)
+        (state == DL_INIT1 && (rx_is_initfc1_np_s || rx_is_initfc2_np_s) && init1_np_f_s)
+        |=> (remote_fc_credits_register.hdr_credits[FC_SHARED][FC_NON_POSTED]  == $past(rx_dllp[37:30]) &&
+             remote_fc_credits_register.data_credits[FC_SHARED][FC_NON_POSTED] == $past(rx_dllp[27:16]));
+    endproperty
+
+    // Shared-buffer Completion credits 
+    property p_initfc_cpl_recorded_s;
+        @(posedge lclk) disable iff (reset || !pl_valid)
+        ((state) == DL_INIT2 && (rx_is_initfc1_cpl_s || rx_is_initfc2_cpl_s))
+        |=> (remote_fc_credits_register.hdr_credits[FC_SHARED][FC_COMPLETION]  == $past(rx_dllp[37:30]) &&
+             remote_fc_credits_register.data_credits[FC_SHARED][FC_COMPLETION] == $past(rx_dllp[27:16]));
     endproperty
 
     assert_fcinit1_10_fc_p:   assert property (p_initfc_p_recorded)
@@ -487,9 +568,19 @@ interface passive_interface (input logic lclk);
     assert_fcinit1_10_fc_cpl: assert property (p_initfc_cpl_recorded)
         else `uvm_error("ASSERT_FCINIT1_10", "FCINIT1_10: Completion credits not recorded from InitFC1-CPL || InitFC2-CPL")
 
+    assert_fcinit1_10_fc_p_s:   assert property (p_initfc_p_recorded_s)
+        else `uvm_error("ASSERT_FCINIT1_10", "FCINIT1_10: Shared Posted credits not recorded from InitFC1-P_S || InitFC2-P_S")
+    assert_fcinit1_10_fc_np_s:  assert property (p_initfc_np_recorded_s)
+        else `uvm_error("ASSERT_FCINIT1_10", "FCINIT1_10: Shared Non-Posted credits not recorded from InitFC1-NP_S || InitFC2-NP_S")
+    assert_fcinit1_10_fc_cpl_s: assert property (p_initfc_cpl_recorded_s)
+        else `uvm_error("ASSERT_FCINIT1_10", "FCINIT1_10: Shared Completion credits not recorded from InitFC1-CPL_S || InitFC2-CPL_S")
+
     cov_fcinit1_10_fc_p:   cover property (p_initfc_p_recorded);
     cov_fcinit1_10_fc_np:  cover property (p_initfc_np_recorded);
     cov_fcinit1_10_fc_cpl: cover property (p_initfc_cpl_recorded);
+    cov_fcinit1_10_fc_p_s:   cover property (p_initfc_p_recorded_s);
+    cov_fcinit1_10_fc_np_s:  cover property (p_initfc_np_recorded_s);
+    cov_fcinit1_10_fc_cpl_s: cover property (p_initfc_cpl_recorded_s);
 
     // ============================================================
     // FCINIT1_11 : HdrScale/DataScale from received InitFC1/FC2 must be stored when Scaled FC is active
@@ -498,7 +589,7 @@ interface passive_interface (input logic lclk);
     // Scale recorded from Posted (P) DLLP — bits 39:38=HdrScale, 29:28=DataScale
     property p_scale_recorded_p;
         @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
-        (state == DL_INIT1 && (rx_is_initfc1_p || rx_is_initfc2_p) && scaled_fc_active)
+        (state == DL_INIT1 && (rx_is_initfc1_p_d || rx_is_initfc2_p_d) && scaled_fc_active)
         |=> (remote_fc_credits_register.hdr_scale[FC_DEDICATED][FC_POSTED]  == $past(rx_dllp[39:38]) &&
              remote_fc_credits_register.data_scale[FC_DEDICATED][FC_POSTED] == $past(rx_dllp[29:28]));
     endproperty
@@ -506,7 +597,7 @@ interface passive_interface (input logic lclk);
     // Scale recorded from Non-Posted (NP) DLLP
     property p_scale_recorded_np;
         @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
-        (state == DL_INIT1 && (rx_is_initfc1_np || rx_is_initfc2_np) && scaled_fc_active)
+        (state == DL_INIT1 && (rx_is_initfc1_np_d || rx_is_initfc2_np_d) && scaled_fc_active)
         |=> (remote_fc_credits_register.hdr_scale[FC_DEDICATED][FC_NON_POSTED]  == $past(rx_dllp[39:38]) &&
              remote_fc_credits_register.data_scale[FC_DEDICATED][FC_NON_POSTED] == $past(rx_dllp[29:28]));
     endproperty
@@ -514,9 +605,33 @@ interface passive_interface (input logic lclk);
     // Scale recorded from Completion (CPL) DLLP
     property p_scale_recorded_cpl;
         @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
-        ($past(state) == DL_INIT1 && (rx_is_initfc1_cpl || rx_is_initfc2_cpl) && scaled_fc_active)
+        ($past(state) == DL_INIT1 && (rx_is_initfc1_cpl_d || rx_is_initfc2_cpl_d) && scaled_fc_active)
         |-> (remote_fc_credits_register.hdr_scale[FC_DEDICATED][FC_COMPLETION]  == (rx_dllp[39:38]) &&
              remote_fc_credits_register.data_scale[FC_DEDICATED][FC_COMPLETION] == (rx_dllp[29:28]));
+    endproperty
+
+    // Scale recorded from Shared-buffer Posted (P_S) DLLP
+    property p_scale_recorded_p_s;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
+        (state == DL_INIT1 && (rx_is_initfc1_p_s || rx_is_initfc2_p_s) && scaled_fc_active)
+        |=> (remote_fc_credits_register.hdr_scale[FC_SHARED][FC_POSTED]  == $past(rx_dllp[39:38]) &&
+             remote_fc_credits_register.data_scale[FC_SHARED][FC_POSTED] == $past(rx_dllp[29:28]));
+    endproperty
+
+    // Scale recorded from Shared-buffer Non-Posted (NP_S) DLLP
+    property p_scale_recorded_np_s;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
+        (state == DL_INIT1 && (rx_is_initfc1_np_s || rx_is_initfc2_np_s) && scaled_fc_active)
+        |=> (remote_fc_credits_register.hdr_scale[FC_SHARED][FC_NON_POSTED]  == $past(rx_dllp[39:38]) &&
+             remote_fc_credits_register.data_scale[FC_SHARED][FC_NON_POSTED] == $past(rx_dllp[29:28]));
+    endproperty
+
+    // Scale recorded from Shared-buffer Completion (CPL_S) DLLP
+    property p_scale_recorded_cpl_s;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
+        ($past(state) == DL_INIT1 && (rx_is_initfc1_cpl_s || rx_is_initfc2_cpl_s) && scaled_fc_active)
+        |-> (remote_fc_credits_register.hdr_scale[FC_SHARED][FC_COMPLETION]  == (rx_dllp[39:38]) &&
+             remote_fc_credits_register.data_scale[FC_SHARED][FC_COMPLETION] == (rx_dllp[29:28]));
     endproperty
 
     assert_fcinit1_11_p:   assert property (p_scale_recorded_p)
@@ -525,10 +640,19 @@ interface passive_interface (input logic lclk);
         else `uvm_error("ASSERT_FCINIT1_11", "FCINIT1_11: Non-Posted scale not recorded from InitFC1-NP")
     assert_fcinit1_11_cpl: assert property (p_scale_recorded_cpl)
         else `uvm_error("ASSERT_FCINIT1_11", "FCINIT1_11: Completion scale not recorded from InitFC1-CPL")
+    assert_fcinit1_11_p_s:   assert property (p_scale_recorded_p_s)
+        else `uvm_error("ASSERT_FCINIT1_11", "FCINIT1_11: Shared Posted scale not recorded from InitFC1-P_S or InitFC2-P_S")
+    assert_fcinit1_11_np_s:  assert property (p_scale_recorded_np_s)
+        else `uvm_error("ASSERT_FCINIT1_11", "FCINIT1_11: Shared Non-Posted scale not recorded from InitFC1-NP_S or InitFC2-NP_S")
+    assert_fcinit1_11_cpl_s: assert property (p_scale_recorded_cpl_s)
+        else `uvm_error("ASSERT_FCINIT1_11", "FCINIT1_11: Shared Completion scale not recorded from InitFC1-CPL_S or InitFC2-CPL_S")
 
     cov_fcinit1_11_p:   cover property (p_scale_recorded_p);
     cov_fcinit1_11_np:  cover property (p_scale_recorded_np);
     cov_fcinit1_11_cpl: cover property (p_scale_recorded_cpl);
+    cov_fcinit1_11_p_s:   cover property (p_scale_recorded_p_s);
+    cov_fcinit1_11_np_s:  cover property (p_scale_recorded_np_s);
+    cov_fcinit1_11_cpl_s: cover property (p_scale_recorded_cpl_s);
 
     // ============================================================
     // FCINIT1_12 : fi1_flag must be set only after ALL three (P, NP, CPL) received in order
@@ -537,19 +661,43 @@ interface passive_interface (input logic lclk);
 
     // fi1_flag set after receiving InitFC1 P -> NP -> CPL in DL_INIT1
     property p_fi1_set_after_P_NP_CPL_init1;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
-        (state == DL_INIT1 && rx_is_initfc1_p && ($past(state)!=DL_INACTIVE))
-        |=> (state == DL_INIT1 && rx_is_initfc1_np)
-        |=> (state == DL_INIT1 && rx_is_initfc1_cpl)
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid || flit_mode_enable)
+        (state == DL_INIT1 && rx_is_initfc1_p_d && ($past(state)!=DL_INACTIVE))
+        |=> (state == DL_INIT1 && rx_is_initfc1_np_d)
+        |=> (state == DL_INIT1 && rx_is_initfc1_cpl_d)
         |-> fi1_flag
     endproperty
 
     // fi1_flag set after receiving InitFC2 P -> NP -> CPL while still in DL_INIT1
     property p_fi1_set_after_P_NP_CPL_init2;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
-        (state == DL_INIT1 && rx_is_initfc2_p && ($past(state)!=DL_INACTIVE))
-        |=> (state == DL_INIT1 && rx_is_initfc2_np)
-        |=> (state == DL_INIT1 && rx_is_initfc2_cpl)
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid || flit_mode_enable)
+        (state == DL_INIT1 && rx_is_initfc2_p_d && ($past(state)!=DL_INACTIVE))
+        |=> (state == DL_INIT1 && rx_is_initfc2_np_d)
+        |=> (state == DL_INIT1 && rx_is_initfc2_cpl_d)
+        |-> fi1_flag
+    endproperty
+
+    // flit mode: FI1 must be set only after receiving dedicated then shared InitFC1 triplet sequence
+    property p_fi1_set_after_P_D_NP_D_CPL_D_P_S_NP_S_CPL_S_init1;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid || !flit_mode_enable)
+        (state == DL_INIT1 && rx_is_initfc1_p_d && ($past(state)!=DL_INACTIVE))
+        |=> (state == DL_INIT1 && rx_is_initfc1_np_d)
+        |=> (state == DL_INIT1 && rx_is_initfc1_cpl_d)
+        |=> (state == DL_INIT1 && rx_is_initfc1_p_s)
+        |=> (state == DL_INIT1 && rx_is_initfc1_np_s)
+        |=> (state == DL_INIT1 && rx_is_initfc1_cpl_s)
+        |-> fi1_flag
+    endproperty
+
+    // flit mode: FI1 must be set only after receiving dedicated then shared InitFC2 triplet sequence
+    property p_fi1_set_after_P_D_NP_D_CPL_D_P_S_NP_S_CPL_S_init2;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid || !flit_mode_enable)
+        (state == DL_INIT1 && rx_is_initfc2_p_d && ($past(state)!=DL_INACTIVE))
+        |=> (state == DL_INIT1 && rx_is_initfc2_np_d)
+        |=> (state == DL_INIT1 && rx_is_initfc2_cpl_d)
+        |=> (state == DL_INIT1 && rx_is_initfc2_p_s)
+        |=> (state == DL_INIT1 && rx_is_initfc2_np_s)
+        |=> (state == DL_INIT1 && rx_is_initfc2_cpl_s)
         |-> fi1_flag
     endproperty
 
@@ -557,9 +705,15 @@ interface passive_interface (input logic lclk);
         else `uvm_error("ASSERT_FCINIT1_12", "FCINIT1_12: FI1 not set after all three P+NP+CPL INIT1 received")
     assert_fcinit1_12_initfc2: assert property (p_fi1_set_after_P_NP_CPL_init2)
         else `uvm_error("ASSERT_FCINIT1_12", "FCINIT1_12: FI1 not set after all three P+NP+CPL INIT2 received")
+    assert_fcinit1_12_initfc1_flit: assert property (p_fi1_set_after_P_D_NP_D_CPL_D_P_S_NP_S_CPL_S_init1)
+        else `uvm_error("ASSERT_FCINIT1_12", "FCINIT1_12: FI1 not set after P_D NP_D CPL_D P_S NP_S CPL_S INIT1 sequence in flit mode")
+    assert_fcinit1_12_initfc2_flit: assert property (p_fi1_set_after_P_D_NP_D_CPL_D_P_S_NP_S_CPL_S_init2)
+        else `uvm_error("ASSERT_FCINIT1_12", "FCINIT1_12: FI1 not set after P_D NP_D CPL_D P_S NP_S CPL_S INIT2 sequence in flit mode")
 
     cov_fcinit1_12_initfc1: cover property (p_fi1_set_after_P_NP_CPL_init1);
     cov_fcinit1_12_initfc2: cover property (p_fi1_set_after_P_NP_CPL_init2);
+    cov_fcinit1_12_initfc1_flit: cover property (p_fi1_set_after_P_D_NP_D_CPL_D_P_S_NP_S_CPL_S_init1);
+    cov_fcinit1_12_initfc2_flit: cover property (p_fi1_set_after_P_D_NP_D_CPL_D_P_S_NP_S_CPL_S_init2);
 
     // ============================================================
     // TRANS_INIT1_01 : DL_INIT1 -> DL_INIT2 when fi1_flag=1 and LinkUp=1
@@ -576,30 +730,81 @@ interface passive_interface (input logic lclk);
     cov_trans_init1_01: cover property (p_trans_init1_to_init2_on_fi1);
 
     // ============================================================
-    // FCINIT2_03 : InitFC2 triplet must be transmitted in strict order P -> NP -> CPL
+    // FCINIT2_03 : InitFC2 triplet must be transmitted in strict order P -> NP -> CPL -> P -> ...
     // ============================================================
 
-    // P must be followed by NP
-    property p_initfc2_P_NP_in_order;
+    // P_D must be followed by NP_D
+    property p_InitFC2_triplet_correct_order_p_np_d;
         @(posedge lclk) disable iff (reset || !pl_lnk_up)
-        (state == DL_INIT2 && tx_is_initfc2_p)
-        |=> if (state == DL_INIT2) tx_is_initfc2_np;
+        (state == DL_INIT2 && tx_is_initfc2_p_d)
+        |=> if (state == DL_INIT2) tx_is_initfc2_np_d;
     endproperty
 
-    // NP must be followed by CPL
-    property p_initfc2_NP_CPL_in_order;
+    // NP_D must be followed by CPL_D
+    property p_InitFC2_triplet_correct_order_np_cpl_d;
         @(posedge lclk) disable iff (reset || !pl_lnk_up)
-        (state == DL_INIT2 && tx_is_initfc2_np)
-        |=> if (state == DL_INIT2) tx_is_initfc2_cpl;
+        (state == DL_INIT2 && tx_is_initfc2_np_d)
+        |=> if (state == DL_INIT2) tx_is_initfc2_cpl_d;
     endproperty
 
-    assert_fcinit2_03_P_NP:  assert property (p_initfc2_P_NP_in_order)
-        else `uvm_error("ASSERT_FCINIT2_03", "FCINIT2_03: InitFC2 triplet wrong order P_NP")
-    assert_fcinit2_03_NP_CPL: assert property (p_initfc2_NP_CPL_in_order)
-        else `uvm_error("ASSERT_FCINIT2_03", "FCINIT2_03: InitFC2 triplet wrong order NP_CPL")
+    // CPL_D must be followed by P_D for flit mode disabled (cyclic)
+    property p_InitFC2_triplet_correct_order_cpl_p_d;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || flit_mode_enable)
+        (state == DL_INIT2 && tx_is_initfc2_cpl_d)
+        |=> if (state == DL_INIT2) tx_is_initfc2_p_d;
+    endproperty
 
-    cov_fcinit2_03_P_NP:  cover property (p_initfc2_P_NP_in_order);
-    cov_fcinit2_03_NP_CPL: cover property (p_initfc2_NP_CPL_in_order);
+    // CPL_D must be followed by P_S for flit mode enabled
+    property p_InitFC2_triplet_correct_order_cpl_p_s;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable)
+        (state == DL_INIT2 && tx_is_initfc2_cpl_d)
+        |=> if (state == DL_INIT2) tx_is_initfc2_p_s;
+    endproperty
+
+    // P_S must be followed by NP_S for flit mode enabled
+    property p_InitFC2_triplet_correct_order_p_np_s;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable)
+        (state == DL_INIT2 && tx_is_initfc2_p_s)
+        |=> if (state == DL_INIT2) tx_is_initfc2_np_s;
+    endproperty
+
+    // NP_S must be followed by CPL_S for flit mode enabled
+    property p_InitFC2_triplet_correct_order_np_cpl_s;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable)
+        (state == DL_INIT2 && tx_is_initfc2_np_s)
+        |=> if (state == DL_INIT2) tx_is_initfc2_cpl_s;
+    endproperty
+
+    // CPL_S must be followed by P_D (cyclic)
+    property p_InitFC2_triplet_correct_order_cpl_p_f;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable)
+        (state == DL_INIT2 && tx_is_initfc2_cpl_s)
+        |=> if (state == DL_INIT2) tx_is_initfc2_p_d;
+    endproperty
+
+    assert_fcinit2_03_p_np_d:   assert property (p_InitFC2_triplet_correct_order_p_np_d)
+        else `uvm_error("ASSERT_FCINIT2_03", "FCINIT2_03: InitFC2 P_D must be followed by NP_D")
+    assert_fcinit2_03_np_cpl_d: assert property (p_InitFC2_triplet_correct_order_np_cpl_d)
+        else `uvm_error("ASSERT_FCINIT2_03", "FCINIT2_03: InitFC2 NP_D must be followed by CPL_D")
+    assert_fcinit2_03_cpl_p_d:  assert property (p_InitFC2_triplet_correct_order_cpl_p_d)
+        else `uvm_error("ASSERT_FCINIT2_03", "FCINIT2_03: InitFC2 CPL_D must be followed by P_D when flit mode is disabled")
+
+    assert_fcinit2_03_cpl_p_s:  assert property (p_InitFC2_triplet_correct_order_cpl_p_s)
+        else `uvm_error("ASSERT_FCINIT2_03", "FCINIT2_03: InitFC2 CPL_D must be followed by P_S when flit mode is enabled")
+    assert_fcinit2_03_p_np_s:   assert property (p_InitFC2_triplet_correct_order_p_np_s)
+        else `uvm_error("ASSERT_FCINIT2_03", "FCINIT2_03: InitFC2 P_S must be followed by NP_S when flit mode is enabled")
+    assert_fcinit2_03_np_cpl_s: assert property (p_InitFC2_triplet_correct_order_np_cpl_s)
+        else `uvm_error("ASSERT_FCINIT2_03", "FCINIT2_03: InitFC2 NP_S must be followed by CPL_S when flit mode is enabled")
+    assert_fcinit2_03_cpl_p_f:  assert property (p_InitFC2_triplet_correct_order_cpl_p_f)
+        else `uvm_error("ASSERT_FCINIT2_03", "FCINIT2_03: InitFC2 CPL_S must be followed by P_D when flit mode is enabled")
+
+    cov_fcinit2_03_p_np_d:   cover property (p_InitFC2_triplet_correct_order_p_np_d);
+    cov_fcinit2_03_np_cpl_d: cover property (p_InitFC2_triplet_correct_order_np_cpl_d);
+    cov_fcinit2_03_cpl_p_d:  cover property (p_InitFC2_triplet_correct_order_cpl_p_d);
+    cov_fcinit2_03_cpl_p_s:  cover property (p_InitFC2_triplet_correct_order_cpl_p_s);
+    cov_fcinit2_03_p_np_s:   cover property (p_InitFC2_triplet_correct_order_p_np_s);
+    cov_fcinit2_03_np_cpl_s: cover property (p_InitFC2_triplet_correct_order_np_cpl_s);
+    cov_fcinit2_03_cpl_p_f:  cover property (p_InitFC2_triplet_correct_order_cpl_p_f);
 
     // ============================================================
     // FCINIT2_04/05 : In DL_INIT2, received InitFC1 or InitFC2 DLLPs must be IGNORED
@@ -612,7 +817,19 @@ interface passive_interface (input logic lclk);
         |-> (remote_fc_credits_register.hdr_credits[FC_DEDICATED]  == $past(remote_fc_credits_register.hdr_credits[FC_DEDICATED])  &&
              remote_fc_credits_register.data_credits[FC_DEDICATED] == $past(remote_fc_credits_register.data_credits[FC_DEDICATED]) &&
              remote_fc_credits_register.hdr_scale[FC_DEDICATED]    == $past(remote_fc_credits_register.hdr_scale[FC_DEDICATED])    &&
-             remote_fc_credits_register.data_scale[FC_DEDICATED]   == $past(remote_fc_credits_register.data_scale[FC_DEDICATED]));
+             remote_fc_credits_register.data_scale[FC_DEDICATED]   == $past(remote_fc_credits_register.data_scale[FC_DEDICATED])
+             );
+    endproperty
+
+    property p_initfc1_2_ignored_s;
+        @(posedge lclk) disable iff (reset || !pl_valid || !flit_mode_enable)
+        (state == DL_INIT2 && (rx_is_initfc1 || rx_is_initfc2))
+        // Shared-buffer credit/scale fields must remain stable in flit mode
+        |-> (remote_fc_credits_register.hdr_credits[FC_SHARED]  == $past(remote_fc_credits_register.hdr_credits[FC_SHARED])  &&
+             remote_fc_credits_register.data_credits[FC_SHARED] == $past(remote_fc_credits_register.data_credits[FC_SHARED]) &&
+             remote_fc_credits_register.hdr_scale[FC_SHARED]    == $past(remote_fc_credits_register.hdr_scale[FC_SHARED])    &&
+             remote_fc_credits_register.data_scale[FC_SHARED]   == $past(remote_fc_credits_register.data_scale[FC_SHARED])
+             );
     endproperty
 
     assert_fcinit2_04: assert property (p_initfc1_2_ignored)
@@ -620,27 +837,47 @@ interface passive_interface (input logic lclk);
             "FCINIT2_04: Remote FC credits / scale changed on received posted initfc")
     cov_fcinit2_04: cover property (p_initfc1_2_ignored);
 
+    assert_fcinit2_04_s: assert property (p_initfc1_2_ignored_s)
+        else `uvm_error("ASSERT_FCINIT2_04_S",
+            "FCINIT2_04_S: Shared remote FC credits / scale changed on received InitFC1/InitFC2 in flit mode")
+    cov_fcinit2_04_s: cover property (p_initfc1_2_ignored_s);
+
     // ============================================================
     // FCINIT2_06 : fi2_flag must be set only after ALL three InitFC2 (P, NP, CPL) received in order
     // ============================================================
-    property p_fi2_set_after_P_NP_CPL;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid)
-        (state == DL_INIT2 && rx_is_initfc2_p)
-        |=> (state == DL_INIT2 && rx_is_initfc2_np)
-        |=> ($past(state) == DL_INIT2 && rx_is_initfc2_cpl)
+     property p_fi2_set_after_P_NP_CPL;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid || flit_mode_enable )
+        (state == DL_INIT2 && rx_is_initfc2_p_d && ($past(state)!=DL_INACTIVE))
+        |=> (state == DL_INIT2 && rx_is_initfc2_np_d)
+        |=> (state == DL_INIT2 && rx_is_initfc2_cpl_d)
+        |=> (fi2_flag)
+    endproperty
+
+    // flit mode: fi2_flag must be set only after dedicated then shared InitFC2 triplet sequence
+    property p_fi2_set_after_P_D_NP_D_CPL_D_P_S_NP_S_CPL_S;
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid || !flit_mode_enable)
+        (state == DL_INIT2 && rx_is_initfc2_p_d && ($past(state)!=DL_INACTIVE))
+        |=> (state == DL_INIT2 && rx_is_initfc2_np_d)
+        |=> (state == DL_INIT2 && rx_is_initfc2_cpl_d)
+        |=> (state == DL_INIT2 && rx_is_initfc2_p_s)
+        |=> (state == DL_INIT2 && rx_is_initfc2_np_s)
+        |=> (state == DL_INIT2 && rx_is_initfc2_cpl_s)
         |=> (fi2_flag)
     endproperty
 
     assert_fcinit2_06_fi2: assert property (p_fi2_set_after_P_NP_CPL)
         else `uvm_error("ASSERT_FCINIT2_06", "FCINIT2_06: FI2 not set after all three P+NP+CPL INIT2 received")
+    assert_fcinit2_06_fi2_flit: assert property (p_fi2_set_after_P_D_NP_D_CPL_D_P_S_NP_S_CPL_S)
+        else `uvm_error("ASSERT_FCINIT2_06", "FCINIT2_06: FI2 not set after dedicated+shared P_D NP_D CPL_D P_S NP_S CPL_S InitFC2 sequence in flit mode")
     cov_fcinit2_06_fi2: cover property (p_fi2_set_after_P_NP_CPL);
-
+    cov_fcinit2_06_fi2_flit: cover property (p_fi2_set_after_P_D_NP_D_CPL_D_P_S_NP_S_CPL_S);
     // ============================================================
     // FCINIT2_08 : fi2_flag must already be set when an UpdateFC DLLP is received in DL_INIT2
     // ============================================================
     property p_fi2_set_on_updatefc;
         @(posedge lclk) disable iff (reset || !pl_valid)
-        (state == DL_INIT2 && rx_dllp[47:40] inside {UPDATEFC_P, UPDATEFC_NP, UPDATEFC_CPL})
+        (state == DL_INIT2 && rx_dllp[47:40] inside {UPDATEFC_P_D, UPDATEFC_NP_D, UPDATEFC_CPL_D
+                                                     UPDATEFC_P_S, UPDATEFC_NP_S, UPDATEFC_CPL_S})
         |-> fi2_flag;
     endproperty
 
@@ -707,16 +944,49 @@ interface passive_interface (input logic lclk);
              tx_data_scale == local_fc_credits_register.data_scale[FC_DEDICATED][FC_COMPLETION]);
     endproperty
 
+    // Posted shared-buffer UpdateFC scale must match what was advertised in local_fc_credits_register
+    property p_updatefc_scale_matches_init_p_s;
+        @(posedge lclk) disable iff (reset || !pl_valid || !flit_mode_enable)
+        (state == DL_ACTIVE && tx_dllp[47:40] == UPDATEFC_P_S && scaled_fc_active)
+        |-> (tx_hdr_scale  == local_fc_credits_register.hdr_scale[FC_SHARED][FC_POSTED] &&
+             tx_data_scale == local_fc_credits_register.data_scale[FC_SHARED][FC_POSTED]);
+    endproperty
+
+    // Non-Posted shared-buffer UpdateFC scale check
+    property p_updatefc_scale_matches_init_np_s;
+        @(posedge lclk) disable iff (reset || !pl_valid || !flit_mode_enable)
+        (state == DL_ACTIVE && tx_dllp[47:40] == UPDATEFC_NP_S && scaled_fc_active)
+        |-> (tx_hdr_scale  == local_fc_credits_register.hdr_scale[FC_SHARED][FC_NON_POSTED] &&
+             tx_data_scale == local_fc_credits_register.data_scale[FC_SHARED][FC_NON_POSTED]);
+    endproperty
+
+    // Completion shared-buffer UpdateFC scale check
+    property p_updatefc_scale_matches_init_cpl_s;
+        @(posedge lclk) disable iff (reset || !pl_valid || !flit_mode_enable)
+        (state == DL_ACTIVE && tx_dllp[47:40] == UPDATEFC_CPL_S && scaled_fc_active)
+        |-> (tx_hdr_scale  == local_fc_credits_register.hdr_scale[FC_SHARED][FC_COMPLETION] &&
+             tx_data_scale == local_fc_credits_register.data_scale[FC_SHARED][FC_COMPLETION]);
+    endproperty
+
     assert_fcinit2_11_p:   assert property (p_updatefc_scale_matches_init_p)
         else `uvm_error("ASSERT_FCINIT2_11", "FCINIT2_11: UpdateFC-P scale mismatch with init advertisement")
     assert_fcinit2_11_np:  assert property (p_updatefc_scale_matches_init_np)
         else `uvm_error("ASSERT_FCINIT2_11", "FCINIT2_11: UpdateFC-NP scale mismatch with init advertisement")
     assert_fcinit2_11_cpl: assert property (p_updatefc_scale_matches_init_cpl)
         else `uvm_error("ASSERT_FCINIT2_11", "FCINIT2_11: UpdateFC-CPL scale mismatch with init advertisement")
+    assert_fcinit2_11_p_s: assert property (p_updatefc_scale_matches_init_p_s)
+        else `uvm_error("ASSERT_FCINIT2_11", "FCINIT2_11: Shared UpdateFC-P_S scale mismatch with init advertisement")
+    assert_fcinit2_11_np_s: assert property (p_updatefc_scale_matches_init_np_s)
+        else `uvm_error("ASSERT_FCINIT2_11", "FCINIT2_11: Shared UpdateFC-NP_S scale mismatch with init advertisement")
+    assert_fcinit2_11_cpl_s: assert property (p_updatefc_scale_matches_init_cpl_s)
+        else `uvm_error("ASSERT_FCINIT2_11", "FCINIT2_11: Shared UpdateFC-CPL_S scale mismatch with init advertisement")
 
     cov_fcinit2_11_p:   cover property (p_updatefc_scale_matches_init_p);
     cov_fcinit2_11_np:  cover property (p_updatefc_scale_matches_init_np);
     cov_fcinit2_11_cpl: cover property (p_updatefc_scale_matches_init_cpl);
+    cov_fcinit2_11_p_s: cover property (p_updatefc_scale_matches_init_p_s);
+    cov_fcinit2_11_np_s: cover property (p_updatefc_scale_matches_init_np_s);
+    cov_fcinit2_11_cpl_s: cover property (p_updatefc_scale_matches_init_cpl_s);
 
     // ============================================================
     // TRANS_INIT2_01 : DL_INIT2 -> DL_ACTIVE when fi2_flag=1 and LinkUp=1
