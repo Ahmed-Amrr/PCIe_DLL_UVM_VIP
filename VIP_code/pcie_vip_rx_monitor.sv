@@ -31,7 +31,7 @@
 	        if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG_ENV",cfg))
 	          `uvm_fatal("build_phase","unable to get configuration object in sb")
 
-		    if (cfg.flit_mode) begin
+		    if (cfg.flit_mode_enable) begin
 		    	FEC = new();
 		    end
 			rx_pkt_id = 0;
@@ -46,7 +46,7 @@
 				seq_item_rx_mon.pl_valid = lpif_vif.mon_cb.pl_valid;
 				seq_item_rx_mon.pkt_id = rx_pkt_id;
 
-				if(cfg.flit_mode) begin
+				if(cfg.flit_mode_enable) begin
 					FLIT <= lpif_vif.mon_cb.pl_data;
 	                FEC.decode_flit(FLIT, FLIT, group_status);
 	                for (int i = 0; i < 2; i++) begin
@@ -58,14 +58,15 @@
 
 
 	                FEC.crc_flit_calc(FLIT[0:241], expected_crc);
-	                if (FLIT[238:245] != expected_crc) begin
+	                if (FLIT[242:249] != expected_crc) begin
 	                	`uvm_error("FLIT_CRC_CHECK", "Error in CRC check of the FLIT, dropping FLIT")
 	                	continue;
 	                end
-	                
-	                seq_item_rx_mon.dllp  <= FLIT[236:241];
+	                for (int i = 0; i < 6; i++)
+                    	seq_item_rx_mon.dllp[i*8 +: 8] <= FLIT[236+i];
 	            end else begin
-	                seq_item_rx_mon.dllp <= lpif_vif.mon_cb.pl_data[236:241];
+					for (int i = 0; i < 6; i++)
+                    	seq_item_rx_mon.dllp[i*8 +: 8] <= lpif_vif.mon_cb.pl_data[236+i];
 	            end
 
 				rx_pkt_id++;
