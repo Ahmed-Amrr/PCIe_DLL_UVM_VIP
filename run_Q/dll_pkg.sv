@@ -1,0 +1,175 @@
+
+// ============================================================
+//  PCIe Gen 5 – Data Link Layer Package
+// ============================================================
+
+`ifndef DLL_PKG_SV
+`define DLL_PKG_SV
+ 
+package dll_pkg;
+    
+    import uvm_pkg::*;
+    `include "uvm_macros.svh"
+
+
+ 
+    // Data Link Layer state machine states
+    typedef enum { 
+        DL_INACTIVE,
+        DL_FEATURE,
+        DL_INIT1,
+        DL_INIT2,
+        DL_ACTIVE
+    } dl_state_t;
+  
+    // DLLP Types
+    typedef enum logic [7:0] { 
+        // Acknowledgement 
+        ACK             = 8'b0000_0000,
+        NACK            = 8'b0001_0000,
+        // Misc
+        NOP             = 8'b0011_0001,
+        VENDOR_SPECIFIC = 8'b0011_0000,
+        FEATURE         = 8'b0000_0010,
+        // Flow-control initialisation : shared-buffer (bit[3]=0) 
+        INITFC1_P_S       = 8'b0100_0000,   // VC bits [2:0] are masked
+        INITFC1_NP_S      = 8'b0101_0000,
+        INITFC1_CPL_S     = 8'b0110_0000,
+        INITFC2_P_S       = 8'b1100_0000,
+        INITFC2_NP_S      = 8'b1101_0000,
+        INITFC2_CPL_S     = 8'b1110_0000,
+        // FC initialisation : dedicated-buffer (bit[3]=1) 
+        INITFC1_P_D       = 8'b0100_1000,   // VC bits [2:0] are masked
+        INITFC1_NP_D      = 8'b0101_1000,
+        INITFC1_CPL_D     = 8'b0110_1000,
+        INITFC2_P_D       = 8'b1100_1000,
+        INITFC2_NP_D      = 8'b1101_1000,
+        INITFC2_CPL_D     = 8'b1110_1000,
+        // Flow-control update
+        UPDATEFC_P_D      = 8'b1000_1000,
+        UPDATEFC_NP_D     = 8'b1001_1000,
+        UPDATEFC_CPL_D    = 8'b1010_1000,
+        UPDATEFC_P_S      = 8'b1000_0000,
+        UPDATEFC_NP_S     = 8'b1001_0000,
+        UPDATEFC_CPL_S    = 8'b1010_0000
+    } dllp_type_t;
+
+    //  fc_type_t
+    //  Posted / Non-Posted / Completion – used to index credit arrays
+    typedef enum {
+        FC_POSTED,
+        FC_NON_POSTED,
+        FC_COMPLETION
+    } fc_type_t;
+
+    // Flow Control buffer type:
+    // FC_SHARED     : Shared Buffer   (bit[3] = 0)
+    // FC_DEDICATED : Dedicated Buffer (bit[3] = 1)
+    typedef enum {
+        FC_SHARED,
+        FC_DEDICATED
+    } fc_buffer_t;
+
+    // Flow Control information indexed as:
+    // [buffer][fc_type]
+    // buffer : FC_SHARED / FC_DEDICATED
+    // fc_type: FC_POSTED / FC_NON_POSTED / FC_COMPLETION
+    typedef struct packed {
+        logic [1:0]  [2:0]  [7:0]  hdr_credits;
+        logic [1:0]  [2:0]  [11:0] data_credits;
+        logic [1:0]  [2:0]  [1:0]  hdr_scale;
+        logic [1:0]  [2:0]  [1:0]  data_scale;
+    } fc_credits_t;
+
+    typedef struct packed {
+        logic        feature_exchange_enable;   // bit 31
+        logic [7:0]  rsvdp;                      // bits 30:23
+        logic [22:0] local_feature_supported;   // bits 22:0
+    } dl_feature_cap_reg_t;
+
+   typedef struct packed {
+        logic        remote_feature_valid;      // bit 31
+        logic [7:0]  rsvdz;                      // bits 30:23
+        logic [22:0] remote_feature_supported;  // bits 22:0
+    } dl_feature_status_reg_t;
+
+
+    // =======================
+    // 3) Sequence Items
+    // =======================
+    `include "pcie_dllp_seq_item.sv"
+    `include "pcie_flit_seq_item.sv"
+    `include "pcie_state_seq_item.sv"
+
+    `include "pcie_vip_config.sv"
+    `include "pcie_top_cfg.sv"
+
+    
+
+    // =======================
+    // 4) Sequences
+    // =======================
+    typedef class pcie_vip_tx_sequencer;
+    typedef class pcie_base_seq;
+    `include "pcie_seq_cb.sv"
+    `include "pcie_base_sequence.sv"
+    `include "pcie_vip_driver_cb.sv"
+    `include "pcie_fc_init1_seq.sv"
+    `include "pcie_fc_init2_sequence.sv"
+    `include "pcie_active_sequence.sv"
+    `include "pcie_inactive_sequence.sv"
+    `include "pcie_feature_sequence.sv"
+    `include "pcie_feature_wrong_ack_cb.sv"
+    `include "pcie_feature_wrong_cb.sv"
+    `include "pcie_out_of_order_fc_cb.sv"
+    `include "pcie_dropped_fc_err_cb.sv"
+    `include "pcie_type_err_cb.sv"
+    `include "pcie_crc_err_cb.sv"
+    `include "pcie_updateFC_scale_err_cb.sv"
+    `include "pcie_vip_sequencer.sv"
+    `include "pcie_fc2_init1_cb.sv"
+    `include "pcie_fcupdate_init2_cb.sv"
+
+    // =======================
+    // 5) Drivers / Monitors / Agents / Sequencers
+    // =======================
+    `include "pcie_ecc.sv"
+    `include "glue_logic_driver.sv"
+    `include "glue_logic_monitor.sv"
+    `include "glue_logic_agent.sv"
+    `include "pcie_vip_driver.sv"
+    `include "pcie_passive_driver.sv"
+
+
+    `include "pcie_vip_rx_monitor.sv"
+    `include "pcie_vip_rx_agent.sv"
+
+    `include "pcie_vip_tx_monitor.sv"
+    `include "pcie_vip_tx_agent.sv"
+
+    `include "pcie_vip_state_machine.sv"
+
+    // =======================
+    // 6) Scoreboards / Coverage / Models / Config
+    // =======================
+    `include "ref_model.sv"
+    `include "dll_vip_scoreboard.sv"
+    `include "pcie_shared_scoreboard.sv"
+    `include "pcie_vip_coverage.sv"
+    
+
+
+    // =======================
+    // 7) Environment
+    // =======================
+    `include "pcie_vip_env.sv"
+    `include "pcie_top_env.sv"
+
+    // =======================
+    // 8) Test
+    // =======================
+    `include "pcie_top_test.sv"
+ 
+endpackage : dll_pkg
+ 
+`endif
