@@ -1080,7 +1080,8 @@ interface passive_interface (input logic lclk);
     property p_tx_dllp_type_legal_active;
         @(posedge lclk) disable iff (reset || !lp_valid || !pl_lnk_up)
         (state == DL_ACTIVE) |=>
-        (tx_dllp[47:40] inside {UPDATEFC_P_D, UPDATEFC_NP_D, UPDATEFC_CPL_D, ACK, NACK});
+        (tx_dllp[47:40] inside {UPDATEFC_P_D, UPDATEFC_NP_D, UPDATEFC_CPL_D,
+                                UPDATEFC_P_S, UPDATEFC_NP_S, UPDATEFC_CPL_S, ACK, NACK});
     endproperty
 
     assert_type_legal_10_tx: assert property (p_tx_dllp_type_legal_active)

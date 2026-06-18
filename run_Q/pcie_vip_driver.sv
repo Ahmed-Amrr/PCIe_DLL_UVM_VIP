@@ -80,6 +80,13 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
                 FLIT[0:241] = {cfg.TLP,seq_item_drv.dllp};
                 FEC.crc_flit_calc(FLIT[0:241], FLIT[242:249]);
                 FEC.encode_flit(FLIT, FLIT);
+                // `uvm_info("DRIVER", $sformatf("Driving FLIT before the cb: %0h", FLIT[0]), UVM_LOW)
+                // `uvm_info("DRIVER", $sformatf("Driving FLIT before the cb: %0h", FLIT[1]), UVM_LOW)
+                // `uvm_info("DRIVER", $sformatf("Driving FLIT before the cb: %0h", FLIT[2]), UVM_LOW)
+                `uvm_do_callbacks(pcie_vip_driver, pcie_vip_driver_cb, flit_drive(FLIT, sqr))
+                // `uvm_info("DRIVER", $sformatf("Driving FLIT after the cb: %0h", FLIT[0]), UVM_LOW)
+                // `uvm_info("DRIVER", $sformatf("Driving FLIT after the cb: %0h", FLIT[1]), UVM_LOW)
+                // `uvm_info("DRIVER", $sformatf("Driving FLIT after the cb: %0h", FLIT[2]), UVM_LOW)
                 lpif_vif.drv_cb.lp_flit_data  <= FLIT;
             end else begin
                 lpif_vif.drv_cb.lp_dlp_data <= seq_item_drv.dllp;

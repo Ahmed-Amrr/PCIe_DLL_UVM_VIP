@@ -47,23 +47,25 @@
 				seq_item_rx_mon.pkt_id = rx_pkt_id;
 
 				if(cfg.flit_mode_enable) begin
-					FLIT = lpif_vif.mon_cb.pl_flit_data;
-	                FEC.decode_flit(FLIT, FLIT, group_status);
-	                for (int i = 0; i < 2; i++) begin
-	                	if (group_status[i] == 2'b10) begin
-	                		`uvm_error("FLIT_ECC_DECODE", "Uncorrectable error in the FLIT, dropping FLIT")
-	                		continue;
-	                	end
-	                end
+					if (!$isunknown(lpif_vif.mon_cb.pl_flit_data)) begin
+						FLIT = lpif_vif.mon_cb.pl_flit_data;
+		                FEC.decode_flit(FLIT, FLIT, group_status);
+		                for (int i = 0; i < 2; i++) begin
+		                	if (group_status[i] == 2'b10) begin
+		                		`uvm_error("FLIT_ECC_DECODE", "Uncorrectable error in the FLIT, dropping FLIT")
+		                		continue;
+		                	end
+		                end
 
 
-	                FEC.crc_flit_calc(FLIT[0:241], expected_crc);
-	                if (FLIT[242:249] != expected_crc) begin
-	                	`uvm_error("FLIT_CRC_CHECK", "Error in CRC check of the FLIT, dropping FLIT")
-	                	continue;
-	                end
-                    
-                    seq_item_rx_mon.dllp = FLIT[236:241];
+		                FEC.crc_flit_calc(FLIT[0:241], expected_crc);
+		                if (FLIT[242:249] != expected_crc) begin
+		                	`uvm_error("FLIT_CRC_CHECK", "Error in CRC check of the FLIT, dropping FLIT")
+		                	continue;
+		                end
+	                    
+	                    seq_item_rx_mon.dllp = FLIT[236:241];
+					end
 	            end else begin
                     seq_item_rx_mon.dllp = lpif_vif.mon_cb.pl_dlp_data;
 	            end

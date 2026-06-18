@@ -125,6 +125,7 @@ package dll_pkg;
     `include "pcie_dropped_fc_err_cb.sv"
     `include "pcie_type_err_cb.sv"
     `include "pcie_crc_err_cb.sv"
+    `include "pcie_flit_ecc_cb.sv"
     `include "pcie_updateFC_scale_err_cb.sv"
     `include "pcie_vip_sequencer.sv"
     `include "pcie_fc2_init1_cb.sv"

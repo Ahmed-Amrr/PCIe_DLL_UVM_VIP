@@ -1,7 +1,7 @@
 .main clear
 vlib work
 vlog -f src_files.list +cover -covercells
-vsim -voptargs=+acc +UVM_VERBOSITY=UVM_HIGH work.pcie_top +flit_mode -classdebug -uvmcontrol=all -cover 
+vsim -voptargs=+acc +UVM_VERBOSITY=UVM_HIGH work.pcie_top +flit_mode +U_ERR_MODE=flit_ecc_cb -classdebug -uvmcontrol=all -cover 
 run 0
 add wave -position insertpoint  \
 sim:/uvm_root/uvm_test_top/top_env/u_vip/state_machine/current_state \

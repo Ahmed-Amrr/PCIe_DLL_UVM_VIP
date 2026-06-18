@@ -28,6 +28,13 @@ class pcie_vip_driver_cb extends uvm_callback;
     endtask
 
     //==========================================================
+    // flit_drive - Callback hook called after FLIT generation
+    //==========================================================
+    virtual task flit_drive(ref logic [0:255] [7:0] item, pcie_vip_tx_sequencer sqr);
+        // Default: do nothing
+    endtask
+
+    //==========================================================
     // post_drive - Callback hook called after driving the interface
     //==========================================================
     virtual task post_drive(pcie_dllp_seq_item item, pcie_vip_tx_sequencer sqr);
