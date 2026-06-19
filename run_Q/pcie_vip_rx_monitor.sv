@@ -15,7 +15,7 @@
 
 		pcie_gen6_fec FEC;
 	    logic [0:255] [7:0] FLIT ;
-	    logic [1:0] group_status [3];
+	    logic [3] [1:0] group_status;
 	    bit [8] [7:0] expected_crc ;
 		
 	    // Functions

@@ -663,7 +663,7 @@ interface passive_interface (input logic lclk);
     // fi1_flag set after receiving InitFC1 P -> NP -> CPL in DL_INIT1
     property p_fi1_set_after_P_NP_CPL_init1;
         @(posedge lclk) disable iff (reset || !pl_lnk_up || !pl_valid || flit_mode_enable)
-        (state == DL_INIT1 && rx_is_initfc1_p_d && ($past(state)!=DL_INACTIVE))
+        (state == DL_INIT1 && rx_is_initfc1_p_d)
         |=> (state == DL_INIT1 && rx_is_initfc1_np_d)
         |=> (state == DL_INIT1 && rx_is_initfc1_cpl_d)
         |-> fi1_flag

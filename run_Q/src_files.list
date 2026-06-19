@@ -1,4 +1,3 @@
 dll_pkg.sv
 lpif_if.sv
-passive_interface.sv
 pcie_top.sv

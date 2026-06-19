@@ -132,7 +132,7 @@ class pcie_gen6_fec;
     endfunction : encode_ecc_group
 
     //  decode_group : correct single byte error for one 86-byte code word
-    //  Input   : rx[0:85] –> received 86-byte code word
+    //  Input  : rx[0:85] –> received 86-byte code word
     //  Outputs : corrected[0:85]  –> corrected code word
     //            status           –> ECC_NO_ERROR / ECC_CORRECTED / ECC_UNCORRECTABLE
     function void decode_group (
@@ -257,7 +257,7 @@ class pcie_gen6_fec;
     function void decode_flit (
         input  bit [0:255] [7:0]  flit_in  ,
         output bit [0:255] [7:0]  flit_out ,
-        output ecc_status_t group_status  [3]
+        output  ecc_status_t [3] group_status  
     );
         bit [3][86] [7:0] grp             ;           // received code words
         bit [3][86][7:0] corrected_cw    ;   // corrected code words from decoder

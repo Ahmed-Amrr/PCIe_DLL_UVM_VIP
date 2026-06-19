@@ -267,23 +267,35 @@ class pcie_top_test_base extends uvm_test;
         #4000;
 
         // Register callbacks — null check ensures no injection when not needed
-        if (us_drv_cb != null)
+        if (us_drv_cb != null) begin
             uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.u_vip.tx_agent.drv, us_drv_cb);
-        else if (us_seq_cb != null)
+            `uvm_info("TEST_CB", $sformatf("Callback registered to the upper VIP at time: %t", $time()), UVM_LOW)
+        end
+        else if (us_seq_cb != null) begin
             uvm_callbacks #(pcie_base_seq, pcie_seq_cb)::add(null, us_seq_cb);
+            `uvm_info("TEST_CB", $sformatf("Callback registered to the upper VIP at time: %t", $time()), UVM_LOW)
+        end 
 
-        if (ds_drv_cb != null)
+        if (ds_drv_cb != null) begin
             uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.d_vip.tx_agent.drv, ds_drv_cb);
-        else if (ds_seq_cb != null)
+            `uvm_info("TEST_CB", $sformatf("Callback registered to the lower VIP at time: %t", $time()), UVM_LOW)
+        end
+        else if (ds_seq_cb != null) begin
             uvm_callbacks #(pcie_base_seq, pcie_seq_cb)::add(null, ds_seq_cb);
+            `uvm_info("TEST_CB", $sformatf("Callback registered to the lower VIP at time: %t", $time()), UVM_LOW)
+        end
 
         #4000;
 
         // Deregister driver callbacks after injection window
-        if (us_drv_cb != null)
+        if (us_drv_cb != null) begin 
             uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::delete(top_env.u_vip.tx_agent.drv, us_drv_cb);
-        if (ds_drv_cb != null)
+            `uvm_info("TEST_CB", $sformatf("Callback deregistered to the lower VIP at time: %t", $time()), UVM_LOW)
+        end
+        if (ds_drv_cb != null) begin
             uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::delete(top_env.d_vip.tx_agent.drv, ds_drv_cb);
+            `uvm_info("TEST_CB", $sformatf("Callback registered to the lower VIP at time: %t", $time()), UVM_LOW)
+        end
 
         #4000;
         phase.drop_objection(this);

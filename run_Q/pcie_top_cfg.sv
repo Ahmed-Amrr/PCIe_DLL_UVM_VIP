@@ -27,7 +27,7 @@ class pcie_top_cfg extends uvm_object;
     //==========================================================
     function new(string name = "pcie_top_cfg");
         super.new(name);
-        this.flit_mode_enable = 0;
+	this.flit_mode_enable = 0;
     endfunction : new
 
 endclass : pcie_top_cfg
