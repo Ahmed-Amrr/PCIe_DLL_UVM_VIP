@@ -146,13 +146,10 @@ class pcie_vip_coverage extends uvm_component;
             bins non_zero  = {[23'h000001 : 23'h7FFFFF]};
         }
         // DL_INACTIVE entry conditions
-        // Guard: skip sampling during reset or link-down transitions to avoid false illegal hits
-        // (state reaches DL_INACTIVE before remote_feature_valid is cleared)
+
         cp_remote_feature_valid_cleared: cross cp_state, cp_remote_feature_valid
             iff (cfg.reset || !seq_item_rx.pl_lnk_up) {
             bins remote_feature_valid_cleared = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_valid.invalid);
-            // Illegal: valid=1 while in DL_INACTIVE (only enforced in steady-state, not on reset/link-down)
-            // illegal_bins valid_set_while_inactive = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_valid.valid);
             option.cross_auto_bin_max = 0;
         }
 
@@ -164,8 +161,6 @@ class pcie_vip_coverage extends uvm_component;
         cp_remote_feature_field_cleared: cross cp_state, cp_remote_feature_supported 
             iff (cfg.reset || !seq_item_rx.pl_lnk_up) {
             bins remote_feature_supported_cleared = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_supported.all_zeros);
-            // Illegal: non-zero feature field while inactive
-            // illegal_bins field_set_while_inactive = binsof(cp_state.dl_inactive_b) && binsof(cp_remote_feature_supported.non_zero);
             option.cross_auto_bin_max = 0;
         }
         // Transition from INACTIVE to FEATURE — all conditions must be met
@@ -186,14 +181,14 @@ class pcie_vip_coverage extends uvm_component;
         
         // FEATURE_04 : Transmitted Feature field must equal local register
         cp_tx_feature_field_matches_local: coverpoint (seq_item_tx.dllp[38:16] == cfg.local_register_feature.local_feature_supported) iff (state_seq_item.vip_state == FEATURE
-        && seq_item_tx.dllp[47:40] == FEATURE) {
+        && seq_item_tx.dllp[47:40] == FEATURE && !cfg.flit_mode_enable && !cfg.feature_err_test) {
             bins         feature_field_matches_local       = {1};
             illegal_bins feature_field_mismatch_with_local = {0};
         }
 
         // FEATURE_05 : Ack bit must equal remote_feature_valid
         cp_ack_bit_matches_valid: coverpoint (seq_item_tx.dllp[39] == cfg.remote_register_feature.remote_feature_valid) iff (state_seq_item.vip_state == FEATURE 
-        && seq_item_tx.dllp[47:40] == FEATURE){
+        && seq_item_tx.dllp[47:40] == FEATURE && !cfg.flit_mode_enable && !cfg.feature_err_test){
             bins         ack_equals_remote_valid    = {1};
             illegal_bins ack_not_equal_remote_valid = {0};
         }
@@ -320,7 +315,7 @@ class pcie_vip_coverage extends uvm_component;
             {seq_item_tx.dllp[39:38], seq_item_tx.dllp[29:28]}
             iff (state_seq_item.vip_state == DL_INIT1 &&
                  seq_item_tx.dllp[47:40] inside {INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D} &&
-                 !cfg.scaled_fc_active)
+                 !cfg.scaled_fc_active && !cfg.flit_mode_enable && !cfg.feature_err_test)
         {
             bins scale_zero = {4'b0000};
             illegal_bins wrong_scale = default;
@@ -331,7 +326,7 @@ class pcie_vip_coverage extends uvm_component;
             {seq_item_tx.dllp[39:38], seq_item_tx.dllp[29:28]}
             iff (state_seq_item.vip_state == DL_INIT1 &&
                  seq_item_tx.dllp[47:40] inside {INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D} &&
-                 cfg.scaled_fc_active)
+                 cfg.scaled_fc_active && !cfg.flit_mode_enable && !cfg.feature_err_test)
         {
             bins non_zero[] = {4'b0101, 4'b0110, 4'b0111,
                                4'b1001, 4'b1010, 4'b1011,

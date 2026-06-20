@@ -1046,7 +1046,7 @@ interface passive_interface (input logic lclk);
 
     // ============================================================
     // TYPE_LEGAL_08 : In DL_INIT1, only InitFC1 types are legal TX DLLPs
-    /* ============================================================
+    // ============================================================
     property p_tx_dllp_type_legal_init1;
         @(posedge lclk) disable iff (reset || !lp_valid || !pl_lnk_up)
         (state == DL_INIT1) |=>
@@ -1072,7 +1072,7 @@ interface passive_interface (input logic lclk);
         else `uvm_error("ASSERT_TYPE_LEGAL_09",
             $sformatf("TYPE_LEGAL_09_TX: Illegal TX DLLP type 0x%0h in DL_INIT2 state (expected INITFC2)", 
                 tx_dllp[47:40]))
-    cov_type_legal_09_tx: cover property (p_tx_dllp_type_legal_init2); */
+    cov_type_legal_09_tx: cover property (p_tx_dllp_type_legal_init2); 
 
     // ============================================================
     // TYPE_LEGAL_10 : In DL_ACTIVE, only UpdateFC types are legal TX DLLPs (besides ACK/NACK)
