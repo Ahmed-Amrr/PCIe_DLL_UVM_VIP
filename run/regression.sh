@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  PCIe UVM Regression Script
-#  Usage: ./regression.sh [--jobs N] [--test TESTNAME] [--dry-run]
+#  Usage: ./regression.sh [--jobs N] [--test TESTNAME] [--seed N]
+#                         [--grace N] [--no-flit] [--dry-run]
+#                         [--fail <run_name>]
 # =============================================================================
 
 set -euo pipefail
@@ -9,31 +11,57 @@ set -euo pipefail
 # ─────────────────────────────────────────────────────────────────────────────
 # Tunables
 # ─────────────────────────────────────────────────────────────────────────────
-JOBS=4                          # parallel simulation slots
-TEST="pcie_top_test_base"       # UVM test name
+JOBS=4
+TEST="pcie_top_test_base"
 VERBOSITY="UVM_MEDIUM"
 SEED=1
 DRY_RUN=0
 MAKE="make"
+CB_GRACE_NS=500       # ns added after last deregister timestamp
+RUN_FLIT=1            # 1 = flit + non-flit  |  0 = non-flit only
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Error-mode behaviour tables
+#
+#  NO_DEREG_ERR_MODES — no deregister marker printed; cb_end = 2 * cb_start
+#  ECC_MODES          — flit-only; errors correctable; own Group C section
+# ─────────────────────────────────────────────────────────────────────────────
+NO_DEREG_ERR_MODES=("out_of_order_fc_err" "dropped_fc_err")
+ECC_MODES=("flit_ecc_cb")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Detection patterns
+#
+# ERR_MSG_PAT   — UVM_ERROR/FATAL message lines (have file path + timestamp)
+#                 e.g.  UVM_ERROR ./../foo.sv(282) @ 101250: reporter ...
+#                 NOT   UVM_ERROR :    3            (summary line, no path)
+#
+# ILLEGAL_BIN_PAT — VCS functional-coverage illegal bin hit header
+#                   e.g.  Error-[FCIBH] Illegal bin hit
+# ─────────────────────────────────────────────────────────────────────────────
+ERR_MSG_PAT='UVM_(ERROR|FATAL)[[:space:]]+[^[:space:]:]+\([0-9]+\)[[:space:]]*@'
+ILLEGAL_BIN_PAT='Error-\[FCIBH\]'
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Argument parsing
 # ─────────────────────────────────────────────────────────────────────────────
-INSPECT_RUN=""   # run name to inspect with --fail
+INSPECT_RUN=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --jobs)    JOBS="$2";       shift 2 ;;
-    --test)    TEST="$2";       shift 2 ;;
-    --seed)    SEED="$2";       shift 2 ;;
-    --dry-run) DRY_RUN=1;       shift   ;;
+    --jobs)    JOBS="$2";        shift 2 ;;
+    --test)    TEST="$2";        shift 2 ;;
+    --seed)    SEED="$2";        shift 2 ;;
+    --dry-run) DRY_RUN=1;        shift   ;;
     --fail)    INSPECT_RUN="$2"; shift 2 ;;
+    --grace)   CB_GRACE_NS="$2"; shift 2 ;;
+    --no-flit) RUN_FLIT=0;       shift   ;;
     *) echo "Unknown option: $1"; exit 1 ;;
   esac
 done
 
 # ─────────────────────────────────────────────────────────────────────────────
-# --fail mode: inspect a specific run's log and print error lines
+# --fail mode: inspect a specific run's log
 # ─────────────────────────────────────────────────────────────────────────────
 if [[ -n "$INSPECT_RUN" ]]; then
   log="./runs/${INSPECT_RUN}/simv.log"
@@ -46,14 +74,17 @@ if [[ -n "$INSPECT_RUN" ]]; then
     ls -1 ./runs/ 2>/dev/null || echo "  (no runs directory found)"
     exit 1
   fi
-  echo "--- UVM summary ---"
-  grep -iE 'UVM_(ERROR|FATAL|WARNING)\s*:' "$log" || echo "  (no UVM summary lines found)"
+  echo "--- UVM summary lines ---"
+  grep -iE 'UVM_(ERROR|FATAL|WARNING)\s*:\s*[0-9]' "$log" || echo "  (none)"
   echo ""
-  echo "--- Error / Fatal lines ---"
-  grep -niE 'UVM_ERROR|UVM_FATAL' "$log" | grep -v ':\s*0$' || echo "  (none)"
+  echo "--- UVM error/fatal message lines ---"
+  grep -E "$ERR_MSG_PAT" "$log" || echo "  (none)"
   echo ""
-  echo "--- Simulator fatal errors (Error-[...] / Fatal-[...]) ---"
-  grep -nE '^(Error|Fatal)-\[' "$log" || echo "  (none)"
+  echo "--- Illegal bin errors ---"
+  grep -A5 -E "$ILLEGAL_BIN_PAT" "$log" || echo "  (none)"
+  echo ""
+  echo "--- Callback window markers ---"
+  grep -E '\[TEST_CB\]' "$log" || echo "  (no TEST_CB markers found)"
   echo ""
   exit 0
 fi
@@ -78,35 +109,22 @@ ERR_MODES=(
   "updatefc_scale_err"
   "dropped_fc_err"
   "out_of_order_fc_err"
-  "fcupdate_init2_cb"
-  "fc2_init1_cb"
 )
+
+# Flit-only error modes — only ever run with flit=1
+FLIT_ONLY_ERR_MODES=(
+  "flit_ecc_cb"
+)
+FLIT_ONLY_RUNS_PER_MODE=10   # 5 U-side + 5 D-side per mode
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Build the test matrix
-# Strategy  (49 runs)
-#
-#   DEFAULT = "default"  (Makefile default — no special VIP mode)
-#
-#   1. Each VIP on U-side, DEFAULT on D                    (6 runs)
-#   2. Each VIP on D-side, DEFAULT on U                    (6 runs)
-#   3. DEFAULT / DEFAULT clean run                         (1 run)
-#   4. VIP diagonal — each VIP paired with the next VIP   (6 runs)
-#   5. VIP cross    — first 3 VIPs vs last 3 VIPs, both   (12 runs)
-#      directions, no error injection
-#   6. Error tests  — each of 9 err modes once on U-side  (18 runs)
-#      (with a rotating VIP) and once on D-side
-#      (with a different rotating VIP), DEFAULT on other side
-#
-#   Baseline total = 6+6+1+6+12 = 31 ... dedup gives 35
-#   Error total    = 18
-#   Grand total    = 53
+# RUN_KEYS format: "u_vip|d_vip|u_err|d_err[|flit_only]"
 # ─────────────────────────────────────────────────────────────────────────────
 DEFAULT_VIP="default"
+declare -a RUN_KEYS=()
+NUM_VIP=${#VIP_MODES[@]}
 
-declare -a RUN_KEYS=()      # "u_vip|d_vip|u_err|d_err"
-
-# Helper: add entry (deduplicates)
 add_run() {
   local key="${1}|${2}|${3}|${4}"
   for k in "${RUN_KEYS[@]+"${RUN_KEYS[@]}"}"; do
@@ -115,28 +133,17 @@ add_run() {
   RUN_KEYS+=("$key")
 }
 
-# 1. Each VIP on U-side, DEFAULT on D
-for vip in "${VIP_MODES[@]}"; do
-  add_run "$vip" "$DEFAULT_VIP" "" ""
-done
-
-# 2. Each VIP on D-side, DEFAULT on U
-for vip in "${VIP_MODES[@]}"; do
-  add_run "$DEFAULT_VIP" "$vip" "" ""
-done
-
-# 3. Clean DEFAULT/DEFAULT baseline
+# 1. Each VIP on U-side, default on D
+for vip in "${VIP_MODES[@]}"; do add_run "$vip" "$DEFAULT_VIP" "" ""; done
+# 2. Each VIP on D-side, default on U
+for vip in "${VIP_MODES[@]}"; do add_run "$DEFAULT_VIP" "$vip" "" ""; done
+# 3. Baseline
 add_run "$DEFAULT_VIP" "$DEFAULT_VIP" "" ""
-
-# 4. VIP diagonal — each VIP paired with the next (wraps around)
-NUM_VIP=${#VIP_MODES[@]}
+# 4. VIP diagonal
 for (( i=0; i<NUM_VIP; i++ )); do
-  u="${VIP_MODES[$i]}"
-  d="${VIP_MODES[$(( (i+1) % NUM_VIP ))]}"
-  add_run "$u" "$d" "" ""
+  add_run "${VIP_MODES[$i]}" "${VIP_MODES[$(( (i+1) % NUM_VIP ))]}" "" ""
 done
-
-# 5. VIP cross — first half of VIP list vs second half, both directions
+# 5. VIP cross
 HALF=$(( NUM_VIP / 2 ))
 for (( i=0; i<HALF; i++ )); do
   for (( j=HALF; j<NUM_VIP; j++ )); do
@@ -144,15 +151,44 @@ for (( i=0; i<HALF; i++ )); do
     add_run "${VIP_MODES[$j]}" "${VIP_MODES[$i]}" "" ""
   done
 done
-
-# 6. Error tests — each err mode once on U-side and once on D-side,
-#                  always with DEFAULT on both VIP sides
+# 6. Error injection runs
+err_idx=0
 for err in "${ERR_MODES[@]}"; do
-  add_run "$DEFAULT_VIP" "$DEFAULT_VIP" "$err" ""
-  add_run "$DEFAULT_VIP" "$DEFAULT_VIP" ""     "$err"
+  u_vip="${VIP_MODES[$(( err_idx % NUM_VIP ))]}"
+  d_vip="${VIP_MODES[$(( (err_idx + 1) % NUM_VIP ))]}"
+  add_run "$u_vip"       "$DEFAULT_VIP" "$err" ""
+  add_run "$DEFAULT_VIP" "$d_vip"       ""     "$err"
+  err_idx=$(( err_idx + 1 ))
 done
+# 7. Flit-only error runs (10 per mode: 5 U-side + 5 D-side)
+if [[ "$RUN_FLIT" -eq 1 ]]; then
+  for err in "${FLIT_ONLY_ERR_MODES[@]}"; do
+    for (( i=0; i<FLIT_ONLY_RUNS_PER_MODE; i++ )); do
+      if (( i % 2 == 0 )); then
+        u_vip="${VIP_MODES[$(( (i/2) % NUM_VIP ))]}"
+        RUN_KEYS+=("${u_vip}|${DEFAULT_VIP}|${err}||flit_only")
+      else
+        d_vip="${VIP_MODES[$(( (i/2) % NUM_VIP ))]}"
+        RUN_KEYS+=("${DEFAULT_VIP}|${d_vip}||${err}|flit_only")
+      fi
+    done
+  done
+fi
 
-TOTAL=${#RUN_KEYS[@]}
+# Calculate TOTAL
+_normal=0; _flit_only=0
+for _k in "${RUN_KEYS[@]}"; do
+  if [[ "$_k" == *"|flit_only" ]]; then
+    _flit_only=$(( _flit_only + 1 ))
+  else
+    _normal=$(( _normal + 1 ))
+  fi
+done
+if [[ "$RUN_FLIT" -eq 1 ]]; then
+  TOTAL=$(( _normal * 2 + _flit_only ))
+else
+  TOTAL=$_normal
+fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Colours & formatting
@@ -163,197 +199,269 @@ CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 banner() { echo -e "${CYAN}${BOLD}$*${RESET}"; }
 pass()   { echo -e "  ${GREEN}[PASS]${RESET} $*"; }
 fail()   { echo -e "  ${RED}[FAIL]${RESET} $*"; }
-xfail()  { echo -e "  ${YELLOW}[FAIL-EXPECTED]${RESET} $*"; }
+
+declare -a RESULTS=()
+record() { RESULTS+=("$1"); }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Result tracking
+# Helper functions
 # ─────────────────────────────────────────────────────────────────────────────
-declare -a RESULTS=()          # "<label>|<status>"  status: PASS|FAIL|XFAIL|ERROR
 
-record() { RESULTS+=("$1|$2"); }
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Error mode behaviour lists
-#
-# All error modes are expected to produce UVM errors (XFAIL when errors found).
-# PASS_ERR_MODES is intentionally empty — dllp_type_err is NOT a special case.
-# ─────────────────────────────────────────────────────────────────────────────
-PASS_ERR_MODES=()
-
-# Returns 0 if the run is expected to produce UVM errors, 1 if expected clean
-expects_error() {
-  local u_err="$1" d_err="$2"
-  # No error mode injected → expect clean
-  [[ -z "$u_err" && -z "$d_err" ]] && return 1
-  # Check if every injected mode is in the always-pass list
-  for mode in "$u_err" "$d_err"; do
-    [[ -z "$mode" ]] && continue
-    local is_pass_mode=0
-    for pass_mode in "${PASS_ERR_MODES[@]+"${PASS_ERR_MODES[@]}"}"; do
-      [[ "$mode" == "$pass_mode" ]] && is_pass_mode=1 && break
-    done
-    [[ "$is_pass_mode" -eq 0 ]] && return 0   # at least one error-producing mode
-  done
-  return 1   # all injected modes are pass-through → expect clean
-}
-
-# Returns 0 if this run intentionally injects a pass-through error mode
-expects_pass_with_err() {
-  local u_err="$1" d_err="$2"
-  [[ -z "$u_err" && -z "$d_err" ]] && return 1
-  for mode in "$u_err" "$d_err"; do
-    [[ -z "$mode" ]] && continue
-    for pass_mode in "${PASS_ERR_MODES[@]+"${PASS_ERR_MODES[@]}"}"; do
-      [[ "$mode" == "$pass_mode" ]] && return 0
-    done
-  done
+# is_in_list <value> <item...>  — safe with empty lists
+is_in_list() {
+  local val="$1"; shift || true
+  [[ $# -eq 0 ]] && return 1
+  for item in "$@"; do [[ "$val" == "$item" ]] && return 0; done
   return 1
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Parse a simulation log for UVM errors / fatal messages
-# Returns 0 if errors found, 1 if clean
-# Prints a short reason string to stdout when errors are found:
-#   "ILLEGAL_BIN"  — sim aborted due to illegal bin hit (FCIBH)
-#   "SIM_CRASH"    — sim aborted with another Error-[...] / Fatal-[...] tag
-#   "UVM_ERRORS"   — UVM_ERROR or UVM_FATAL count > 0
-# ─────────────────────────────────────────────────────────────────────────────
-log_has_errors() {
+# log_has_any_errors <log>
+# Returns 0 if log has any UVM_ERROR/FATAL message lines
+log_has_any_errors() {
   local log="$1"
-  if [[ ! -f "$log" ]]; then
-    echo "  WARNING: log not found: $log" >&2
-    echo "NO_LOG"
-    return 0   # no log = something went wrong = treat as error
+  [[ ! -f "$log" ]] && return 1
+  grep -qE "$ERR_MSG_PAT" "$log" 2>/dev/null
+}
+
+# log_has_illegal_bin <log>
+# Returns 0 if log has any Error-[FCIBH] illegal bin hit
+log_has_illegal_bin() {
+  local log="$1"
+  [[ ! -f "$log" ]] && return 1
+  grep -qE "$ILLEGAL_BIN_PAT" "$log" 2>/dev/null
+}
+
+# log_has_errors_outside_window <log> <cb_start> <cb_end>
+# Returns 0 (true) if any UVM error timestamp falls outside [cb_start, cb_end]
+# Returns 1 (false) if all errors are inside the window or there are none
+log_has_errors_outside_window() {
+  local log="$1" cb_start="$2" cb_end="$3"
+  [[ ! -f "$log" ]] && return 1
+
+  while IFS= read -r line; do
+    local ts
+    ts=$(echo "$line" | grep -oE '@[[:space:]]*[0-9]+' | grep -oE '[0-9]+' | head -1)
+    [[ -z "$ts" ]] && continue
+    if [[ "$ts" -lt "$cb_start" || "$ts" -gt "$cb_end" ]]; then
+      return 0   # error outside window → true
+    fi
+  done < <(grep -E "$ERR_MSG_PAT" "$log" 2>/dev/null || true)
+
+  return 1   # all errors inside window → false
+}
+
+# parse_cb_window <log> <u_err> <d_err>
+# Outputs two integers to stdout: "<cb_start> <cb_end>"
+# All debug/warn messages go to stderr only
+parse_cb_window() {
+  local log="$1" u_err="$2" d_err="$3"
+
+  local no_dereg=0
+  if is_in_list "$u_err" "${NO_DEREG_ERR_MODES[@]}" 2>/dev/null || \
+     is_in_list "$d_err" "${NO_DEREG_ERR_MODES[@]}" 2>/dev/null; then
+    no_dereg=1
   fi
 
-  # Detect simulator abort before UVM summary is written.
-  # Anchored to line-start to avoid matching mid-line DUT/testbench prints.
-  if grep -qE '^(Error|Fatal)-\[FCIBH\]' "$log"; then
-    echo "ILLEGAL_BIN"
+  # Collect all "registered" timestamps — stdout only from grep/sort
+  local reg_times
+  reg_times=$(grep -E '\[TEST_CB\].*[Cc]allback registered' "$log" 2>/dev/null \
+              | grep -oE '@[[:space:]]*[0-9]+' \
+              | grep -oE '[0-9]+' \
+              | sort -n) || reg_times=""
+
+  if [[ -z "$reg_times" ]]; then
+    echo "-1 -1"
     return 0
   fi
 
-  if grep -qE '^(Error|Fatal)-\[' "$log"; then
-    echo "SIM_CRASH"
+  local cb_start cb_end
+  cb_start=$(echo "$reg_times" | head -1)
+
+  if [[ "$no_dereg" -eq 1 ]]; then
+    cb_end=$(( cb_start * 2 ))
+    echo "  [DBG] window (no-dereg): cb_start=${cb_start} cb_end=${cb_end}" >&2
+  else
+    local dereg_times
+    dereg_times=$(grep -E '\[TEST_CB\].*[Cc]allback deregistered' "$log" 2>/dev/null \
+                  | grep -oE '@[[:space:]]*[0-9]+' \
+                  | grep -oE '[0-9]+' \
+                  | sort -n) || dereg_times=""
+
+    if [[ -n "$dereg_times" ]]; then
+      cb_end=$(( $(echo "$dereg_times" | tail -1) + CB_GRACE_NS ))
+    else
+      echo "  [WARN] no deregister marker — falling back to last reg + grace" >&2
+      cb_end=$(( $(echo "$reg_times" | tail -1) + CB_GRACE_NS ))
+    fi
+    echo "  [DBG] window: cb_start=${cb_start} cb_end=${cb_end} (grace=${CB_GRACE_NS}ns)" >&2
+  fi
+
+  # Only these two numbers go to stdout — nothing else
+  echo "$cb_start $cb_end"
+}
+
+# classify_injection_run <log> <u_err> <d_err>
+# Outputs a single status string to stdout
+classify_injection_run() {
+  local log="$1" u_err="$2" d_err="$3"
+
+  # Illegal bin is always an immediate failure
+  if log_has_illegal_bin "$log"; then
+    echo "FAIL_ILLEGAL_BIN"
     return 0
   fi
 
-  # Check UVM_ERROR / UVM_FATAL counts — match "UVM_ERROR : <N>" where N > 0
-  local err_count fatal_count
-  err_count=$(grep -iE 'UVM_ERROR\s*:\s*[0-9]+' "$log"   | grep -oE '[0-9]+$' | awk '{s+=$1} END{print s+0}')
-  fatal_count=$(grep -iE 'UVM_FATAL\s*:\s*[0-9]+' "$log" | grep -oE '[0-9]+$' | awk '{s+=$1} END{print s+0}')
+  # Parse window — stdout is only "cb_start cb_end"
+  local cb_window
+  cb_window=$(parse_cb_window "$log" "$u_err" "$d_err")
+  local cb_start cb_end
+  read -r cb_start cb_end <<< "$cb_window"
 
-  if [[ "$err_count" -gt 0 || "$fatal_count" -gt 0 ]]; then
-    echo "UVM_ERRORS"
+  if [[ "$cb_start" -eq -1 ]]; then
+    echo "  [WARN] no TEST_CB markers in: $log" >&2
+    if log_has_any_errors "$log"; then
+      echo "FAIL_NO_WINDOW"
+    else
+      echo "PASS"
+    fi
     return 0
   fi
 
-  return 1
+  if log_has_errors_outside_window "$log" "$cb_start" "$cb_end"; then
+    echo "FAIL"
+  elif log_has_any_errors "$log"; then
+    echo "PASS_CB"
+  else
+    echo "PASS"
+  fi
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Run a single simulation (called in subshell for parallelism)
-# Writes result to a temp file: <tmpdir>/<idx>
+# Run a single simulation
+# Result file format: label|status|group|flit
+# Groups: A=no injection  B=error injection  C=ECC injection
 # ─────────────────────────────────────────────────────────────────────────────
 TMPDIR_REG=$(mktemp -d /tmp/pcie_reg_XXXXXX)
 trap 'rm -rf "$TMPDIR_REG"' EXIT
 
 run_one() {
-  local idx="$1" u_vip="$2" d_vip="$3" u_err="$4" d_err="$5"
+  local idx="$1" u_vip="$2" d_vip="$3" u_err="$4" d_err="$5" flit="$6"
 
   local label="${u_vip}__${d_vip}"
   [[ -n "$u_err" ]] && label+="__uerr_${u_err}"
   [[ -n "$d_err" ]] && label+="__derr_${d_err}"
+  [[ "$flit" -eq 1 ]] && label+="__flit"
 
-  local make_args=(
-    "test=${TEST}"
-    "verbosity=${VERBOSITY}"
-    "seed=${SEED}"
-    "u_vip_mode=${u_vip}"
-    "d_vip_mode=${d_vip}"
-    "u_err_mode=${u_err}"
-    "d_err_mode=${d_err}"
-  )
-
-  local expected_err
-  expects_error "$u_err" "$d_err" && expected_err=1 || expected_err=0
-
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "${label}|DRY" > "${TMPDIR_REG}/${idx}"
-    return
-  fi
-
-  # Run simulation (compile already done)
-  local run_ok
-  if $MAKE run "${make_args[@]}" >/dev/null 2>&1; then
-    run_ok=1
-  else
-    run_ok=0
-  fi
-
-  # Determine log path — must exactly mirror Makefile RUN_NAME logic:
-  #   RUN_NAME_BASE = $(u_vip_mode)_u_$(d_vip_mode)_d
-  #   optionally appended: _$(u_err_mode)_u  and/or  _$(d_err_mode)_d
-  local run_name="${u_vip}_u_${d_vip}_d"
-  [[ -n "$u_err" ]] && run_name+="_${u_err}_u"
-  [[ -n "$d_err" ]] && run_name+="_${d_err}_d"
-  local log="./runs/${run_name}/simv.log"
-  echo "  [DBG] expecting log at: $log" >&2
-
-  local status
-  local reason
-  if [[ "$run_ok" -eq 0 ]]; then
-    # make run itself failed — check log for extra context but always fail
-    # unless it was an expected-error run and the log confirms UVM errors
-    reason=$(log_has_errors "$log")
-    if [[ -n "$reason" && "$expected_err" -eq 1 ]]; then
-      status="XFAIL:${reason}"
-    else
-      status="FAIL:${reason:-SIM_EXIT}"
+  {
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "${label}|DRY|A|${flit}" > "${TMPDIR_REG}/${idx}"
+      return 0
     fi
-  elif reason=$(log_has_errors "$log"); then
-    # make run exited cleanly but log contains errors
-    if [[ "$expected_err" -eq 1 ]]; then
-      status="XFAIL:${reason}"
-    else
-      status="FAIL:${reason}"
-    fi
-  else
-    # make run exited cleanly and log is clean
-    if [[ "$expected_err" -eq 1 ]]; then
-      status="PASS_UNEXP"   # error injected but no errors seen → unexpected
-    else
-      status="PASS"
-    fi
-  fi
 
-  echo "${label}|${status}" > "${TMPDIR_REG}/${idx}"
+    local make_args=(
+      "test=${TEST}"
+      "verbosity=${VERBOSITY}"
+      "seed=${SEED}"
+      "u_vip_mode=${u_vip}"
+      "d_vip_mode=${d_vip}"
+      "u_err_mode=${u_err}"
+      "d_err_mode=${d_err}"
+      "flit_mode=${flit}"
+    )
+
+    $MAKE run "${make_args[@]}" >/dev/null 2>&1 || true
+
+    # Log path mirrors Makefile RUN_NAME logic exactly
+    local run_name="${u_vip}_u_${d_vip}_d"
+    [[ -n "$u_err" ]] && run_name+="_${u_err}_u"
+    [[ -n "$d_err" ]] && run_name+="_${d_err}_d"
+    [[ "$flit" -eq 1 ]] && run_name+="_flit"
+    run_name+="_seed_${SEED}"
+    local log="./runs/${run_name}/simv.log"
+    echo "  [DBG] log: $log" >&2
+
+    local status group
+
+    if [[ -z "$u_err" && -z "$d_err" ]]; then
+      # ── Group A: no injection ─────────────────────────────────────────────
+      group="A"
+      if log_has_illegal_bin "$log"; then
+        status="FAIL_ILLEGAL_BIN"
+      elif log_has_any_errors "$log"; then
+        status="FAIL"
+      else
+        status="PASS"
+      fi
+
+    elif is_in_list "$u_err" "${ECC_MODES[@]}" 2>/dev/null || \
+         is_in_list "$d_err" "${ECC_MODES[@]}" 2>/dev/null; then
+      # ── Group C: ECC injection ────────────────────────────────────────────
+      group="C"
+      if log_has_illegal_bin "$log"; then
+        status="FAIL_ILLEGAL_BIN"
+      else
+        local cb_window
+        cb_window=$(parse_cb_window "$log" "$u_err" "$d_err")
+        local cb_start cb_end
+        read -r cb_start cb_end <<< "$cb_window"
+
+        if [[ "$cb_start" -eq -1 ]]; then
+          echo "  [WARN] no TEST_CB markers in: $log" >&2
+          if log_has_any_errors "$log"; then
+            status="FAIL_NO_WINDOW"
+          else
+            status="PASS_ECC_CLEAN"
+          fi
+        elif log_has_errors_outside_window "$log" "$cb_start" "$cb_end"; then
+          status="FAIL"
+        elif log_has_any_errors "$log"; then
+          status="PASS_ECC_CORRECTED"
+        else
+          status="PASS_ECC_CLEAN"
+        fi
+      fi
+
+    else
+      # ── Group B: error injection ──────────────────────────────────────────
+      group="B"
+      status=$(classify_injection_run "$log" "$u_err" "$d_err")
+    fi
+
+    echo "${label}|${status}|${group}|${flit}" > "${TMPDIR_REG}/${idx}"
+    return 0
+
+  } || {
+    echo "${label}|ERROR|A|${flit}" > "${TMPDIR_REG}/${idx}"
+  }
 }
 
-export -f run_one log_has_errors expects_error expects_pass_with_err
-export PASS_ERR_MODES
-export MAKE TEST VERBOSITY SEED DRY_RUN TMPDIR_REG
+export -f run_one log_has_any_errors log_has_illegal_bin \
+          log_has_errors_outside_window parse_cb_window \
+          classify_injection_run is_in_list
+export MAKE TEST VERBOSITY SEED DRY_RUN TMPDIR_REG CB_GRACE_NS RUN_FLIT
+export NO_DEREG_ERR_MODES ECC_MODES ERR_MSG_PAT ILLEGAL_BIN_PAT
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────────────────────────────────────
-
 echo ""
 banner "======================================================================="
 banner "  PCIe UVM Regression  —  $(date '+%Y-%m-%d %H:%M:%S')"
 banner "======================================================================="
-echo -e "  Test     : ${BOLD}${TEST}${RESET}"
-echo -e "  Seed     : ${SEED}"
-echo -e "  Jobs     : ${JOBS} parallel"
-echo -e "  Total    : ${TOTAL} runs"
-[[ "$DRY_RUN" -eq 1 ]] && echo -e "  ${YELLOW}DRY RUN — no simulations will be launched${RESET}"
+echo -e "  Test       : ${BOLD}${TEST}${RESET}"
+echo -e "  Seed       : ${SEED}"
+echo -e "  Jobs       : ${JOBS} parallel"
+echo -e "  Total      : ${TOTAL} runs"
+echo -e "  CB grace   : ${CB_GRACE_NS} ns"
+echo -e "  Flit mode  : $( [[ $RUN_FLIT -eq 1 ]] && echo "flit + non-flit" || echo "non-flit only" )"
+[[ "$DRY_RUN" -eq 1 ]] && echo -e "  ${YELLOW}DRY RUN${RESET}"
 echo ""
 
-# ── Step 1: Compile once ──────────────────────────────────────────────────────
+# ── Step 1: Compile ───────────────────────────────────────────────────────────
 banner "[ 1/3 ]  Compiling..."
 if [[ "$DRY_RUN" -eq 0 ]]; then
   if ! $MAKE compile; then
-    echo -e "${RED}${BOLD}COMPILATION FAILED — aborting regression.${RESET}"
+    echo -e "${RED}${BOLD}COMPILATION FAILED — aborting.${RESET}"
     exit 1
   fi
   echo -e "  ${GREEN}Compilation successful.${RESET}"
@@ -362,32 +470,41 @@ else
 fi
 echo ""
 
-# ── Step 2: Run simulations in parallel ──────────────────────────────────────
+# ── Step 2: Run simulations ───────────────────────────────────────────────────
 banner "[ 2/3 ]  Running simulations..."
 echo ""
 
-# Use a simple semaphore via background jobs + wait
 active=0
 idx=0
 for key in "${RUN_KEYS[@]}"; do
-  IFS='|' read -r u_vip d_vip u_err d_err <<< "$key"
-  idx=$((idx + 1))
+  IFS='|' read -r u_vip d_vip u_err d_err flit_only_flag <<< "$key"
+  flit_only_flag="${flit_only_flag:-}"
 
-  # Progress indicator
-  printf "  [%3d/%3d]  %-80s\r" "$idx" "$TOTAL" \
-    "${u_vip} / ${d_vip}${u_err:+ uerr=$u_err}${d_err:+ derr=$d_err}"
-
-  run_one "$idx" "$u_vip" "$d_vip" "$u_err" "$d_err" &
-  active=$((active + 1))
+  if [[ "$flit_only_flag" == "flit_only" ]]; then
+    [[ "$RUN_FLIT" -eq 0 ]] && continue
+    idx=$(( idx + 1 ))
+    printf "  [%3d/%3d]  %-80s\r" "$idx" "$TOTAL" \
+      "${u_vip}/${d_vip}${u_err:+ uerr=$u_err}${d_err:+ derr=$d_err} [flit-only]"
+    run_one "$idx" "$u_vip" "$d_vip" "$u_err" "$d_err" "1" &
+    active=$(( active + 1 ))
+  else
+    for flit in 0 1; do
+      [[ "$flit" -eq 1 && "$RUN_FLIT" -eq 0 ]] && continue
+      idx=$(( idx + 1 ))
+      printf "  [%3d/%3d]  %-80s\r" "$idx" "$TOTAL" \
+        "${u_vip}/${d_vip}${u_err:+ uerr=$u_err}${d_err:+ derr=$d_err}${flit:+ flit=$flit}"
+      run_one "$idx" "$u_vip" "$d_vip" "$u_err" "$d_err" "$flit" &
+      active=$(( active + 1 ))
+    done
+  fi
 
   if [[ "$active" -ge "$JOBS" ]]; then
-    wait -n 2>/dev/null || wait   # wait for any one child to finish
-    active=$((active - 1))
+    wait -n 2>/dev/null || wait
+    active=$(( active - 1 ))
   fi
 done
-wait   # drain remaining jobs
-printf '%100s\r' ''   # clear progress line
-
+wait
+printf '%100s\r' ''
 echo -e "  All simulations complete."
 echo ""
 
@@ -395,25 +512,24 @@ echo ""
 banner "[ 3/3 ]  Collecting results & merging coverage..."
 echo ""
 
-PASS_COUNT=0; FAIL_COUNT=0; XFAIL_COUNT=0; ERR_COUNT=0
+PASS_A=0; PASS_B=0; PASS_ECC_CLEAN=0; PASS_ECC_CORRECTED=0
+FAIL_COUNT=0; NO_WINDOW_COUNT=0; ERR_COUNT=0
 
-# Read result files in order
-for ((i=1; i<=idx; i++)); do
+for (( i=1; i<=idx; i++ )); do
   result_file="${TMPDIR_REG}/${i}"
   if [[ -f "$result_file" ]]; then
-    IFS='|' read -r label status < "$result_file"
-    record "$label" "$status"
+    IFS='|' read -r label status group flit < "$result_file"
+    record "${label}|${status}|${group}|${flit}"
   else
-    record "run_${i}" "ERROR"
+    record "run_${i}|ERROR|A|0"
   fi
 done
 
-# ── Merge coverage ────────────────────────────────────────────────────────────
 if [[ "$DRY_RUN" -eq 0 ]]; then
   if $MAKE merge_coverage >/dev/null 2>&1; then
     echo -e "  ${GREEN}Coverage merged successfully.${RESET}"
   else
-    echo -e "  ${YELLOW}Warning: coverage merge failed (check runs/ directory).${RESET}"
+    echo -e "  ${YELLOW}Warning: coverage merge failed.${RESET}"
   fi
 else
   echo -e "  ${YELLOW}(coverage merge skipped — dry run)${RESET}"
@@ -421,61 +537,135 @@ fi
 echo ""
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Final report
+# Report helpers
+# ─────────────────────────────────────────────────────────────────────────────
+print_entry() {
+  local label="$1" status="$2"
+  local col
+  col="$(printf '%-90s' "$label")"
+  case "$status" in
+    PASS)
+      pass "${col}  PASSED"
+      PASS_A=$(( PASS_A + 1 ))
+      ;;
+    PASS_CB)
+      echo -e "  ${GREEN}[PASS]${RESET} ${col}  PASSED  ${CYAN}(errors contained in callback window)${RESET}"
+      PASS_B=$(( PASS_B + 1 ))
+      ;;
+    PASS_ECC_CLEAN)
+      echo -e "  ${GREEN}[PASS]${RESET} ${col}  PASSED  ${GREEN}(ECC corrected — no UVM errors reported)${RESET}"
+      PASS_ECC_CLEAN=$(( PASS_ECC_CLEAN + 1 ))
+      ;;
+    PASS_ECC_CORRECTED)
+      echo -e "  ${GREEN}[PASS]${RESET} ${col}  PASSED  ${CYAN}(uncorrectable ECC error — contained in window)${RESET}"
+      PASS_ECC_CORRECTED=$(( PASS_ECC_CORRECTED + 1 ))
+      ;;
+    FAIL_ILLEGAL_BIN)
+      fail "${col}  FAILED ← Illegal bin hit (functional coverage violation)"
+      FAIL_COUNT=$(( FAIL_COUNT + 1 ))
+      ;;
+    FAIL)
+      fail "${col}  FAILED ← UVM errors found outside callback window"
+      FAIL_COUNT=$(( FAIL_COUNT + 1 ))
+      ;;
+    FAIL_NO_WINDOW)
+      fail "${col}  FAILED ← UVM errors found but no TEST_CB markers in log"
+      FAIL_COUNT=$(( FAIL_COUNT + 1 ))
+      NO_WINDOW_COUNT=$(( NO_WINDOW_COUNT + 1 ))
+      ;;
+    DRY)
+      echo -e "  ${CYAN}[DRY]${RESET}  $label"
+      ;;
+    ERROR|*)
+      echo -e "  ${RED}[ERROR]${RESET}  $label  (run_one crashed — check stderr)"
+      ERR_COUNT=$(( ERR_COUNT + 1 ))
+      ;;
+  esac
+}
+
+group_header() {
+  echo ""
+  echo -e "  ${BOLD}$*${RESET}"
+  printf "  %-90s  %s\n" "$(printf '%0.s─' {1..90})" "────────────────"
+}
+
+print_section() {
+  local title="$1"
+  local -n _A="$2" _B="$3" _C="$4"
+  local total=$(( ${#_A[@]} + ${#_B[@]} + ${#_C[@]} ))
+  echo ""
+  echo -e "${CYAN}${BOLD}  ╔══════════════════════════════════════════════════════════════════════╗${RESET}"
+  echo -e "${CYAN}${BOLD}  ║  ${title}  (${total} runs)${RESET}"
+  echo -e "${CYAN}${BOLD}  ╚══════════════════════════════════════════════════════════════════════╝${RESET}"
+
+  group_header "  Group A — No error injection  (${#_A[@]} runs)"
+  for entry in "${_A[@]+"${_A[@]}"}"; do
+    IFS='|' read -r lbl st <<< "$entry"; print_entry "$lbl" "$st"
+  done
+
+  group_header "  Group B — Error injection, errors expected in window  (${#_B[@]} runs)"
+  for entry in "${_B[@]+"${_B[@]}"}"; do
+    IFS='|' read -r lbl st <<< "$entry"; print_entry "$lbl" "$st"
+  done
+
+  if [[ ${#_C[@]} -gt 0 ]]; then
+    group_header "  Group C — ECC injection, errors correctable  (${#_C[@]} runs)"
+    for entry in "${_C[@]+"${_C[@]}"}"; do
+      IFS='|' read -r lbl st <<< "$entry"; print_entry "$lbl" "$st"
+    done
+  fi
+}
+
+# Split results by flit/non-flit and group
+declare -a NF_A=() NF_B=() NF_C=()
+declare -a FL_A=() FL_B=() FL_C=()
+
+for entry in "${RESULTS[@]}"; do
+  IFS='|' read -r label status group flit <<< "$entry"
+  local_flit="${flit:-0}"
+  e="${label}|${status}"
+  if [[ "$local_flit" -eq 1 ]]; then
+    case "$group" in
+      B) FL_B+=("$e") ;; C) FL_C+=("$e") ;; *) FL_A+=("$e") ;;
+    esac
+  else
+    case "$group" in
+      B) NF_B+=("$e") ;; C) NF_C+=("$e") ;; *) NF_A+=("$e") ;;
+    esac
+  fi
+done
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Print report
 # ─────────────────────────────────────────────────────────────────────────────
 banner "======================================================================="
 banner "  REGRESSION REPORT  —  $(date '+%Y-%m-%d %H:%M:%S')"
 banner "======================================================================="
-echo ""
-printf "  %-90s  %s\n" "RUN NAME" "RESULT"
-printf "  %-90s  %s\n" "$(printf '%0.s─' {1..90})" "────────────────"
 
-PASS_UNEXP_COUNT=0
+print_section "NON-FLIT MODE"                   NF_A NF_B NF_C
+[[ "$RUN_FLIT" -eq 1 ]] && \
+  print_section "GEN6 FLIT MODE  (+flit_mode)"  FL_A FL_B FL_C
 
-for entry in "${RESULTS[@]}"; do
-  IFS='|' read -r label status <<< "$entry"
-  local_reason=""
-  [[ "$status" == *:* ]] && local_reason="${status#*:}" && status="${status%%:*}"
-
-  # Human-readable reason suffix
-  reason_str=""
-  case "$local_reason" in
-    ILLEGAL_BIN) reason_str=" ← illegal bin hit (FCIBH)" ;;
-    SIM_CRASH)   reason_str=" ← simulator crash (Error/Fatal-[...])" ;;
-    UVM_ERRORS)  reason_str=" ← UVM_ERROR / UVM_FATAL in log" ;;
-    SIM_EXIT)    reason_str=" ← make run returned non-zero, no log" ;;
-    NO_LOG)      reason_str=" ← log not found" ;;
-  esac
-
-  case "$status" in
-    PASS)        pass  "$(printf '%-90s' "$label")  PASSED"
-                 PASS_COUNT=$((PASS_COUNT+1)) ;;
-    XFAIL)       xfail "$(printf '%-90s' "$label")  FAILED (expected)${reason_str}"
-                 XFAIL_COUNT=$((XFAIL_COUNT+1)) ;;
-    FAIL)        fail  "$(printf '%-90s' "$label")  FAILED ← UNEXPECTED${reason_str}"
-                 FAIL_COUNT=$((FAIL_COUNT+1)) ;;
-    PASS_UNEXP)  echo -e "  ${YELLOW}[PASS-UNEXP]${RESET} $(printf '%-90s' "$label")  PASSED UNEXPECTEDLY (error injected but no UVM errors found)"
-                 PASS_UNEXP_COUNT=$((PASS_UNEXP_COUNT+1)) ;;
-    DRY)         echo -e "  ${CYAN}[DRY-RUN]${RESET}  $label" ;;
-    *)           echo -e "  ${RED}[ERROR]${RESET}    $label  (could not determine result)"
-                 ERR_COUNT=$((ERR_COUNT+1)) ;;
-  esac
-done
-
+TOTAL_PASS=$(( PASS_A + PASS_B + PASS_ECC_CLEAN + PASS_ECC_CORRECTED ))
 echo ""
 banner "======================================================================="
-echo -e "  ${GREEN}${BOLD}PASSED              : ${PASS_COUNT}${RESET}"
-echo -e "  ${YELLOW}${BOLD}FAIL-EXPECTED       : ${XFAIL_COUNT}${RESET}  (error injected → error detected, as designed)"
-echo -e "  ${YELLOW}${BOLD}PASSED-UNEXPECTEDLY : ${PASS_UNEXP_COUNT}${RESET}  (error injected but simulation showed no UVM errors)"
-echo -e "  ${RED}${BOLD}FAILED              : ${FAIL_COUNT}${RESET}  (unexpected failures — no error injected but UVM errors found)"
+echo -e "  ${GREEN}${BOLD}PASSED                      : ${TOTAL_PASS}${RESET}"
+echo -e "  ${GREEN}        Group A  clean       : ${PASS_A}${RESET}"
+echo -e "  ${CYAN}        Group B  in-window   : ${PASS_B}${RESET}  (errors contained, design recovered)"
+echo -e "  ${GREEN}        Group C  ECC clean   : ${PASS_ECC_CLEAN}${RESET}  (ECC corrected before UVM reported)"
+echo -e "  ${CYAN}        Group C  ECC errors  : ${PASS_ECC_CORRECTED}${RESET}  (uncorrectable ECC error contained in window)"
+echo -e "  ${RED}${BOLD}FAILED                      : ${FAIL_COUNT}${RESET}"
+[[ "$NO_WINDOW_COUNT" -gt 0 ]] && \
+  echo -e "  ${YELLOW}        no window markers    : ${NO_WINDOW_COUNT}${RESET}  (TEST_CB not found — check UVM_LOW verbosity)"
 [[ "$ERR_COUNT" -gt 0 ]] && \
-  echo -e "  ${RED}${BOLD}ERRORS              : ${ERR_COUNT}${RESET}  (could not parse results)"
-echo -e "  ${BOLD}TOTAL               : ${TOTAL}${RESET}"
+  echo -e "  ${RED}${BOLD}SCRIPT ERRORS               : ${ERR_COUNT}${RESET}  (run_one crashed — check stderr)"
+echo -e "  ${BOLD}TOTAL RUNS                  : ${TOTAL}${RESET}"
 banner "======================================================================="
 echo ""
 
 if [[ "$FAIL_COUNT" -gt 0 || "$ERR_COUNT" -gt 0 ]]; then
   echo -e "${RED}${BOLD}  ✗  Regression FAILED — see FAILED entries above.${RESET}"
+  echo -e "     Tip: re-run with  ./regression.sh --fail <run_name>  to inspect a log."
   echo ""
   exit 1
 else

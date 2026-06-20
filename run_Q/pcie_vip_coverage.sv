@@ -181,14 +181,14 @@ class pcie_vip_coverage extends uvm_component;
         
         // FEATURE_04 : Transmitted Feature field must equal local register
         cp_tx_feature_field_matches_local: coverpoint (seq_item_tx.dllp[38:16] == cfg.local_register_feature.local_feature_supported) iff (state_seq_item.vip_state == FEATURE
-        && seq_item_tx.dllp[47:40] == FEATURE && !cfg.flit_mode_enable && !cfg.feature_err_test) {
+        && seq_item_tx.dllp[47:40] == FEATURE && !cfg.flit_mode_enable && !cfg.err_test) {
             bins         feature_field_matches_local       = {1};
             illegal_bins feature_field_mismatch_with_local = {0};
         }
 
         // FEATURE_05 : Ack bit must equal remote_feature_valid
         cp_ack_bit_matches_valid: coverpoint (seq_item_tx.dllp[39] == cfg.remote_register_feature.remote_feature_valid) iff (state_seq_item.vip_state == FEATURE 
-        && seq_item_tx.dllp[47:40] == FEATURE && !cfg.flit_mode_enable && !cfg.feature_err_test){
+        && seq_item_tx.dllp[47:40] == FEATURE && !cfg.flit_mode_enable && !cfg.err_test){
             bins         ack_equals_remote_valid    = {1};
             illegal_bins ack_not_equal_remote_valid = {0};
         }
@@ -315,7 +315,7 @@ class pcie_vip_coverage extends uvm_component;
             {seq_item_tx.dllp[39:38], seq_item_tx.dllp[29:28]}
             iff (state_seq_item.vip_state == DL_INIT1 &&
                  seq_item_tx.dllp[47:40] inside {INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D} &&
-                 !cfg.scaled_fc_active && !cfg.flit_mode_enable && !cfg.feature_err_test)
+                 !cfg.scaled_fc_active && !cfg.flit_mode_enable && !cfg.err_test)
         {
             bins scale_zero = {4'b0000};
             illegal_bins wrong_scale = default;
@@ -326,7 +326,7 @@ class pcie_vip_coverage extends uvm_component;
             {seq_item_tx.dllp[39:38], seq_item_tx.dllp[29:28]}
             iff (state_seq_item.vip_state == DL_INIT1 &&
                  seq_item_tx.dllp[47:40] inside {INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D} &&
-                 cfg.scaled_fc_active && !cfg.flit_mode_enable && !cfg.feature_err_test)
+                 cfg.scaled_fc_active && !cfg.flit_mode_enable && !cfg.err_test)
         {
             bins non_zero[] = {4'b0101, 4'b0110, 4'b0111,
                                4'b1001, 4'b1010, 4'b1011,

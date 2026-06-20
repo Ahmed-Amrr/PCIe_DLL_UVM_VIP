@@ -11,9 +11,11 @@ interface lpif_if (
 
     bit         pl_lnk_up  ;   // Physical link is up and active
     bit         lp_valid   ;   // lp_data contains valid data from Link Partner
-    logic [7:0] lp_data [0:255]    ;   // 64-bit data bus from Link Partner (DLLP / TLP)
+    logic [0:255] [7:0] lp_flit_data    ;   // 64-bit data bus from Link Partner (DLLP / TLP)
+    logic [47:0] lp_dlp_data    ;
     bit         pl_valid   ;   // pl_data contains valid data from Physical Layer
-    logic [7:0] pl_data [0:255]   ;   // 64-bit data bus from Physical Layer
+    logic [0:255] [7:0] pl_flit_data   ;   // 64-bit data bus from Physical Layer
+    logic [47:0] pl_dlp_data    ;
 
     //==========================================================
     // Driver Clocking Block - Synchronous outputs, zero skew
@@ -22,8 +24,10 @@ interface lpif_if (
         default output #0;
         output pl_lnk_up;
         output lp_valid ;
-        output lp_data  ;
-        output pl_data  ;
+        output lp_flit_data  ;
+        output lp_dlp_data  ;
+        output pl_flit_data  ;
+        output pl_dlp_data  ;
         output pl_valid ;
     endclocking
 
@@ -34,8 +38,10 @@ interface lpif_if (
         default input #1step;
         input pl_lnk_up;
         input lp_valid ;
-        input lp_data  ;
-        input pl_data  ;
+        input lp_flit_data  ;
+        input lp_dlp_data  ;
+        input pl_flit_data  ;
+        input pl_dlp_data  ;
         input pl_valid ;
     endclocking
 

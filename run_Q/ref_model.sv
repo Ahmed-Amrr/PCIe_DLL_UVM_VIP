@@ -177,8 +177,7 @@ class dll_ref_model #(
 
                     // FEATURE and INITFC1 are allowed in DL_FEATURE.
                     DL_FEATURE: begin
-                        if (!(_dllp_type inside {FEATURE, INITFC1_P_S, INITFC1_NP_S, INITFC1_CPL_S,
-                                                 INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D})) begin
+                        if (!(_dllp_type inside {FEATURE, INITFC1_P_D})) begin
                             `uvm_info("DLL_RM",
                                 $sformatf("[check_rx_legality] Illegal DLLP in DL_FEATURE. received=%s allowed={FEATURE,INITFC1_P,INITFC1_NP,INITFC1_CPL}",
                                         _dllp_type.name()), UVM_LOW)

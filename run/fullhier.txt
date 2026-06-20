@@ -1,0 +1,1 @@
+Note: Bumping stack limit from 8192 to unlimited Kbytes.

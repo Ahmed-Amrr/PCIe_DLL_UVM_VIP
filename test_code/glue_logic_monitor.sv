@@ -38,7 +38,8 @@
             forever begin
                 @(lpif_vif.mon_cb)
                     s_item          = pcie_flit_seq_item::type_id::create("s_item");
-                    s_item.flit     = lpif_vif.mon_cb.lp_data ;
+                    s_item.flit     = lpif_vif.mon_cb.lp_flit_data ;
+                    s_item.dlp      = lpif_vif.mon_cb.lp_dlp_data;
                     s_item.lp_valid = lpif_vif.mon_cb.lp_valid;
                     mon_ap.write(s_item);
             end

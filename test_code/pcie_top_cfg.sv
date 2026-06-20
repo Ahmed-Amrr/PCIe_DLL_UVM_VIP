@@ -15,7 +15,7 @@ class pcie_top_cfg extends uvm_object;
     // Randomizable test-control flags
     rand bit link_down_test  ;   // Enable link-down test scenario
     rand bit common_reset    ;   // Assert reset on both sides simultaneously
-    rand bit flit_mode_enable;
+    bit flit_mode_enable;
     // Constraints — keep error scenarios rare to favour normal operation
     constraint c {
         link_down_test dist {0:=95, 1:=5};
@@ -27,6 +27,7 @@ class pcie_top_cfg extends uvm_object;
     //==========================================================
     function new(string name = "pcie_top_cfg");
         super.new(name);
+	this.flit_mode_enable = 0;
     endfunction : new
 
 endclass : pcie_top_cfg

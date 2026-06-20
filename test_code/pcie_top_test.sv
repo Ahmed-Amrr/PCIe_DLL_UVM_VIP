@@ -81,6 +81,11 @@ class pcie_top_test_base extends uvm_test;
                 `uvm_info("TEST_CFG", $sformatf("Creating fc2_dllp init1 callback: %s", name), UVM_LOW)
                 return cb;
             end
+            "flit_ecc_cb" : begin
+                pcie_flit_ecc_cb cb = pcie_flit_ecc_cb::type_id::create(name);
+                `uvm_info("TEST_CFG", $sformatf("Creating FLIT ECC error callback: %s", name), UVM_LOW)
+                return cb;
+            end
             default : begin
                 `uvm_info("TEST_CFG", $sformatf("No driver error injection for mode: %s", err_mode), UVM_LOW)
                 return null;
@@ -121,14 +126,20 @@ class pcie_top_test_base extends uvm_test;
     // Inputs : top_cfg — top configuration object to populate
     //          u_cfg   — upstream VIP config carrying its interface handles
     //          d_cfg   — downstream VIP config carrying its interface handles
-    function void configure_top(ref pcie_top_cfg top_cfg, pcie_vip_config u_cfg, pcie_vip_config d_cfg);
+    function void configure_top(ref pcie_top_cfg top_cfg, ref pcie_vip_config u_cfg, ref pcie_vip_config d_cfg);
         assert(top_cfg.randomize());
+
+        if ($test$plusargs("flit_mode")) begin
+            top_cfg.flit_mode_enable = 1;
+        end
 
         // Propagate interface handles from each VIP cfg into the shared top cfg
         top_cfg.u_lpif_vif = u_cfg.lpif_vif;
         top_cfg.d_lpif_vif = d_cfg.lpif_vif;
         top_cfg.u_p_vif    = u_cfg.p_vif   ;
         top_cfg.d_p_vif    = d_cfg.p_vif   ;
+        u_cfg.flit_mode_enable = top_cfg.flit_mode_enable;
+        d_cfg.flit_mode_enable = top_cfg.flit_mode_enable;
     endfunction
 
     //==========================================================
@@ -218,12 +229,12 @@ class pcie_top_test_base extends uvm_test;
             `uvm_info("TEST_CFG", $sformatf("Down error mode: %s",  down_err_mode), UVM_LOW)
 
         // Create driver-level callbacks for applicable error modes
-        if (up_err_mode   inside {"updatefc_scale_err", "crc_err", "dllp_type_err", "feature_err", "feature_ack_bit_err", "fc2_init1_cb", "fcupdate_init2_cb"})
+        if (up_err_mode   inside {"updatefc_scale_err", "crc_err", "dllp_type_err", "feature_err", "feature_ack_bit_err", "fc2_init1_cb", "fcupdate_init2_cb", "flit_ecc_cb"})
             us_drv_cb = create_driver_callback(up_err_mode,   "us_drv_cb");
         else if (up_err_mode inside {"dropped_fc_err", "out_of_order_fc_err"})
             us_seq_cb = create_seq_callback(up_err_mode,      "us_seq_cb");
 
-        if (down_err_mode inside {"updatefc_scale_err", "crc_err", "dllp_type_err", "feature_err", "feature_ack_bit_err",  "fc2_init1_cb", "fcupdate_init2_cb"})
+        if (down_err_mode inside {"updatefc_scale_err", "crc_err", "dllp_type_err", "feature_err", "feature_ack_bit_err",  "fc2_init1_cb", "fcupdate_init2_cb", "flit_ecc_cb"})
             ds_drv_cb = create_driver_callback(down_err_mode, "ds_drv_cb");
         else if (down_err_mode inside {"dropped_fc_err", "out_of_order_fc_err"})
             ds_seq_cb = create_seq_callback(down_err_mode,    "ds_seq_cb");
@@ -251,6 +262,14 @@ class pcie_top_test_base extends uvm_test;
         configure_vip(d_cfg, down_vip_mode);
         configure_top(top_cfg, u_cfg, d_cfg);
 
+	if (up_err_mode   inside {"feature_err", "feature_ack_bit_err" , "dllp_type_err", "flit_ecc_cb"}) begin
+		u_cfg.err_test = 1;
+	end
+	
+	if (down_err_mode   inside {"feature_err", "feature_ack_bit_err" , "dllp_type_err", "flit_ecc_cb"}) begin
+		d_cfg.err_test = 1;
+	end
+
         uvm_config_db #(pcie_top_cfg)::set(this, "*",               "top_cfg", top_cfg);
         uvm_config_db #(pcie_vip_config)::set(this, "top_env.u_vip*", "vip_cfg", u_cfg);
         uvm_config_db #(pcie_vip_config)::set(this, "top_env.d_vip*", "vip_cfg", d_cfg);
@@ -264,9 +283,9 @@ class pcie_top_test_base extends uvm_test;
         super.run_phase(phase);
         phase.raise_objection(this);
 
-        #4000;
+        #10000;
 
-        // Register callbacks — null check ensures no injection when not needed
+         // Register callbacks — null check ensures no injection when not needed
         if (us_drv_cb != null) begin
             uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::add(top_env.u_vip.tx_agent.drv, us_drv_cb);
             `uvm_info("TEST_CB", $sformatf("Callback registered to the upper VIP at time: %t", $time()), UVM_LOW)
@@ -285,22 +304,24 @@ class pcie_top_test_base extends uvm_test;
             `uvm_info("TEST_CB", $sformatf("Callback registered to the lower VIP at time: %t", $time()), UVM_LOW)
         end
 
-        #4000;
+        #10000;
 
         // Deregister driver callbacks after injection window
-        if (us_drv_cb != null) begin 
+        if (us_drv_cb != null) begin
             uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::delete(top_env.u_vip.tx_agent.drv, us_drv_cb);
-            `uvm_info("TEST_CB", $sformatf("Callback deregistered to the lower VIP at time: %t", $time()), UVM_LOW)
+            `uvm_info("TEST_CB", $sformatf("Callback deregistered to the upper VIP at time: %t", $time()), UVM_LOW)
         end
         if (ds_drv_cb != null) begin
             uvm_callbacks #(pcie_vip_driver, pcie_vip_driver_cb)::delete(top_env.d_vip.tx_agent.drv, ds_drv_cb);
-            `uvm_info("TEST_CB", $sformatf("Callback registered to the lower VIP at time: %t", $time()), UVM_LOW)
+            `uvm_info("TEST_CB", $sformatf("Callback deregistered to the lower VIP at time: %t", $time()), UVM_LOW)
         end
+            
 
-        #4000;
+        #10000;
         phase.drop_objection(this);
     endtask : run_phase
 
 endclass : pcie_top_test_base
 
 `endif
+

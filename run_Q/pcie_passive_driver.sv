@@ -85,6 +85,7 @@
                     passive_vif.init1_cpl_f_s                <=s_item_sm.init1_cpl_f_s;
 
                     passive_vif.flit_mode_enable           <= cfg.flit_mode_enable;
+                    passive_vif.err_test           <= cfg.err_test;
 
                 end
             end

@@ -17,7 +17,7 @@ class pcie_gen6_fec;
     localparam int CRC_BYTES          = 8;     // B0..B7
 
     //  EXP table : i → α^i 
-    bit [7:0] GF_EXP [0:255] = {
+    bit [0:255] [7:0] GF_EXP  = {
         /* 00-0f */ 8'h01, 8'h02, 8'h04, 8'h08, 8'h10, 8'h20, 8'h40, 8'h80, 8'h1D, 8'h3A, 8'h74, 8'hE8, 8'hCD, 8'h87, 8'h13, 8'h26,
         /* 10-1f */ 8'h4C, 8'h98, 8'h2D, 8'h5A, 8'hB4, 8'h75, 8'hEA, 8'hC9, 8'h8F, 8'h03, 8'h06, 8'h0C, 8'h18, 8'h30, 8'h60, 8'hC0,
         /* 20-2f */ 8'h9D, 8'h27, 8'h4E, 8'h9C, 8'h25, 8'h4A, 8'h94, 8'h35, 8'h6A, 8'hD4, 8'hB5, 8'h77, 8'hEE, 8'hC1, 8'h9F, 8'h23,
@@ -37,7 +37,7 @@ class pcie_gen6_fec;
     };
 
     //  LOG table : α^i → i  
-    bit [7:0] GF_LOG [0:255] = {
+    bit [0:255] [7:0] GF_LOG  = {
         /* 00-0f */ 8'hFF, 8'h00, 8'h01, 8'h19, 8'h02, 8'h32, 8'h1A, 8'hC6, 8'h03, 8'hDF, 8'h33, 8'hEE, 8'h1B, 8'h68, 8'hC7, 8'h4B,
         /* 10-1f */ 8'h04, 8'h64, 8'hE0, 8'h0E, 8'h34, 8'h8D, 8'hEF, 8'h81, 8'h1C, 8'hC1, 8'h69, 8'hF8, 8'hC8, 8'h08, 8'h4C, 8'h71,
         /* 20-2f */ 8'h05, 8'h8A, 8'h65, 8'h2F, 8'hE1, 8'h24, 8'h0F, 8'h21, 8'h35, 8'h93, 8'h8E, 8'hDA, 8'hF0, 8'h12, 8'h82, 8'h45,
@@ -58,7 +58,7 @@ class pcie_gen6_fec;
 
     // g-coefficients g0..g7 (each a fixed GF(2^8) element, derived from the spec exponents)
     //   g0 = a^36 , g1 = a^199 , g2 = a^134 , g3 = a^195 , g4 = a^172 , g5 = a^186 , g6 = a^116 , g7 = a^172
-    bit [7:0] G [8] = '{8'h69, 8'h4D, 8'h41, 8'h33, 8'hD5, 8'hFE, 8'h68, 8'hD5};
+    bit [8] [7:0] G  = '{8'h69, 8'h4D, 8'h41, 8'h33, 8'hD5, 8'hFE, 8'h68, 8'hD5};
 
     // Function gf_mul : multiply two GF(2^8) elements with log/exp tables
     //                   Returns 0 if either operand is 0 
@@ -80,11 +80,11 @@ class pcie_gen6_fec;
     //                          the spec's a(x) convention / Appendix-K bit ordering)
     // Output  : crc_bytes[0:7] -> B0..B7 (B0 = crc_bytes[0] ... B7 = crc_bytes[7])
     function void crc_flit_calc (
-        input  bit [7:0] data [FLIT_PAYLOAD_BYTES],
-        output bit [7:0] crc_bytes [CRC_BYTES]
+        input  bit [FLIT_PAYLOAD_BYTES] [7:0] data ,
+        output bit [CRC_BYTES] [7:0] crc_bytes 
     );
-        bit [7:0] B [CRC_BYTES];
-        bit [7:0] new_B [CRC_BYTES];
+        bit [CRC_BYTES] [7:0] B ;
+        bit [CRC_BYTES] [7:0] new_B ;
         bit [7:0] feedback;
 
         foreach (B[i]) B[i] = 8'h00;
@@ -114,7 +114,7 @@ class pcie_gen6_fec;
     //  Outputs : check_byte  –> B[84] = Σ data[i] × α^(84−i), i from 0 to 83  
     //            parity_byte –> B[85] = XOR(data[0 to 83])  
     function void encode_ecc_group (
-        input  bit [7:0] data [84],
+        input  bit [84] [7:0] data ,
         output bit [7:0] check_byte,
         output bit [7:0] parity_byte
     );
@@ -136,8 +136,8 @@ class pcie_gen6_fec;
     //  Outputs : corrected[0:85]  –> corrected code word
     //            status           –> ECC_NO_ERROR / ECC_CORRECTED / ECC_UNCORRECTABLE
     function void decode_group (
-        input  bit [7:0]   rx        [86],
-        output bit [7:0]   corrected [86],
+        input  bit [86] [7:0]   rx        ,
+        output bit [86] [7:0]   corrected ,
         output ecc_status_t status
     );
         bit [7:0] synd_parity;
@@ -214,13 +214,13 @@ class pcie_gen6_fec;
     //  Input  : flit_in[0:255]  –> from 250 to 255 are overwritten 
     //  Output : flit_out[0:255] –> from 0 to 249 unchanged input and from 250 to 255 equals calculated ECC bytes
     function void encode_flit (
-        input  bit [7:0] flit_in  [0:255],
-        output bit [7:0] flit_out [0:255]
+        input  bit [0:255] [7:0] flit_in  ,
+        output bit [0:255][7:0] flit_out 
     );
-        bit [7:0] grp     [3][86];      // ecc three groups
-        bit [7:0] check     [3];        // computed B[84] per group
-        bit [7:0] parity     [3];       // computed B[85] per group
-        bit [7:0] encoder_in  [84];
+        bit [3] [86] [7:0] grp     ;      // ecc three groups
+        bit [3] [7:0] check     ;        // computed B[84] per group
+        bit [3] [7:0] parity     ;       // computed B[85] per group
+        bit [84] [7:0] encoder_in  ;
 
         // Map flit bytes from 0 to 249 into the three ECC groups 
         // group = i mod 3,  byte_offset = floor(i/3)
@@ -255,14 +255,14 @@ class pcie_gen6_fec;
     //  Output : flit_out[0:255]  –> corrected flit
     //           group_status[3]  –> per-group ECC status
     function void decode_flit (
-        input  bit [7:0]  flit_in  [0:255],
-        output bit [7:0]  flit_out [0:255],
-        output ecc_status_t group_status  [3]
+        input  bit [0:255] [7:0]  flit_in  ,
+        output bit [0:255] [7:0]  flit_out ,
+        output  ecc_status_t [3] group_status  
     );
-        bit [7:0] grp             [3][86];           // received code words
-        bit [7:0] corrected_cw    [3][86];   // corrected code words from decoder
-        bit [7:0] decoder_in  [86];
-        bit [7:0] decoder_out [86];
+        bit [3][86] [7:0] grp             ;           // received code words
+        bit [3][86][7:0] corrected_cw    ;   // corrected code words from decoder
+        bit [86][7:0] decoder_in  ;
+        bit [86][7:0] decoder_out ;
 
         // Map flit bytes from 0 to 249 into ECC groups
         for (int i = 0; i < 250; i++)

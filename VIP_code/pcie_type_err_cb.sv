@@ -66,12 +66,12 @@ class pcie_dllp_type_err_cb extends pcie_vip_driver_cb;
             DL_ACTIVE : begin
                 randcase
                     1 : wrong_type = FEATURE    ;
-                    1 : wrong_type = INITFC1_P  ;
-                    1 : wrong_type = INITFC1_NP ;
-                    1 : wrong_type = INITFC1_CPL;
-                    1 : wrong_type = INITFC2_P  ;
-                    1 : wrong_type = INITFC2_NP ;
-                    1 : wrong_type = INITFC2_CPL;
+                    1 : wrong_type = INITFC1_P_D  ;
+                    1 : wrong_type = INITFC1_NP_D ;
+                    1 : wrong_type = INITFC1_CPL_D;
+                    1 : wrong_type = INITFC2_P_D  ;
+                    1 : wrong_type = INITFC2_NP_D ;
+                    1 : wrong_type = INITFC2_CPL_D;
                 endcase
             end
             DL_INACTIVE : begin

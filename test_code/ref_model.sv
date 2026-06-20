@@ -177,8 +177,7 @@ class dll_ref_model #(
 
                     // FEATURE and INITFC1 are allowed in DL_FEATURE.
                     DL_FEATURE: begin
-                        if (!(_dllp_type inside {FEATURE, INITFC1_P_S, INITFC1_NP_S, INITFC1_CPL_S
-                                                 INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D})) begin
+                        if (!(_dllp_type inside {FEATURE, INITFC1_P_D})) begin
                             `uvm_info("DLL_RM",
                                 $sformatf("[check_rx_legality] Illegal DLLP in DL_FEATURE. received=%s allowed={FEATURE,INITFC1_P,INITFC1_NP,INITFC1_CPL}",
                                         _dllp_type.name()), UVM_LOW)
@@ -188,9 +187,9 @@ class dll_ref_model #(
 
                     // FEATURE, INITFC1, and INITFC2 are allowed in DL_INIT1.
                     DL_INIT1: begin
-                        if (!(_dllp_type inside {FEATURE, INITFC1_P_S, INITFC1_NP_S, INITFC1_CPL_S
-                                                 INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D
-                                                 INITFC2_P_S, INITFC2_NP_S, INITFC2_CPL_S
+                        if (!(_dllp_type inside {FEATURE, INITFC1_P_S, INITFC1_NP_S, INITFC1_CPL_S,
+                                                 INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D,
+                                                 INITFC2_P_S, INITFC2_NP_S, INITFC2_CPL_S,
                                                  INITFC2_P_D, INITFC2_NP_D, INITFC2_CPL_D})) begin
                             `uvm_info("DLL_RM",
                                 $sformatf("[check_rx_legality] Illegal DLLP in DL_INIT1. received=%s allowed={FEATURE,INITFC1_P,INITFC1_NP,INITFC1_CPL,INITFC2_P,INITFC2_NP,INITFC2_CPL}",
@@ -474,35 +473,32 @@ class dll_ref_model #(
         // FI1/FI2 set only when all three received in order
         if (cfg.flit_mode_enable) begin
             if (fi1_cpl_s) begin
-                 if (is_init2)
-                     this.FI2 = 1;
+                `uvm_info("DLL_RM", "[update_fi_flags] flit_mode_enable=1 and fi1_cpl_s=true", UVM_LOW)
+                if (is_init2)
+                    this.FI2 = 1;
                 else
-                     this.FI1 = 1;
-            fi1_p_d   = 0;
-            fi1_np_d  = 0;
-            fi1_cpl_d = 0;
-            fi1_p_s   = 0;
-            fi1_np_s  = 0;
-            fi1_cpl_s = 0;
+                    this.FI1 = 1;
+                fi1_p_d   = 0;
+                fi1_np_d  = 0;
+                fi1_cpl_d = 0;
+                fi1_p_s   = 0;
+                fi1_np_s  = 0;
+                fi1_cpl_s = 0;
             end
-        else 
+        end else begin
             if (fi1_cpl_d) begin
-                 if (is_init2)
-                     this.FI2 = 1;
+                `uvm_info("DLL_RM", "[update_fi_flags] flit_mode_enable=0 and fi1_cpl_d=true", UVM_LOW)
+                if (is_init2)
+                    this.FI2 = 1;
                 else
-                     this.FI1 = 1;
-            fi1_p_d   = 0;
-            fi1_np_d  = 0;
-            fi1_cpl_d = 0;
-            fi1_p_s   = 0;
-            fi1_np_s  = 0;
-            fi1_cpl_s = 0;
+                    this.FI1 = 1;
+                fi1_p_d   = 0;
+                fi1_np_d  = 0;
+                fi1_cpl_d = 0;
+                fi1_p_s   = 0;
+                fi1_np_s  = 0;
+                fi1_cpl_s = 0;
             end
-
-            `uvm_info("DLL_RM",
-                is_init2 ? "[FI2] SET — P/NP/CPL received"
-                        : "[FI1] SET — P/NP/CPL received",
-                UVM_MEDIUM)
         end
 
     endfunction : update_fi_flags

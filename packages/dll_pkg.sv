@@ -125,6 +125,7 @@ package dll_pkg;
     `include "pcie_dropped_fc_err_cb.sv"
     `include "pcie_type_err_cb.sv"
     `include "pcie_crc_err_cb.sv"
+    `include "pcie_flit_ecc_cb.sv"
     `include "pcie_updateFC_scale_err_cb.sv"
     `include "pcie_vip_sequencer.sv"
     `include "pcie_fc2_init1_cb.sv"
@@ -133,6 +134,7 @@ package dll_pkg;
     // =======================
     // 5) Drivers / Monitors / Agents / Sequencers
     // =======================
+    `include "pcie_ecc.sv"
     `include "glue_logic_driver.sv"
     `include "glue_logic_monitor.sv"
     `include "glue_logic_agent.sv"
@@ -152,7 +154,6 @@ package dll_pkg;
     // 6) Scoreboards / Coverage / Models / Config
     // =======================
     `include "ref_model.sv"
-    `include "pcie_ecc.sv"
     `include "dll_vip_scoreboard.sv"
     `include "pcie_shared_scoreboard.sv"
     `include "pcie_vip_coverage.sv"
@@ -173,3 +174,4 @@ package dll_pkg;
 endpackage : dll_pkg
  
 `endif
+

@@ -27,8 +27,9 @@ class pcie_vip_config extends uvm_object;
     rand bit surprise_down_capable;
     rand bit link_not_disabled    ;
     bit flit_mode_enable     ;
+    bit err_test ;
 
-    logic [7:0] TLP [0:235];
+    logic [0:235] [7:0] TLP ;
 
     // Constraints — keep disabled/incapable scenarios rare
     constraint c {

@@ -14,7 +14,7 @@ class pcie_base_seq extends uvm_sequence #(pcie_dllp_seq_item);
 
     // External task declarations
     extern virtual task send_feat_dllp(input dllp_type_t pkt_type, input pcie_dllp_seq_item item);
-    extern virtual task send_fc_dllp  (input dllp_type_t pkt_type, input fc_type_t fc_type, input pcie_dllp_seq_item item);
+    extern virtual task send_fc_dllp  (input dllp_type_t pkt_type, input fc_type_t fc_type, input pcie_dllp_seq_item item, input fc_buffer_t buffer);
     extern virtual task reset         ();
 
     //==========================================================

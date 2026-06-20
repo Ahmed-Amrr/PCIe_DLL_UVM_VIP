@@ -613,7 +613,7 @@ class pcie_vip_state_machine extends uvm_component;
 					illegal_type_r = 1;	//We can't receive DLLP in inactive state
 				 end
 			    DL_FEATURE: begin
-					if(!(type_rx_r inside {FEATURE , INITFC1_P_D, INITFC1_NP_D, INITFC1_CPL_D, INITFC2_P_S, INITFC2_NP_S, INITFC2_CPL_S, INITFC1_P_S, INITFC1_NP_S, INITFC1_CPL_S, INITFC2_P_S, INITFC2_NP_S, INITFC2_CPL_S})) begin
+					if(!(type_rx_r inside {FEATURE , INITFC1_P_D})) begin
 						illegal_type_r = 1;
 						`uvm_info("State_Machine rx_type error (Illegal DLLP receiving in state DL_FEATURE)",
 							$sformatf("received type is : %s",type_rx_r), UVM_LOW)

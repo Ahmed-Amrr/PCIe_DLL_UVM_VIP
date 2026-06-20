@@ -29,29 +29,29 @@ class pcie_out_of_order_fc_cb extends pcie_seq_cb;
         while (current_cycle < active_cycles) begin
             randcase
                 1: begin // P → CPL → NP
-                    seq.send_fc_dllp(INITFC1_P,   FC_POSTED,     item, FC_DEDICATED);
-                    seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item, FC_DEDICATED);
-                    seq.send_fc_dllp(INITFC1_NP,  FC_NON_POSTED, item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_P_D,   FC_POSTED,     item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_CPL_D, FC_COMPLETION, item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_NP_D,  FC_NON_POSTED, item, FC_DEDICATED);
                 end
                 1: begin // CPL → NP → P
-                    seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item, FC_DEDICATED);
-                    seq.send_fc_dllp(INITFC1_NP,  FC_NON_POSTED, item, FC_DEDICATED);
-                    seq.send_fc_dllp(INITFC1_P,   FC_POSTED,     item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_CPL_D, FC_COMPLETION, item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_NP_D,  FC_NON_POSTED, item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_P_D,   FC_POSTED,     item, FC_DEDICATED);
                 end
                 1: begin // CPL → P → NP
-                    seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item, FC_DEDICATED);
-                    seq.send_fc_dllp(INITFC1_P,   FC_POSTED,     item, FC_DEDICATED);
-                    seq.send_fc_dllp(INITFC1_NP,  FC_NON_POSTED, item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_CPL_D, FC_COMPLETION, item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_P_D,   FC_POSTED,     item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_NP_D,  FC_NON_POSTED, item, FC_DEDICATED);
                 end
                 1: begin // NP → P → CPL
-                    seq.send_fc_dllp(INITFC1_NP,  FC_NON_POSTED, item, FC_DEDICATED);
-                    seq.send_fc_dllp(INITFC1_P,   FC_POSTED,     item, FC_DEDICATED);
-                    seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_NP_D,  FC_NON_POSTED, item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_P_D,   FC_POSTED,     item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_CPL_D, FC_COMPLETION, item, FC_DEDICATED);
                 end
                 1: begin // NP → CPL → P
-                    seq.send_fc_dllp(INITFC1_NP,  FC_NON_POSTED, item, FC_DEDICATED);
-                    seq.send_fc_dllp(INITFC1_CPL, FC_COMPLETION, item, FC_DEDICATED);
-                    seq.send_fc_dllp(INITFC1_P,   FC_POSTED,     item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_NP_D,  FC_NON_POSTED, item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_CPL_D, FC_COMPLETION, item, FC_DEDICATED);
+                    seq.send_fc_dllp(INITFC1_P_D,   FC_POSTED,     item, FC_DEDICATED);
                 end
             endcase
             current_cycle++;

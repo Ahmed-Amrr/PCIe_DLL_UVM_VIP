@@ -47,7 +47,7 @@ class pcie_active_seq extends pcie_base_seq;
                 send_updatefc(UPDATEFC_P_D, FC_POSTED, FC_DEDICATED);
 
             if (needs_updatefc(FC_NON_POSTED, FC_DEDICATED))
-                send_updatefc(UPDATEFC_NP_D, FC_NON_POSTED);
+                send_updatefc(UPDATEFC_NP_D, FC_NON_POSTED, FC_DEDICATED);
 
             if (needs_updatefc(FC_COMPLETION, FC_DEDICATED))
                 send_updatefc(UPDATEFC_CPL_D, FC_COMPLETION, FC_DEDICATED);

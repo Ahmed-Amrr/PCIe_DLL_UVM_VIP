@@ -11,6 +11,7 @@ class pcie_vip_tx_monitor extends uvm_monitor;
     virtual lpif_if lpif_vif;
     pcie_dllp_seq_item seq_item_tx_mon;
 	uvm_analysis_port #(pcie_dllp_seq_item) tx_mon_ap;
+	pcie_vip_config cfg;
 
 
     // Functions
@@ -22,6 +23,8 @@ class pcie_vip_tx_monitor extends uvm_monitor;
 	function void build_phase(uvm_phase phase);
 		super.build_phase(phase);
 		tx_mon_ap=new("tx_mon_ap", this);
+		if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG_ENV",cfg))
+	          `uvm_fatal("build_phase","unable to get configuration object in sb")
 	endfunction : build_phase
 
 	 task run_phase(uvm_phase phase);	
@@ -29,7 +32,11 @@ class pcie_vip_tx_monitor extends uvm_monitor;
 		forever begin
 			seq_item_tx_mon=pcie_dllp_seq_item::type_id::create("seq_item_tx_mon");
             @(lpif_vif.mon_cb);
-			seq_item_tx_mon.dllp = lpif_vif.mon_cb.lp_data;
+            if (cfg.flit_mode_enable) begin
+            	seq_item_tx_mon.dllp = lpif_vif.mon_cb.lp_flit_data[236:241];
+            end else begin
+            	seq_item_tx_mon.dllp = lpif_vif.mon_cb.lp_dlp_data;
+            end
 			seq_item_tx_mon.lp_valid = lpif_vif.mon_cb.lp_valid;
 			tx_mon_ap.write(seq_item_tx_mon);
 		end

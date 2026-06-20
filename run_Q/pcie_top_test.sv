@@ -262,12 +262,12 @@ class pcie_top_test_base extends uvm_test;
         configure_vip(d_cfg, down_vip_mode);
         configure_top(top_cfg, u_cfg, d_cfg);
 
-	if (up_err_mode   inside {"feature_err", "feature_ack_bit_err" , "dllp_type_err"}) begin
-		u_cfg.feature_err_test = 1;
+	if (up_err_mode   inside {"feature_err", "feature_ack_bit_err" , "dllp_type_err", "flit_ecc_cb"}) begin
+		u_cfg.err_test = 1;
 	end
 	
-	if (down_err_mode   inside {"feature_err", "feature_ack_bit_err" , "dllp_type_err"}) begin
-		d_cfg.feature_err_test = 1;
+	if (down_err_mode   inside {"feature_err", "feature_ack_bit_err" , "dllp_type_err", "flit_ecc_cb"}) begin
+		d_cfg.err_test = 1;
 	end
 
         uvm_config_db #(pcie_top_cfg)::set(this, "*",               "top_cfg", top_cfg);

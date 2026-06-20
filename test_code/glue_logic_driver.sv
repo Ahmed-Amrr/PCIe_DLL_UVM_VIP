@@ -53,7 +53,8 @@
             forever begin
                 @(lpif_vif.drv_cb)
                 drv_fifo.get(s_item);
-                lpif_vif.drv_cb.pl_data <= s_item.flit;
+                lpif_vif.drv_cb.pl_flit_data <= s_item.flit;
+                lpif_vif.drv_cb.pl_dlp_data <= s_item.dlp;
 
                 // Drive pl_lnk_up low only during link-down test cases
                 if (cfg.link_down_test == 1)

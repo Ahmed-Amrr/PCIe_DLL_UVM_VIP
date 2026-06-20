@@ -10,7 +10,7 @@ interface passive_interface (input logic lclk);
     bit [47:0] tx_dllp;   // DLLP being transmitted by local side
     bit [47:0] rx_dllp;   // DLLP received from remote side
 
-    //  Feature Exchange Registers
+    //   Exchange Registers
     // Local: what this device supports and whether exchange is enabled
     dl_feature_cap_reg_t    local_register_feature;
     // Remote: what the far end advertised and whether it's valid yet
@@ -92,7 +92,8 @@ interface passive_interface (input logic lclk);
     bit init1_p_f_s;              //Posetd
     bit init1_np_f_s;             //Non-Posted
     bit init1_cpl_f_s;            //Compeletion 
-    bit flit_mode_enable;      
+    bit flit_mode_enable;  
+    bit err_test;    
 
     // ============================================================
     // Continuous assignments — decode DLLPs
@@ -412,46 +413,46 @@ interface passive_interface (input logic lclk);
 
     // P_D must be followed by NP_D
     property p_InitFC1_triplet_correct_order_p_np_d;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up)
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || err_test)
         (state == DL_INIT1 && tx_is_initfc1_p_d)
         |=> if (state == DL_INIT1) tx_is_initfc1_np_d;
     endproperty
 
     // NP_D must be followed by CPL_D
     property p_InitFC1_triplet_correct_order_np_cpl_d;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up)
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || err_test)
         (state == DL_INIT1 && tx_is_initfc1_np_d)
         |=> if (state == DL_INIT1) tx_is_initfc1_cpl_d;
     endproperty
 
     // CPL_D must be followed by P_D for flit mode disabled (cyclic)
     property p_InitFC1_triplet_correct_order_cpl_p_d;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up || flit_mode_enable )
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || flit_mode_enable || err_test)
         (state == DL_INIT1 && tx_is_initfc1_cpl_d)
         |=> if (state == DL_INIT1) tx_is_initfc1_p_d;
     endproperty
 
      // CPL_D must be followed by P_S for flit mode enabled 
     property p_InitFC1_triplet_correct_order_cpl_p_s;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable )
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable || err_test)
         (state == DL_INIT1 && tx_is_initfc1_cpl_d)
         |=> if (state == DL_INIT1) tx_is_initfc1_p_s;
     endproperty
     // P_S must be followed by NP_S for flit mode enabled 
     property p_InitFC1_triplet_correct_order_p_np_s;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable )
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable || err_test)
         (state == DL_INIT1 && tx_is_initfc1_p_s)
         |=> if (state == DL_INIT1) tx_is_initfc1_np_s;
     endproperty
     // NP_S must be followed by CPL_S for flit mode enabled 
     property p_InitFC1_triplet_correct_order_np_cpl_s;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable )
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable || err_test)
         (state == DL_INIT1 && tx_is_initfc1_np_s)
         |=> if (state == DL_INIT1) tx_is_initfc1_cpl_s;
     endproperty
     // CPL_S must be followed by P_D (cyclic)
     property p_InitFC1_triplet_correct_order_cpl_p_f;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable )
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable || err_test)
         (state == DL_INIT1 && tx_is_initfc1_cpl_s)
         |=> if (state == DL_INIT1) tx_is_initfc1_p_d;
     endproperty
@@ -484,7 +485,7 @@ interface passive_interface (input logic lclk);
     // FCINIT1_08 : HdrScale and DataScale must be 00b in InitFC1 when Scaled FC is NOT active
     // ============================================================
     property p_scale_0_scaled_fc_not_active;
-        @(posedge lclk) disable iff (reset)
+        @(posedge lclk) disable iff (reset || flit_mode_enable)
         (state == DL_INIT1 && tx_is_initfc1 && !scaled_fc_active)
         |-> (tx_hdr_scale == 2'b00 && tx_data_scale == 2'b00);
     endproperty
@@ -736,49 +737,49 @@ interface passive_interface (input logic lclk);
 
     // P_D must be followed by NP_D
     property p_InitFC2_triplet_correct_order_p_np_d;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up)
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || err_test)
         (state == DL_INIT2 && tx_is_initfc2_p_d)
         |=> if (state == DL_INIT2) tx_is_initfc2_np_d;
     endproperty
 
     // NP_D must be followed by CPL_D
     property p_InitFC2_triplet_correct_order_np_cpl_d;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up)
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || err_test)
         (state == DL_INIT2 && tx_is_initfc2_np_d)
         |=> if (state == DL_INIT2) tx_is_initfc2_cpl_d;
     endproperty
 
     // CPL_D must be followed by P_D for flit mode disabled (cyclic)
     property p_InitFC2_triplet_correct_order_cpl_p_d;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up || flit_mode_enable)
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || flit_mode_enable|| err_test)
         (state == DL_INIT2 && tx_is_initfc2_cpl_d)
         |=> if (state == DL_INIT2) tx_is_initfc2_p_d;
     endproperty
 
     // CPL_D must be followed by P_S for flit mode enabled
     property p_InitFC2_triplet_correct_order_cpl_p_s;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable)
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable|| err_test)
         (state == DL_INIT2 && tx_is_initfc2_cpl_d)
         |=> if (state == DL_INIT2) tx_is_initfc2_p_s;
     endproperty
 
     // P_S must be followed by NP_S for flit mode enabled
     property p_InitFC2_triplet_correct_order_p_np_s;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable)
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable|| err_test)
         (state == DL_INIT2 && tx_is_initfc2_p_s)
         |=> if (state == DL_INIT2) tx_is_initfc2_np_s;
     endproperty
 
     // NP_S must be followed by CPL_S for flit mode enabled
     property p_InitFC2_triplet_correct_order_np_cpl_s;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable)
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable|| err_test)
         (state == DL_INIT2 && tx_is_initfc2_np_s)
         |=> if (state == DL_INIT2) tx_is_initfc2_cpl_s;
     endproperty
 
     // CPL_S must be followed by P_D (cyclic)
     property p_InitFC2_triplet_correct_order_cpl_p_f;
-        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable)
+        @(posedge lclk) disable iff (reset || !pl_lnk_up || !flit_mode_enable || err_test)
         (state == DL_INIT2 && tx_is_initfc2_cpl_s)
         |=> if (state == DL_INIT2) tx_is_initfc2_p_d;
     endproperty
@@ -891,7 +892,7 @@ interface passive_interface (input logic lclk);
     // FCINIT2_09 : HdrScale and DataScale must be 00b in InitFC2 when Scaled FC is NOT active
     // ============================================================
     property p_scale_zero_when_not_active;
-        @(posedge lclk) disable iff (reset)
+        @(posedge lclk) disable iff (reset || err_test)
         (state == DL_INIT2 && tx_is_initfc2 && !scaled_fc_active)
         |-> (tx_hdr_scale == 2'b00 && tx_data_scale == 2'b00);
     endproperty
@@ -906,7 +907,7 @@ interface passive_interface (input logic lclk);
     // FCINIT2_10 : BOTH HdrScale and DataScale must be non-zero in InitFC2 when Scaled FC IS active
     // ============================================================
     property p_scale_nonzero_when_active_init2;
-        @(posedge lclk) disable iff (reset)
+        @(posedge lclk) disable iff (reset || err_test)
         (state == DL_INIT2 && tx_is_initfc2 && scaled_fc_active)
         |-> (tx_hdr_scale != 2'b00 && tx_data_scale != 2'b00);
     endproperty
@@ -1033,7 +1034,7 @@ interface passive_interface (input logic lclk);
     // TYPE_LEGAL_06 : In DL_FEATURE, only FEATURE is legal TX DLLP
     // ============================================================
     property p_tx_dllp_type_legal_feature;
-        @(posedge lclk) disable iff (reset || !lp_valid || !pl_lnk_up)
+        @(posedge lclk) disable iff (reset || !lp_valid || !pl_lnk_up || flit_mode_enable)
         (state == DL_FEATURE) |=>
         (tx_is_feature);
     endproperty
@@ -1048,7 +1049,7 @@ interface passive_interface (input logic lclk);
     // TYPE_LEGAL_08 : In DL_INIT1, only InitFC1 types are legal TX DLLPs
     // ============================================================
     property p_tx_dllp_type_legal_init1;
-        @(posedge lclk) disable iff (reset || !lp_valid || !pl_lnk_up)
+        @(posedge lclk) disable iff (reset || !lp_valid || !pl_lnk_up || flit_mode_enable)
         (state == DL_INIT1) |=>
         (tx_is_initfc1);
     endproperty
@@ -1063,7 +1064,7 @@ interface passive_interface (input logic lclk);
     // TYPE_LEGAL_09 : In DL_INIT2, only InitFC2  types are legal TX DLLPs
     // ============================================================
     property p_tx_dllp_type_legal_init2;
-        @(posedge lclk) disable iff (reset || !lp_valid || !pl_lnk_up)
+        @(posedge lclk) disable iff (reset || !lp_valid || !pl_lnk_up || flit_mode_enable)
         (state == DL_INIT2) |=>
         (tx_is_initfc2);
     endproperty
@@ -1078,7 +1079,7 @@ interface passive_interface (input logic lclk);
     // TYPE_LEGAL_10 : In DL_ACTIVE, only UpdateFC types are legal TX DLLPs (besides ACK/NACK)
     // ============================================================
     property p_tx_dllp_type_legal_active;
-        @(posedge lclk) disable iff (reset || !lp_valid || !pl_lnk_up)
+        @(posedge lclk) disable iff (reset || !lp_valid || !pl_lnk_up || flit_mode_enable)
         (state == DL_ACTIVE) |=>
         (tx_dllp[47:40] inside {UPDATEFC_P_D, UPDATEFC_NP_D, UPDATEFC_CPL_D,
                                 UPDATEFC_P_S, UPDATEFC_NP_S, UPDATEFC_CPL_S, ACK, NACK});

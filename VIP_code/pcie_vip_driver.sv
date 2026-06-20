@@ -24,8 +24,8 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
 
     pcie_gen6_fec FEC;
 
-    logic [7:0] flit_payload [0:242];
-    logic [7:0] FLIT [0:255];
+    logic [0:242] [7:0] flit_payload ;
+    logic [0:255] [7:0] FLIT;
 
     //==========================================================
     // Constructor
@@ -43,7 +43,7 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
         if(!uvm_config_db #(pcie_vip_config)::get(this,"","CFG_ENV",cfg))
           `uvm_fatal("build_phase","unable to get configuration object in sb")
 
-        if (cfg.flit_mode) begin
+        if (cfg.flit_mode_enable) begin
             FEC = new();
         end
     endfunction : build_phase
@@ -77,15 +77,13 @@ class pcie_vip_driver extends uvm_driver #(pcie_dllp_seq_item);
 
             // drive DLLP and valid onto the interface
             if(cfg.flit_mode_enable) begin
-                flit_payload[0:235] = cfg.TLP;
-                for (int i = 0; i < 6; i++)
-                    flit_payload[236+i] <= seq_item_drv.dllp[i*8 +: 8];
-                FEC.crc_flit_calc(flit_payload, FLIT[242:249]);
+                FLIT[0:241] = {cfg.TLP,seq_item_drv.dllp};
+                FEC.crc_flit_calc(FLIT[0:241], FLIT[242:249]);
                 FEC.encode_flit(FLIT, FLIT);
-                lpif_vif.drv_cb.lp_data  <= FLIT;
+                `uvm_do_callbacks(pcie_vip_driver, pcie_vip_driver_cb, flit_drive(FLIT, sqr))
+                lpif_vif.drv_cb.lp_flit_data  <= FLIT;
             end else begin
-                for (int i = 0; i < 6; i++)
-                    lpif_vif.drv_cb.lp_data[236+i] <= seq_item_drv.dllp[i*8 +: 8];
+                lpif_vif.drv_cb.lp_dlp_data <= seq_item_drv.dllp;
             end
             
             lpif_vif.drv_cb.lp_valid <= (cfg.reset || !lpif_vif.pl_lnk_up) ? 0 : 1;

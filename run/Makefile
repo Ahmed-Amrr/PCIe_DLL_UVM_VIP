@@ -9,6 +9,7 @@ d_err_mode	 ?=
 seed         ?= 1
 verbosity    ?= UVM_MEDIUM
 uvm_ver       = uvm-1.2
+flit_mode    ?= 0
 
 
 
@@ -40,6 +41,12 @@ endif
 ifneq ($(d_err_mode),)
 	   RUN_NAME_BASE := $(RUN_NAME_BASE)_$(d_err_mode)_d
 endif
+
+ifeq ($(flit_mode),1)
+    	RUN_NAME_BASE := $(RUN_NAME_BASE)_flit
+endif
+
+RUN_NAME_BASE := $(RUN_NAME_BASE)_seed_${seed}
 
 RUN_NAME = $(RUN_NAME_BASE)
 
@@ -77,6 +84,7 @@ COMPILE_OPTS = -sverilog                        \
 	               -ntb_opts ${uvm_ver}            \
 	               -cm line+tgl+cond+branch+assert \
 	               -cm_dir ${COMPILE_COV_DIR}      \
+	               -cm_hier file_excl.cfg \
 	               +define+${uvm_defines}          
 
 
@@ -95,7 +103,8 @@ RUN_OPTS =  -l ${LOG_FILE}                          \
 	           -cm_dir ${COV_DIR}/simv.vdb             \
 	           +vpdfile+${RUN_DIR}/vcdplus.vpd         \
 	           +fsdbfile+${RUN_DIR}/dump.fsdb	   \
-	           +U_ERR_MODE=${cb}
+	           +U_ERR_MODE=${cb}			   \
+	           $(if $(filter 1,$(flit_mode)),+flit_mode,)
 
 
 
@@ -172,6 +181,8 @@ cover:
 	   urg -full64 \
 	       -dir ${COMPILE_COV_DIR} \
 	       -dir ${COV_DIR}/simv.vdb \
+	       -hier file_excl.cfg \
+	       -elfile  coverage_exclude.el \
 	       -report ${COV_DIR}/report
 	   @echo "Coverage report: ${COV_DIR}/report/dashboard.html"
 
@@ -198,6 +209,8 @@ merge_coverage:
 	       -dir ${COMPILE_COV_DIR} \
 	       $(shell cat ${run_base_path}/runs/vdb_list.txt | sed 's/^/-dir /') \
 	       -dbname ${run_base_path}/merged_coverage \
+	       -hier file_excl.cfg \
+	       -elfile  coverage_exclude.el \
 	       -format both \
 	       -report ${run_base_path}/runs/merged_coverage
 	   @echo "Merge complete."

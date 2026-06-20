@@ -71,15 +71,21 @@
                     passive_vif.feature_exchange_cap       <= cfg.feature_exchange_cap;
                     passive_vif.local_fc_credits_register  <= cfg.local_fc_credits_register;
                     passive_vif.remote_fc_credits_register <= cfg.remote_fc_credits_register;
-                    passive_vif.lp_data                    <= lpif_vif.lp_data;
+                    passive_vif.lp_data                    <= lpif_vif.lp_dlp_data;
                     passive_vif.lp_valid                   <= lpif_vif.lp_valid;
                     passive_vif.pl_valid                   <= lpif_vif.pl_valid;
-                    passive_vif.pl_data                    <= lpif_vif.pl_data;
+                    passive_vif.pl_data                    <= lpif_vif.pl_dlp_data;
 
-                    passive_vif.init1_p_f                  <=s_item_sm.init1_p_f;
-                    passive_vif.init1_np_f                 <=s_item_sm.init1_np_f;
-                    passive_vif.init1_cpl_f                <=s_item_sm.init1_cpl_f;
+                    passive_vif.init1_p_f_d                  <=s_item_sm.init1_p_f_d;
+                    passive_vif.init1_np_f_d                 <=s_item_sm.init1_np_f_d;
+                    passive_vif.init1_cpl_f_d                <=s_item_sm.init1_cpl_f_d;
+
+                    passive_vif.init1_p_f_s                  <=s_item_sm.init1_p_f_s;
+                    passive_vif.init1_np_f_s                 <=s_item_sm.init1_np_f_s;
+                    passive_vif.init1_cpl_f_s                <=s_item_sm.init1_cpl_f_s;
+
                     passive_vif.flit_mode_enable           <= cfg.flit_mode_enable;
+                    passive_vif.err_test           <= cfg.err_test;
 
                 end
             end

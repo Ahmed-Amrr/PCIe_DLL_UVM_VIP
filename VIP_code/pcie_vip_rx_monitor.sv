@@ -14,9 +14,9 @@
 		int unsigned rx_pkt_id;
 
 		pcie_gen6_fec FEC;
-	    logic [7:0] FLIT [0:255];
-	    logic [1:0] group_status [3];
-	    bit [7:0] expected_crc [8];
+	    logic [0:255] [7:0] FLIT ;
+	    logic [3] [1:0] group_status;
+	    bit [8] [7:0] expected_crc ;
 		
 	    // Functions
 		// Constructor
@@ -47,26 +47,27 @@
 				seq_item_rx_mon.pkt_id = rx_pkt_id;
 
 				if(cfg.flit_mode_enable) begin
-					FLIT <= lpif_vif.mon_cb.pl_data;
-	                FEC.decode_flit(FLIT, FLIT, group_status);
-	                for (int i = 0; i < 2; i++) begin
-	                	if (group_status[i] == 2'b10) begin
-	                		`uvm_error("FLIT_ECC_DECODE", "Uncorrectable error in the FLIT, dropping FLIT")
-	                		continue;
-	                	end
-	                end
+					if (!$isunknown(lpif_vif.mon_cb.pl_flit_data)) begin
+						FLIT = lpif_vif.mon_cb.pl_flit_data;
+		                FEC.decode_flit(FLIT, FLIT, group_status);
+		                for (int i = 0; i < 2; i++) begin
+		                	if (group_status[i] == 2'b10) begin
+		                		`uvm_error("FLIT_ECC_DECODE", "Uncorrectable error in the FLIT, dropping FLIT")
+		                		continue;
+		                	end
+		                end
 
 
-	                FEC.crc_flit_calc(FLIT[0:241], expected_crc);
-	                if (FLIT[242:249] != expected_crc) begin
-	                	`uvm_error("FLIT_CRC_CHECK", "Error in CRC check of the FLIT, dropping FLIT")
-	                	continue;
-	                end
-	                for (int i = 0; i < 6; i++)
-                    	seq_item_rx_mon.dllp[i*8 +: 8] <= FLIT[236+i];
+		                FEC.crc_flit_calc(FLIT[0:241], expected_crc);
+		                if (FLIT[242:249] != expected_crc) begin
+		                	`uvm_error("FLIT_CRC_CHECK", "Error in CRC check of the FLIT, dropping FLIT")
+		                	continue;
+		                end
+	                    
+	                    seq_item_rx_mon.dllp = FLIT[236:241];
+					end
 	            end else begin
-					for (int i = 0; i < 6; i++)
-                    	seq_item_rx_mon.dllp[i*8 +: 8] <= lpif_vif.mon_cb.pl_data[236+i];
+                    seq_item_rx_mon.dllp = lpif_vif.mon_cb.pl_dlp_data;
 	            end
 
 				rx_pkt_id++;

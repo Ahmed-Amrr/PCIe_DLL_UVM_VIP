@@ -32,11 +32,11 @@ class pcie_fc_init2_seq extends pcie_base_seq;
             if (p_sequencer.state == DL_INIT2)
             send_fc_dllp(INITFC2_CPL_D, FC_COMPLETION, item, FC_DEDICATED);
             if (cfg.flit_mode_enable) begin
-                if (p_sequencer.state == DL_INIT1)
+                if (p_sequencer.state == DL_INIT2)
                 send_fc_dllp(INITFC2_P_S,   FC_POSTED,     item, FC_SHARED);
-                if (p_sequencer.state == DL_INIT1)
+                if (p_sequencer.state == DL_INIT2)
                 send_fc_dllp(INITFC2_NP_S,  FC_NON_POSTED, item, FC_SHARED);
-                if (p_sequencer.state == DL_INIT1)
+                if (p_sequencer.state == DL_INIT2)
                 send_fc_dllp(INITFC2_CPL_S, FC_COMPLETION, item, FC_SHARED);
             end
 
