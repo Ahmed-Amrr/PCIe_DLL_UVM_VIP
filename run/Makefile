@@ -182,7 +182,6 @@ cover:
 	       -dir ${COMPILE_COV_DIR} \
 	       -dir ${COV_DIR}/simv.vdb \
 	       -hier file_excl.cfg \
-	       -elfile  coverage_exclude.el \
 	       -report ${COV_DIR}/report
 	   @echo "Coverage report: ${COV_DIR}/report/dashboard.html"
 
@@ -210,7 +209,6 @@ merge_coverage:
 	       $(shell cat ${run_base_path}/runs/vdb_list.txt | sed 's/^/-dir /') \
 	       -dbname ${run_base_path}/merged_coverage \
 	       -hier file_excl.cfg \
-	       -elfile  coverage_exclude.el \
 	       -format both \
 	       -report ${run_base_path}/runs/merged_coverage
 	   @echo "Merge complete."

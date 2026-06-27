@@ -28,7 +28,7 @@ class pcie_flit_ecc_cb extends pcie_vip_driver_cb;
 		end
 
             // Generating a random ecc error
-            0:  repeat (3) begin
+            5:  repeat (3) begin
                     int idx = $urandom_range(0,255) ;
                     `uvm_info("FLIT_ECC_CB", $sformatf("Corrupted FLIT[%0d] before corruption: %0h", idx, item[idx]), UVM_MEDIUM)
                     item[idx] = $random;

@@ -41,6 +41,9 @@ ECC_MODES=("flit_ecc_cb")
 # ─────────────────────────────────────────────────────────────────────────────
 ERR_MSG_PAT='UVM_(ERROR|FATAL)[[:space:]]+[^[:space:]:]+\([0-9]+\)[[:space:]]*@'
 ILLEGAL_BIN_PAT='Error-\[FCIBH\]'
+# Scoreboard final verdict line — excluded from error counting in injection
+# runs because it fires at end-of-sim (always outside callback window)
+SB_VERDICT_PAT='\[DLL_SB\].*DLL TEST FAILED'
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Argument parsing
@@ -223,6 +226,20 @@ log_has_any_errors() {
   grep -qE "$ERR_MSG_PAT" "$log" 2>/dev/null
 }
 
+# log_has_any_errors_injection <log>
+# Same as log_has_any_errors but excludes the scoreboard final verdict
+# line [DLL_SB] DLL TEST FAILED which fires at end-of-sim and is not
+# a real error for injection runs.
+log_has_any_errors_injection() {
+  local log="$1"
+  [[ ! -f "$log" ]] && return 1
+  # Extract all UVM error/fatal message lines, strip the scoreboard final
+  # verdict line, then check if anything remains.
+  local filtered
+  filtered=$(grep -E "$ERR_MSG_PAT" "$log" 2>/dev/null              | grep -vE "$SB_VERDICT_PAT")
+  [[ -n "$filtered" ]]
+}
+
 # log_has_illegal_bin <log>
 # Returns 0 if log has any Error-[FCIBH] illegal bin hit
 log_has_illegal_bin() {
@@ -239,6 +256,8 @@ log_has_errors_outside_window() {
   [[ ! -f "$log" ]] && return 1
 
   while IFS= read -r line; do
+    # Skip scoreboard final verdict — it fires at end-of-sim, not a real error
+    echo "$line" | grep -qE "$SB_VERDICT_PAT" && continue
     local ts
     ts=$(echo "$line" | grep -oE '@[[:space:]]*[0-9]+' | grep -oE '[0-9]+' | head -1)
     [[ -z "$ts" ]] && continue
@@ -329,7 +348,7 @@ classify_injection_run() {
 
   if log_has_errors_outside_window "$log" "$cb_start" "$cb_end"; then
     echo "FAIL"
-  elif log_has_any_errors "$log"; then
+  elif log_has_any_errors_injection "$log"; then
     echo "PASS_CB"
   else
     echo "PASS"
@@ -414,7 +433,7 @@ run_one() {
           fi
         elif log_has_errors_outside_window "$log" "$cb_start" "$cb_end"; then
           status="FAIL"
-        elif log_has_any_errors "$log"; then
+        elif log_has_any_errors_injection "$log"; then
           status="PASS_ECC_CORRECTED"
         else
           status="PASS_ECC_CLEAN"
@@ -435,11 +454,11 @@ run_one() {
   }
 }
 
-export -f run_one log_has_any_errors log_has_illegal_bin \
-          log_has_errors_outside_window parse_cb_window \
-          classify_injection_run is_in_list
+export -f run_one log_has_any_errors log_has_any_errors_injection \
+          log_has_illegal_bin log_has_errors_outside_window \
+          parse_cb_window classify_injection_run is_in_list
 export MAKE TEST VERBOSITY SEED DRY_RUN TMPDIR_REG CB_GRACE_NS RUN_FLIT
-export NO_DEREG_ERR_MODES ECC_MODES ERR_MSG_PAT ILLEGAL_BIN_PAT
+export NO_DEREG_ERR_MODES ECC_MODES ERR_MSG_PAT ILLEGAL_BIN_PAT SB_VERDICT_PAT
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN

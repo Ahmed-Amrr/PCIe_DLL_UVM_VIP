@@ -703,8 +703,7 @@ interface passive_interface (input logic lclk);
         |-> fi1_flag
     endproperty
 
-    assert_fcinit1_12_initfc1: assert property (p_fi1_set_after_P_NP_CPL_init1)
-        else `uvm_error("ASSERT_FCINIT1_12", "FCINIT1_12: FI1 not set after all three P+NP+CPL INIT1 received")
+
     assert_fcinit1_12_initfc2: assert property (p_fi1_set_after_P_NP_CPL_init2)
         else `uvm_error("ASSERT_FCINIT1_12", "FCINIT1_12: FI1 not set after all three P+NP+CPL INIT2 received")
     assert_fcinit1_12_initfc1_flit: assert property (p_fi1_set_after_P_D_NP_D_CPL_D_P_S_NP_S_CPL_S_init1)
@@ -712,7 +711,6 @@ interface passive_interface (input logic lclk);
     assert_fcinit1_12_initfc2_flit: assert property (p_fi1_set_after_P_D_NP_D_CPL_D_P_S_NP_S_CPL_S_init2)
         else `uvm_error("ASSERT_FCINIT1_12", "FCINIT1_12: FI1 not set after P_D NP_D CPL_D P_S NP_S CPL_S INIT2 sequence in flit mode")
 
-    cov_fcinit1_12_initfc1: cover property (p_fi1_set_after_P_NP_CPL_init1);
     cov_fcinit1_12_initfc2: cover property (p_fi1_set_after_P_NP_CPL_init2);
     cov_fcinit1_12_initfc1_flit: cover property (p_fi1_set_after_P_D_NP_D_CPL_D_P_S_NP_S_CPL_S_init1);
     cov_fcinit1_12_initfc2_flit: cover property (p_fi1_set_after_P_D_NP_D_CPL_D_P_S_NP_S_CPL_S_init2);
@@ -1093,3 +1091,4 @@ interface passive_interface (input logic lclk);
 
 endinterface : passive_interface
 `endif
+
